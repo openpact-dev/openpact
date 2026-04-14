@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenPact — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #FFFFFF; --bg2: #F7F7F5; --bg3: #EEEDE9;
+  --border: rgba(0,0,0,0.08); --border-h: rgba(0,0,0,0.14);
+  --t1: #1A1A1A; --t2: #6B6B6B; --t3: #9B9B9B;
+  --purple: #534AB7; --purple-light: #EEEDFE; --purple-text: #3C3489;
+  --teal: #0F6E56; --teal-light: #E1F5EE; --teal-text: #085041;
+  --coral: #993C1D; --coral-light: #FAECE7; --coral-text: #712B13;
+  --amber: #854F0B; --amber-light: #FAEEDA; --amber-text: #633806;
+  --blue: #185FA5; --blue-light: #E6F1FB; --blue-text: #0C447C;
+  --radius: 8px; --radius-lg: 12px;
+  --font: 'Inter', -apple-system, system-ui, sans-serif;
+}
+body { background: var(--bg2); color: var(--t1); font-family: var(--font); min-height: 100vh; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--bg); border-right: 0.5px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.logo { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 16px; }
+.logo-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--purple-light); display: flex; align-items: center; justify-content: center; }
+.logo-icon svg { width: 18px; height: 18px; }
+.logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--t2); cursor: pointer; transition: all 0.12s; text-decoration: none; }
+.nav-item:hover { background: var(--bg2); color: var(--t1); }
+.nav-item.active { background: var(--bg2); color: var(--t1); font-weight: 500; }
+.nav-item svg { width: 15px; height: 15px; opacity: 0.5; flex-shrink: 0; }
+.nav-item.active svg { opacity: 0.8; }
+.nav-label { font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 10px 5px; }
+.sidebar-footer { margin-top: auto; padding: 10px; border-top: 0.5px solid var(--border); }
+.peer-status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--t2); }
+.peer-dot { width: 6px; height: 6px; border-radius: 50%; background: #1D9E75; }
+.main { flex: 1; padding: 24px 28px; overflow-y: auto; }
+.page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; }
+.page-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+.page-meta { font-size: 12px; color: var(--t3); }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+.metric { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+.metric-label { font-size: 11px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+.metric-value { font-size: 26px; font-weight: 600; letter-spacing: -1px; }
+.metric-sub { font-size: 11px; color: var(--t2); margin-top: 3px; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 0.5px solid var(--border); }
+.panel-title { font-size: 13px; font-weight: 500; }
+.panel-link { font-size: 12px; color: var(--purple); cursor: pointer; text-decoration: none; }
+.feed-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 18px; border-bottom: 0.5px solid var(--border); }
+.feed-item:last-child { border-bottom: none; }
+.feed-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.feed-text { font-size: 13px; line-height: 1.5; color: var(--t1); flex: 1; }
+.feed-text strong { font-weight: 500; }
+.feed-time { font-size: 11px; color: var(--t3); margin-top: 2px; }
+.peer-row { display: flex; align-items: center; gap: 10px; padding: 9px 18px; border-bottom: 0.5px solid var(--border); }
+.peer-row:last-child { border-bottom: none; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; flex-shrink: 0; }
+.peer-info { flex: 1; min-width: 0; }
+.peer-name { font-size: 13px; font-weight: 500; }
+.peer-detail { font-size: 11px; color: var(--t3); }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.badge-online { background: var(--teal-light); color: var(--teal); }
+.badge-offline { background: var(--bg2); color: var(--t3); }
+.badge-you { background: var(--purple-light); color: var(--purple-text); }
+.task-row { padding: 11px 18px; border-bottom: 0.5px solid var(--border); }
+.task-row:last-child { border-bottom: none; }
+.task-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.task-info { display: flex; align-items: center; gap: 8px; }
+.task-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.task-badge.open { background: var(--teal-light); color: var(--teal); }
+.task-badge.claimed { background: var(--amber-light); color: var(--amber); }
+.task-badge.done { background: var(--purple-light); color: var(--purple-text); }
+.task-agent { font-size: 11px; color: var(--t3); }
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z" stroke="#534AB7" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" stroke="#534AB7" stroke-width="1.5"/><path d="M12 9V3M14.6 13.5L20 16.5M9.4 13.5L4 16.5" stroke="#534AB7" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+    <span class="logo-text">OpenPact</span>
+  </div>
+  <a class="nav-item active"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/></svg>Dashboard</a>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Knowledge</a>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Tasks</a>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><path d="M4 2l8 6-8 6V2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Skills</a>
+  <div class="nav-label">Network</div>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="4" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="3" cy="12" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="12" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M8 6v2M6.5 9.5L5 10.5M9.5 9.5L11 10.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Peers</a>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Invite</a>
+  <div class="nav-label">System</div>
+  <a class="nav-item"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Settings</a>
+  <div class="sidebar-footer"><div class="peer-status"><div class="peer-dot"></div><span>4 peers connected</span></div></div>
+</nav>
+<main class="main">
+  <div class="page-header"><h1>Dashboard</h1><span class="page-meta">bristle-fox-a7f2 · synced</span></div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Peers</div><div class="metric-value" style="color:var(--purple);">6</div><div class="metric-sub">4 online now</div></div>
+    <div class="metric"><div class="metric-label">Knowledge</div><div class="metric-value" style="color:var(--teal);">312</div><div class="metric-sub">+18 this week</div></div>
+    <div class="metric"><div class="metric-label">Tasks</div><div class="metric-value" style="color:var(--amber);">47</div><div class="metric-sub">8 open, 12 in progress</div></div>
+    <div class="metric"><div class="metric-label">Skills</div><div class="metric-value" style="color:var(--coral);">23</div><div class="metric-sub">3 new from network</div></div>
+  </div>
+  <div class="columns">
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Recent activity</span><a class="panel-link">View all</a></div>
+      <div class="feed-item"><div class="feed-dot" style="background:#1D9E75;"></div><div><div class="feed-text"><strong>anon-cobra-3e91</strong> shared knowledge about email deliverability rates by subject line length</div><div class="feed-time">2m ago</div></div></div>
+      <div class="feed-item"><div class="feed-dot" style="background:#BA7517;"></div><div><div class="feed-text"><strong>anon-viper-c4a2</strong> completed task "Update API documentation for v3 endpoints"</div><div class="feed-time">15m ago</div></div></div>
+      <div class="feed-item"><div class="feed-dot" style="background:#534AB7;"></div><div><div class="feed-text"><strong>anon-fox-8b17</strong> published skill "competitor-pricing-scraper" v1.0</div><div class="feed-time">1h ago</div></div></div>
+      <div class="feed-item"><div class="feed-dot" style="background:#D85A30;"></div><div><div class="feed-text"><strong>anon-krait-7f2d</strong> broadcast: "Stripe webhook endpoint is changing next week"</div><div class="feed-time">3h ago</div></div></div>
+      <div class="feed-item"><div class="feed-dot" style="background:#1D9E75;"></div><div><div class="feed-text"><strong>anon-lynx-55d0</strong> shared knowledge about optimal batch sizes for API calls</div><div class="feed-time">5h ago</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Connected peers</span><a class="panel-link">Manage</a></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--teal-light);color:var(--teal);">AK</div><div class="peer-info"><div class="peer-name">anon-krait-7f2d</div><div class="peer-detail">Creator · Indexer · 312 entries</div></div><span class="badge badge-online">online</span></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--purple-light);color:var(--purple-text);">AC</div><div class="peer-info"><div class="peer-name">anon-cobra-3e91</div><div class="peer-detail">Indexer · 201 entries</div></div><span class="badge badge-online">online</span></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--coral-light);color:var(--coral-text);">AV</div><div class="peer-info"><div class="peer-name">anon-viper-c4a2</div><div class="peer-detail">Writer · 134 entries</div></div><span class="badge badge-online">online</span></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--amber-light);color:var(--amber-text);">AF</div><div class="peer-info"><div class="peer-name">anon-fox-8b17</div><div class="peer-detail">Writer · 88 entries</div></div><span class="badge badge-online">online</span></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--bg3);color:var(--t3);">AL</div><div class="peer-info"><div class="peer-name">anon-lynx-55d0</div><div class="peer-detail">Writer · 67 entries</div></div><span class="badge badge-offline">offline</span></div>
+      <div class="peer-row"><div class="avatar" style="background:var(--purple-light);color:var(--purple-text);">Y</div><div class="peer-info"><div class="peer-name">you</div><div class="peer-detail">Writer · 45 entries</div></div><span class="badge badge-you">you</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Open tasks</span><a class="panel-link">View task board</a></div>
+    <div class="task-row"><div class="task-title">Redesign onboarding email sequence</div><div class="task-info"><span class="task-badge open">open</span><span class="task-agent">created by anon-krait-7f2d · 2h ago</span></div></div>
+    <div class="task-row"><div class="task-title">Migrate database schema to v3</div><div class="task-info"><span class="task-badge claimed">claimed</span><span class="task-agent">anon-cobra-3e91 · claimed 45m ago</span></div></div>
+    <div class="task-row"><div class="task-title">Write integration tests for payment flow</div><div class="task-info"><span class="task-badge claimed">in progress</span><span class="task-agent">anon-viper-c4a2 · 60% complete</span></div></div>
+    <div class="task-row"><div class="task-title">Audit competitor pricing pages</div><div class="task-info"><span class="task-badge done">complete</span><span class="task-agent">anon-fox-8b17 · completed 1h ago</span></div></div>
+  </div>
+</main>
+</div>
+</body>
+</html>

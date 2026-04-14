@@ -1,0 +1,14 @@
+{
+  "name": "@openpact/daemon",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenPact daemon: Autobase + Hyperswarm + REST on localhost:7331",
+  "license": "MIT",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "brittle 'test/{unit,integration}/**/*.test.js'"
+  }
+}

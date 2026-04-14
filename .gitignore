@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Pear runtime
+.pear/
+
+# Local daemon data (in case anyone runs from a clone)
+.openpact/

@@ -1,0 +1,48 @@
+{
+  "name": "openpact-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P2P shared memory for software agents",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openpact-dev/openpact.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "brittle 'packages/*/test/{unit,integration}/**/*.test.js'",
+    "test:unit": "brittle 'packages/*/test/unit/**/*.test.js'",
+    "test:e2e": "brittle 'packages/*/test/e2e/**/*.test.js'",
+    "test:watch": "brittle --watch 'packages/*/test/unit/**/*.test.js'",
+    "test:coverage": "c8 --reporter=lcov --reporter=text npm test",
+    "lint": "eslint packages && prettier --check packages",
+    "format": "prettier --write packages"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "brittle": "^3.7.0",
+    "c8": "^10.1.2",
+    "eslint": "^9.13.0",
+    "execa": "^9.5.0",
+    "fast-check": "^3.22.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3"
+  },
+  "c8": {
+    "all": true,
+    "include": [
+      "packages/*/src/**/*.js"
+    ],
+    "exclude": [
+      "**/test/**",
+      "**/node_modules/**"
+    ],
+    "reports-dir": "coverage"
+  }
+}

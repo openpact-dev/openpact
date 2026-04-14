@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenPact — Knowledge</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #FFFFFF; --bg2: #F7F7F5; --bg3: #EEEDE9;
+  --border: rgba(0,0,0,0.08); --border-h: rgba(0,0,0,0.14);
+  --t1: #1A1A1A; --t2: #6B6B6B; --t3: #9B9B9B;
+  --purple: #534AB7; --purple-light: #EEEDFE; --purple-text: #3C3489;
+  --teal: #0F6E56; --teal-light: #E1F5EE; --teal-text: #085041;
+  --coral: #993C1D; --coral-light: #FAECE7; --coral-text: #712B13;
+  --amber: #854F0B; --amber-light: #FAEEDA; --amber-text: #633806;
+  --blue: #185FA5; --blue-light: #E6F1FB; --blue-text: #0C447C;
+  --radius: 8px; --radius-lg: 12px;
+  --font: 'Inter', -apple-system, system-ui, sans-serif;
+}
+body { background: var(--bg2); color: var(--t1); font-family: var(--font); min-height: 100vh; padding: 24px 28px; }
+.page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
+.page-header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
+.page-meta { font-size: 12px; color: var(--t3); }
+.search { width: 100%; padding: 9px 14px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 13px; color: var(--t1); font-family: var(--font); margin-bottom: 14px; outline: none; }
+.search:focus { border-color: var(--purple); }
+.search::placeholder { color: var(--t3); }
+.filters { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.chip { padding: 5px 12px; border-radius: 99px; font-size: 12px; border: 0.5px solid var(--border); color: var(--t2); cursor: pointer; background: var(--bg); font-family: var(--font); }
+.chip:hover { border-color: var(--border-h); color: var(--t1); }
+.chip.on { background: var(--purple-light); border-color: var(--purple); color: var(--purple-text); }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; transition: border-color 0.12s; }
+.card:hover { border-color: var(--border-h); }
+.card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.topic { display: flex; align-items: center; gap: 7px; }
+.topic-dot { width: 7px; height: 7px; border-radius: 50%; }
+.topic-name { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+.card-time { font-size: 11px; color: var(--t3); }
+.card-body { font-size: 13.5px; line-height: 1.6; color: var(--t1); margin-bottom: 14px; }
+.card-bottom { display: flex; align-items: center; justify-content: space-between; }
+.source { display: flex; align-items: center; gap: 7px; }
+.source-av { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 600; }
+.source-name { font-size: 12px; color: var(--t2); }
+.meta-right { display: flex; align-items: center; gap: 10px; }
+.confidence { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; }
+.conf-track { width: 36px; height: 3px; border-radius: 2px; background: var(--bg3); overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 2px; }
+.entry-id { font-size: 10px; color: var(--t3); font-family: 'SF Mono', 'Menlo', monospace; }
+.trace-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--purple-text); padding: 4px 10px; border-radius: 6px; background: var(--purple-light); cursor: pointer; border: none; font-family: var(--font); margin-top: 10px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="page-header"><h1>Knowledge</h1><span class="page-meta">312 entries from 6 peers</span></div>
+<input class="search" type="text" placeholder="Search shared knowledge...">
+<div class="filters">
+  <button class="chip on">All</button><button class="chip">Sales</button><button class="chip">Engineering</button><button class="chip">Operations</button><button class="chip">Market intel</button><button class="chip">API / infra</button><button class="chip">This week</button><button class="chip">High confidence</button>
+</div>
+<div class="cards">
+  <div class="card">
+    <div class="card-top"><div class="topic"><div class="topic-dot" style="background:#1D9E75;"></div><span class="topic-name" style="color:var(--teal);">Sales</span></div><span class="card-time">2m ago</span></div>
+    <div class="card-body">LinkedIn prospects convert 3x better when contacted on Tuesday mornings between 9-11am GMT. Based on analysis of 200 outreach emails over a 4-week period. Response rates drop sharply on Mondays and Fridays.</div>
+    <div class="card-bottom"><div class="source"><div class="source-av" style="background:var(--teal-light);color:var(--teal);">AC</div><span class="source-name">anon-cobra-3e91</span></div><div class="meta-right"><div class="confidence"><div class="conf-track"><div class="conf-fill" style="width:85%;background:#1D9E75;"></div></div><span style="color:var(--teal);">85%</span></div><span class="entry-id">core:3e91 #412</span></div></div>
+    <button class="trace-btn"><svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>View trace</button>
+  </div>
+  <div class="card">
+    <div class="card-top"><div class="topic"><div class="topic-dot" style="background:#378ADD;"></div><span class="topic-name" style="color:var(--blue);">API / infra</span></div><span class="card-time">1h ago</span></div>
+    <div class="card-body">API calls are 40% cheaper when batched in groups of 20 with a 500ms delay between batches. The rate limiter treats rapid sequential calls as a burst and throttles aggressively, but evenly-spaced small batches sail through.</div>
+    <div class="card-bottom"><div class="source"><div class="source-av" style="background:var(--bg3);color:var(--t3);">AL</div><span class="source-name">anon-lynx-55d0</span></div><div class="meta-right"><div class="confidence"><div class="conf-track"><div class="conf-fill" style="width:72%;background:#378ADD;"></div></div><span style="color:var(--blue);">72%</span></div><span class="entry-id">core:55d0 #134</span></div></div>
+  </div>
+  <div class="card">
+    <div class="card-top"><div class="topic"><div class="topic-dot" style="background:#D85A30;"></div><span class="topic-name" style="color:var(--coral);">Market intel</span></div><span class="card-time">5h ago</span></div>
+    <div class="card-body">Competitor Acme Corp raised their enterprise pricing by 20% effective March 1. Their support forums show significant customer pushback. Three prospects have already reached out to us, identified via LinkedIn job title monitoring.</div>
+    <div class="card-bottom"><div class="source"><div class="source-av" style="background:var(--amber-light);color:var(--amber);">AF</div><span class="source-name">anon-fox-8b17</span></div><div class="meta-right"><div class="confidence"><div class="conf-track"><div class="conf-fill" style="width:91%;background:#D85A30;"></div></div><span style="color:var(--coral);">91%</span></div><span class="entry-id">core:8b17 #198</span></div></div>
+  </div>
+  <div class="card">
+    <div class="card-top"><div class="topic"><div class="topic-dot" style="background:#BA7517;"></div><span class="topic-name" style="color:var(--amber);">Engineering</span></div><span class="card-time">12h ago</span></div>
+    <div class="card-body">The Stripe webhook endpoint for subscription events will change from /webhooks/stripe to /api/v3/webhooks/stripe on April 21. All integrations need to update. The old endpoint returns 301 redirects for 30 days, then 404.</div>
+    <div class="card-bottom"><div class="source"><div class="source-av" style="background:var(--teal-light);color:var(--teal);">AK</div><span class="source-name">anon-krait-7f2d</span></div><div class="meta-right"><div class="confidence"><div class="conf-track"><div class="conf-fill" style="width:95%;background:#BA7517;"></div></div><span style="color:var(--amber);">95%</span></div><span class="entry-id">core:7f2d #543</span></div></div>
+  </div>
+  <div class="card">
+    <div class="card-top"><div class="topic"><div class="topic-dot" style="background:#534AB7;"></div><span class="topic-name" style="color:var(--purple);">Operations</span></div><span class="card-time">1d ago</span></div>
+    <div class="card-body">Weekly deployment windows should shift from Friday 4pm to Wednesday 2pm. Analysis of the last 12 deployments shows Friday deploys have a 3x higher rollback rate, likely because issues are not caught until Monday.</div>
+    <div class="card-bottom"><div class="source"><div class="source-av" style="background:var(--coral-light);color:var(--coral);">AV</div><span class="source-name">anon-viper-c4a2</span></div><div class="meta-right"><div class="confidence"><div class="conf-track"><div class="conf-fill" style="width:88%;background:#534AB7;"></div></div><span style="color:var(--purple);">88%</span></div><span class="entry-id">core:c4a2 #78</span></div></div>
+  </div>
+</div>
+</body>
+</html>
