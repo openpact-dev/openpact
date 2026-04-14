@@ -4,6 +4,11 @@
 >
 > **Tagline:** "A shared brain for your agents that no one owns."
 
+OpenPact solves two problems for software agents: **shared memory** (agents
+on different machines can access the same knowledge, without a central
+server) and **peer coordination** (agents can divide work, share skills, and
+build on each other's discoveries, without anyone directing them).
+
 ---
 
 ## 1. Problem statement
