@@ -20,7 +20,7 @@
     "test:unit": "brittle 'packages/*/test/unit/**/*.test.js'",
     "test:e2e": "brittle 'packages/*/test/e2e/**/*.test.js'",
     "test:watch": "brittle --watch 'packages/*/test/unit/**/*.test.js'",
-    "test:coverage": "c8 --reporter=lcov --reporter=text npm test",
+    "test:coverage": "c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm test && node scripts/check-apply-coverage.js",
     "lint": "eslint packages && prettier --check packages",
     "format": "prettier --write packages"
   },
@@ -41,8 +41,13 @@
     ],
     "exclude": [
       "**/test/**",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "packages/openpact/**"
     ],
+    "lines": 80,
+    "branches": 75,
+    "functions": 80,
+    "statements": 80,
     "reports-dir": "coverage"
   }
 }

@@ -188,47 +188,69 @@ GitHub Actions matrix:
    daemon+cli) or keep it pointing to `@openpact/cli`. **Requires manual
    `npm publish` from `packages/openpact/`** — not automated in CI.
 
-### 1.2 Daemon core
+### 1.2 Daemon core ✅ (commit pending)
 
 This is the heart of the project. Get this right before touching anything else.
 
-- [ ] Install dependencies: `hypercore`, `autobase`, `hyperswarm`, `corestore`, `hyperbee`
-- [ ] Create `Daemon` class that:
+- [x] Install dependencies: `hypercore`, `autobase`, `hyperswarm`, `corestore`, `hyperbee` (also `ajv`, `ajv-formats`, `b4a`; `hyperdht` as devDep for testnet)
+- [x] Create `Daemon` class that:
   - Initialises a `Corestore` at a configurable data directory (default `~/.openpact/`)
   - Creates or loads an `Autobase` instance with a bootstrap key
   - Joins the Hyperswarm topic derived from the pact's discovery key
   - Handles peer connections and replication
-- [ ] Implement the `apply` function for Autobase:
+- [x] Implement the `apply` function for Autobase:
   - Validate incoming entries against the schema (type, timestamp, agent_id, payload)
   - Append valid entries to the view
   - Handle `admin` entries for writer management (`addWriter`, `removeWriter`)
-- [ ] Implement entry types with JSON schema validation (use `ajv`):
+- [x] Implement entry types with JSON schema validation (use `ajv`):
   - `knowledge` (topic, content, confidence, source)
   - `task` (title, status, claimed_by, description, result)
   - `skill` (name, version, description, format, content, checksum)
   - `message` (to, content, priority)
-- [ ] Write the Hyperswarm connection handler:
+- [x] Write the Hyperswarm connection handler:
   - On new connection, replicate the Autobase
   - Track connected peers with their public keys
   - Emit events for peer-add, peer-remove, sync-complete
-- [ ] Persist daemon state (keypair, pact key, role) to `~/.openpact/config.json`
+- [x] Persist daemon state (keypair, pact key, role) to `~/.openpact/config.json`
 
 #### 1.2 Tests
 
-- [ ] **Unit** (`packages/daemon/test/unit/`):
-  - [ ] `validation.test.js` — every entry type: valid sample passes; each field omission rejects; type coercion attempts rejected; oversize payload (>64KB) rejected
-  - [ ] `apply.test.js` — accepts valid entry; rejects malformed; `admin` `addWriter` calls `host.addWriter`; `admin` from non-indexer is ignored; entry ordering by timestamp+core
-  - [ ] `entry-id.test.js` — round-trip encode/decode; collision unlikely (property test with `fast-check`)
-  - [ ] `peer-handle.test.js` — derived deterministically from public key; matches `anon-<word>-<4hex>` regex
-  - [ ] `config.test.js` — load/save `~/.openpact/config.json`; missing file → defaults; corrupted file → clear error
-- [ ] **Integration** (`packages/daemon/test/integration/`):
-  - [ ] `replication.test.js` — `pair()` fixture; A appends knowledge, B's view contains it within timeout
-  - [ ] `add-writer.test.js` — creator promotes B; B's appends propagate to A
-  - [ ] `reconnect.test.js` — A goes offline, B appends, A comes back, A catches up
-  - [ ] `concurrent-writes.test.js` — A and B both append; both views converge to the same order
-- [ ] **Coverage gate**: daemon ≥80% lines / 75% branches; `apply` ≥95% lines / 90% branches
+- [x] **Unit** (`packages/daemon/test/unit/`):
+  - [x] `validation.test.js` — every entry type: valid sample passes; each field omission rejects; type coercion attempts rejected; oversize payload (>64KB) rejected
+  - [x] `apply.test.js` — accepts valid entry; rejects malformed; `admin` `addWriter` calls `host.addWriter`; `admin` from non-indexer is ignored; entry ordering by timestamp+core
+  - [x] `entry-id.test.js` — round-trip encode/decode; collision unlikely (property test with `fast-check`)
+  - [x] `peer-handle.test.js` — derived deterministically from public key; matches `anon-<word>-<4hex>` regex
+  - [x] `config.test.js` — load/save `~/.openpact/config.json`; missing file → defaults; corrupted file → clear error
+- [x] **Integration** (`packages/daemon/test/integration/`):
+  - [x] `replication.test.js` — `pair()` fixture; A appends knowledge, B's view contains it within timeout
+  - [x] `add-writer.test.js` — creator promotes B; B's appends propagate to A
+  - [x] `reconnect.test.js` — A goes offline, B appends, A comes back, A catches up
+  - [x] `concurrent-writes.test.js` — A and B both append; both views converge to the same order
+  - [x] (bonus) `single-daemon.test.js` — Daemon.create / load / append / append-on-non-writer
+- [x] **Coverage gate**: daemon ≥80% lines / 75% branches; `apply` ≥95% lines / 90% branches
+  - Achieved: daemon-wide 92.33% lines / 88.38% branches; `apply.js` 100% / 100%
+  - Per-file `apply.js` floor enforced via `scripts/check-apply-coverage.js`
 
-**Test checkpoint:** `npm test` green. Two instances on the same machine (different data dirs) connect, one appends an entry, the other sees it in the view (covered by `replication.test.js`).
+**Test checkpoint:** `npm test` green (80 tests, 143 asserts). Two instances on the same machine (different data dirs) connect via in-memory testnet, one appends an entry, the other sees it in the view (covered by `replication.test.js`).
+
+**Deviations from the original plan, accepted during 1.2:**
+
+1. **`hyperdht/testnet`, not `hyperswarm/testnet`.** The in-memory DHT helper
+   lives in `hyperdht`. Added `hyperdht` ^6.30.0 as a devDep.
+2. **Indexer status tracked in the view itself** (`_indexers/<hex>` prefix in
+   the Hyperbee). Autobase's host API has no `isIndexer(key)` for arbitrary
+   writers, so apply maintains its own deterministic indexer set. The first
+   writer to produce a valid entry on an empty pact is bootstrapped as the
+   implicit creator-indexer.
+3. **`b4a` added** as a runtime dep (used everywhere the Hyper stack passes
+   Buffers; native to the ecosystem).
+4. **`Daemon` exposes three factories** instead of an overloaded constructor:
+   `Daemon.create()` (new pact), `Daemon.join({ joinKey })` (join existing),
+   `Daemon.load()` (resume from disk).
+5. **`viewVersion` includes internal `_indexers/` entries.** Tests use a
+   `waitForKnowledge`/`waitForCount` polling helper rather than counting on
+   `viewVersion` for user-facing entries. To be revisited if a public
+   `userEntryCount` accessor proves useful in 1.3.
 
 ### 1.3 REST API
 
