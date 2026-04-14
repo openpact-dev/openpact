@@ -188,7 +188,7 @@ GitHub Actions matrix:
    daemon+cli) or keep it pointing to `@openpact/cli`. **Requires manual
    `npm publish` from `packages/openpact/`** — not automated in CI.
 
-### 1.2 Daemon core ✅ (commit pending)
+### 1.2 Daemon core ✅ (commit `e4eb807`)
 
 This is the heart of the project. Get this right before touching anything else.
 
