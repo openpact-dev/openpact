@@ -1,8 +1,38 @@
 # OpenPact: Build Plan
 
 > Reference: OPENPACT_DESIGN.md for full functional spec.
-> Stack: Node.js, Hypercore, Autobase, Hyperswarm, HyperDHT
+> Stack: TypeScript on Node.js, Hypercore, Autobase, Hyperswarm, HyperDHT
+> Tests run via `tsx` (no build step in dev/CI); typecheck via `tsc --noEmit`.
 > Licence: MIT
+
+---
+
+## Language and tooling
+
+**TypeScript by default.** All source and tests are `.ts`, run via `tsx` in
+dev and CI (`NODE_OPTIONS='--import tsx' brittle ...`) — no build step for
+the inner loop. A `tsc --noEmit` typecheck runs in CI alongside lint and
+coverage. Publishable packages (SDK in Phase 2; daemon + CLI in Phase 4)
+emit precompiled CJS + ESM + `.d.ts` via `tsc` at publish time.
+
+Why TS:
+
+- The parts of the daemon we own (entry schemas, apply nodes/views/hosts,
+  config, peer handles, REST routes, SDK surface) benefit from compile-time
+  types — both for our own correctness and for downstream consumers of the
+  SDK.
+- Tradeoff: the **Holepunch stack ships zero `.d.ts`** (Hypercore, Autobase,
+  Hyperswarm, Corestore, Hyperbee, HyperDHT, b4a). We declare them as
+  ambient `any` in `types/hyper-stack.d.ts` and accept that integration
+  code with the stack is dynamically typed. This is fine — the
+  trust-critical layer is the ajv validation step, which is runtime-checked.
+- `noImplicitAny: false` in `tsconfig.json` so the `any` boundaries with
+  the Hyper stack don't require explicit annotation. Everything we own
+  is typed properly.
+
+When writing new modules, type the public API and your own data shapes;
+let `any` flow through the Hyper stack interactions where they would
+otherwise force ceremony.
 
 ---
 
@@ -18,8 +48,8 @@ We use [`brittle`](https://github.com/holepunchto/brittle) as the test runner. R
 - TAP output, parallel execution, async-first, native `teardown(fn)` — well-suited to the start-stop-replicate patterns we'll be testing.
 - Tiny dependency surface, matching the project's lightweight philosophy.
 
-```javascript
-const test = require('brittle')
+```typescript
+import test from 'brittle'
 
 test('apply rejects unknown entry type', async (t) => {
   const { daemon } = await tmpDaemon(t)
@@ -49,16 +79,16 @@ packages/
     src/
     test/
       unit/
-        apply.test.js
-        validation.test.js
+        apply.test.ts
+        validation.test.ts
         ...
       integration/
-        replication.test.js
+        replication.test.ts
         ...
       helpers/
-        tmpDaemon.js     # spawn daemon in temp dir, register teardown
-        pair.js          # two paired daemons, returns { a, b, sync() }
-        swarm.js         # N-daemon mesh on hyperswarm testnet
+        tmp-daemon.ts    # spawn daemon in temp dir, register teardown
+        pair.ts          # two paired daemons, returns { a, b }
+        swarm.ts         # N-daemon mesh on hyperswarm testnet
 ```
 
 ### Test categories
@@ -74,16 +104,19 @@ packages/
 
 A small set of helpers under `packages/*/test/helpers/` does the heavy lifting:
 
-```javascript
-// helpers/tmpDaemon.js
-const test = require('brittle')
-const os = require('os')
-const path = require('path')
-const fs = require('fs/promises')
+```typescript
+// helpers/tmp-daemon.ts
+import test from 'brittle'
+import os from 'os'
+import path from 'path'
+import fs from 'fs/promises'
+import { Daemon, type DaemonOpts, type JoinOpts } from '../../src/daemon'
 
-async function tmpDaemon(t, opts = {}) {
+export async function tmpDaemon(t: any, opts: DaemonOpts & { joinKey?: string } = {}) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-'))
-  const daemon = new Daemon({ dataDir: dir, ...opts })
+  const daemon = opts.joinKey
+    ? await Daemon.join({ dataDir: dir, ...(opts as JoinOpts) })
+    : await Daemon.create({ dataDir: dir, ...opts })
   await daemon.start()
   t.teardown(async () => {
     await daemon.stop()
@@ -92,12 +125,16 @@ async function tmpDaemon(t, opts = {}) {
   return { daemon, dir }
 }
 
-// helpers/pair.js — two daemons in the same pact, swarm via testnet
-async function pair(t) {
-  const swarm = await testnet(2, t)
-  const a = await tmpDaemon(t, { bootstrap: swarm.bootstrap })
-  const b = await tmpDaemon(t, { bootstrap: swarm.bootstrap, joinKey: a.daemon.pactKey })
-  await a.daemon.waitForPeer(b.daemon.publicKey)
+// helpers/pair.ts — two daemons in the same pact, swarm via testnet
+import createTestnet from 'hyperdht/testnet'
+
+export async function pair(t: any) {
+  const testnet = await createTestnet(3, t.teardown)
+  const swarm = { bootstrap: testnet.bootstrap }
+  const a = await tmpDaemon(t, { swarm })
+  const b = await tmpDaemon(t, { swarm, joinKey: a.daemon.pactKey! })
+  await a.daemon.waitForConnections(1)
+  await b.daemon.waitForConnections(1)
   return { a, b }
 }
 ```
@@ -123,13 +160,13 @@ GitHub Actions matrix:
 
 - Node `20.x`, `22.x`
 - OS `ubuntu-latest`, `macos-latest`
-- Steps: `npm ci` → `npm run lint` → `npm run test:coverage` → upload to Codecov
+- Steps: `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:coverage` → upload to Codecov
 - A separate `e2e` job runs the subprocess CLI tests on `ubuntu-latest` only
 - A separate `integration-network` job exercises real Hyperswarm (no testnet) on `ubuntu-latest`, allowed to flake but logged
 
 ### Conventions
 
-- Test files: `*.test.js`, located under `packages/*/test/<category>/`
+- Test files: `*.test.ts`, located under `packages/*/test/<category>/`. Run via `tsx` (`NODE_OPTIONS='--import tsx' brittle ...`)
 - Helpers: `packages/*/test/helpers/`
 - Each test file is **self-contained** — no shared state between tests
 - Use `t.teardown` for every resource (daemons, swarms, temp dirs)
@@ -167,7 +204,7 @@ GitHub Actions matrix:
   - [x] Root scripts (test, test:unit, test:e2e, test:watch, test:coverage, lint, format) — see deviation below
   - [x] Add `c8` config to root `package.json` (thresholds defined but not yet enforced — see deviation)
   - [x] Create `.github/workflows/ci.yml` with the matrix described in Testing framework
-  - [x] Add a placeholder smoke test (`packages/daemon/test/unit/smoke.test.js`) that asserts `1 + 1 === 2` so CI is green from day one
+  - [x] Add a placeholder smoke test (`packages/daemon/test/unit/smoke.test.ts` — originally `.js`, converted post-1.2) that asserts `1 + 1 === 2` so CI is green from day one
 
 **Deviations from the original plan, accepted during 1.1:**
 
@@ -176,7 +213,7 @@ GitHub Actions matrix:
    phased out. Required adding `@eslint/js` and `globals` to devDeps.
 2. **`c8 --check-coverage` is off in 1.1** because the empty packages would
    trip any non-zero threshold. The `test:coverage` script reports but does
-   not gate. Re-enable in 1.2 once `apply.js` and friends exist; configure
+   not gate. Re-enable in 1.2 once `apply.ts` and friends exist; configure
    per-package thresholds at that point.
 3. **e2e CI step is wrapped in `|| echo "no e2e tests yet"`** because brittle
    errors when its glob matches no files. TODO comment in `ci.yml` reminds
@@ -216,22 +253,22 @@ This is the heart of the project. Get this right before touching anything else.
 #### 1.2 Tests
 
 - [x] **Unit** (`packages/daemon/test/unit/`):
-  - [x] `validation.test.js` — every entry type: valid sample passes; each field omission rejects; type coercion attempts rejected; oversize payload (>64KB) rejected
-  - [x] `apply.test.js` — accepts valid entry; rejects malformed; `admin` `addWriter` calls `host.addWriter`; `admin` from non-indexer is ignored; entry ordering by timestamp+core
-  - [x] `entry-id.test.js` — round-trip encode/decode; collision unlikely (property test with `fast-check`)
-  - [x] `peer-handle.test.js` — derived deterministically from public key; matches `anon-<word>-<4hex>` regex
-  - [x] `config.test.js` — load/save `~/.openpact/config.json`; missing file → defaults; corrupted file → clear error
+  - [x] `validation.test.ts` — every entry type: valid sample passes; each field omission rejects; type coercion attempts rejected; oversize payload (>64KB) rejected
+  - [x] `apply.test.ts` — accepts valid entry; rejects malformed; `admin` `addWriter` calls `host.addWriter`; `admin` from non-indexer is ignored; entry ordering by timestamp+core
+  - [x] `entry-id.test.ts` — round-trip encode/decode; collision unlikely (property test with `fast-check`)
+  - [x] `peer-handle.test.ts` — derived deterministically from public key; matches `anon-<word>-<4hex>` regex
+  - [x] `config.test.ts` — load/save `~/.openpact/config.json`; missing file → defaults; corrupted file → clear error
 - [x] **Integration** (`packages/daemon/test/integration/`):
-  - [x] `replication.test.js` — `pair()` fixture; A appends knowledge, B's view contains it within timeout
-  - [x] `add-writer.test.js` — creator promotes B; B's appends propagate to A
-  - [x] `reconnect.test.js` — A goes offline, B appends, A comes back, A catches up
-  - [x] `concurrent-writes.test.js` — A and B both append; both views converge to the same order
-  - [x] (bonus) `single-daemon.test.js` — Daemon.create / load / append / append-on-non-writer
+  - [x] `replication.test.ts` — `pair()` fixture; A appends knowledge, B's view contains it within timeout
+  - [x] `add-writer.test.ts` — creator promotes B; B's appends propagate to A
+  - [x] `reconnect.test.ts` — A goes offline, B appends, A comes back, A catches up
+  - [x] `concurrent-writes.test.ts` — A and B both append; both views converge to the same order
+  - [x] (bonus) `single-daemon.test.ts` — Daemon.create / load / append / append-on-non-writer
 - [x] **Coverage gate**: daemon ≥80% lines / 75% branches; `apply` ≥95% lines / 90% branches
-  - Achieved: daemon-wide 92.33% lines / 88.38% branches; `apply.js` 100% / 100%
-  - Per-file `apply.js` floor enforced via `scripts/check-apply-coverage.js`
+  - Achieved: daemon-wide 92.33% lines / 88.38% branches; `apply.ts` 100% / 100%
+  - Per-file `apply.ts` floor enforced via `scripts/check-apply-coverage.js`
 
-**Test checkpoint:** `npm test` green (80 tests, 143 asserts). Two instances on the same machine (different data dirs) connect via in-memory testnet, one appends an entry, the other sees it in the view (covered by `replication.test.js`).
+**Test checkpoint:** `npm test` green (80 tests, 143 asserts). Two instances on the same machine (different data dirs) connect via in-memory testnet, one appends an entry, the other sees it in the view (covered by `replication.test.ts`).
 
 **Deviations from the original plan, accepted during 1.2:**
 
@@ -285,17 +322,17 @@ This is the heart of the project. Get this right before touching anything else.
 #### 1.3 Tests
 
 - [ ] **Unit** (`packages/daemon/test/unit/api/`) — use `fastify.inject()`, no real port:
-  - [ ] `ping.test.js` — returns `{ ok: true }`
-  - [ ] `status.test.js` — shape; reflects entry counts after appends
-  - [ ] `knowledge.test.js` — POST happy path; missing topic → 400; query filter by topic + limit; pagination
-  - [ ] `tasks.test.js` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, complete-by-non-claimer → 409)
-  - [ ] `skills.test.js` — POST with each format; checksum present; `GET /:id/content` matches checksum
-  - [ ] `messages.test.js` — `since` filter; `to: '*'` broadcast; `to: <handle>` direct
-  - [ ] `errors.test.js` — every error code returns the correct envelope shape
-  - [ ] `bind.test.js` — server refuses to bind to anything other than `127.0.0.1` (regression guard)
+  - [ ] `ping.test.ts` — returns `{ ok: true }`
+  - [ ] `status.test.ts` — shape; reflects entry counts after appends
+  - [ ] `knowledge.test.ts` — POST happy path; missing topic → 400; query filter by topic + limit; pagination
+  - [ ] `tasks.test.ts` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, complete-by-non-claimer → 409)
+  - [ ] `skills.test.ts` — POST with each format; checksum present; `GET /:id/content` matches checksum
+  - [ ] `messages.test.ts` — `since` filter; `to: '*'` broadcast; `to: <handle>` direct
+  - [ ] `errors.test.ts` — every error code returns the correct envelope shape
+  - [ ] `bind.test.ts` — server refuses to bind to anything other than `127.0.0.1` (regression guard)
 - [ ] **Integration** (`packages/daemon/test/integration/api/`):
-  - [ ] `cross-daemon-api.test.js` — `pair()`; POST knowledge to A's API; GET knowledge on B's API returns it
-  - [ ] `task-race.test.js` — two daemons concurrently claim same task; one wins, the loser sees 409 after sync
+  - [ ] `cross-daemon-api.test.ts` — `pair()`; POST knowledge to A's API; GET knowledge on B's API returns it
+  - [ ] `task-race.test.ts` — two daemons concurrently claim same task; one wins, the loser sees 409 after sync
 - [ ] **Coverage gate**: API routes ≥85% lines
 
 **Test checkpoint:** All API tests green. Manual sanity: `curl localhost:7331/v1/status` returns pact info; `curl -X POST localhost:7331/v1/knowledge -d '...'` writes; second daemon sees it.
@@ -323,19 +360,19 @@ This is the heart of the project. Get this right before touching anything else.
 #### 1.4 Tests
 
 - [ ] **Unit** (`packages/cli/test/unit/`):
-  - [ ] `args.test.js` — each command parses flags correctly; unknown flag → error
-  - [ ] `format.test.js` — `status` output snapshots (use `t.snapshot`); colour codes stripped in non-TTY mode
-  - [ ] `pid.test.js` — PID file write/read; stale PID detected (process gone) and replaced
+  - [ ] `args.test.ts` — each command parses flags correctly; unknown flag → error
+  - [ ] `format.test.ts` — `status` output snapshots (use `t.snapshot`); colour codes stripped in non-TTY mode
+  - [ ] `pid.test.ts` — PID file write/read; stale PID detected (process gone) and replaced
 - [ ] **End-to-end** (`packages/cli/test/e2e/`) — use `execa` with isolated `HOME`:
-  - [ ] `init-flow.test.js` — `init` creates `~/.openpact/`; second `init` refuses without `--force`
-  - [ ] `invite-join.test.js` — `init` on A, `invite` prints key, `join <key>` on B succeeds
-  - [ ] `start-stop.test.js` — `start --daemon` exits 0 with PID running; `stop` kills it cleanly
-  - [ ] `double-start.test.js` — second `start` errors with "already running" (no port collision)
-  - [ ] `log-tail.test.js` — POST entry via curl, `openpact log` prints it; `--type knowledge` filters
-  - [ ] `full-flow.test.js` — the canonical two-machine demo path scripted as one e2e test
+  - [ ] `init-flow.test.ts` — `init` creates `~/.openpact/`; second `init` refuses without `--force`
+  - [ ] `invite-join.test.ts` — `init` on A, `invite` prints key, `join <key>` on B succeeds
+  - [ ] `start-stop.test.ts` — `start --daemon` exits 0 with PID running; `stop` kills it cleanly
+  - [ ] `double-start.test.ts` — second `start` errors with "already running" (no port collision)
+  - [ ] `log-tail.test.ts` — POST entry via curl, `openpact log` prints it; `--type knowledge` filters
+  - [ ] `full-flow.test.ts` — the canonical two-machine demo path scripted as one e2e test
 - [ ] **Coverage gate**: cli ≥70% lines / 65% branches
 
-**Test checkpoint:** `npm run test:e2e` green on Linux + macOS. `full-flow.test.js` is the artifact that proves Phase 1 done.
+**Test checkpoint:** `npm run test:e2e` green on Linux + macOS. `full-flow.test.ts` is the artifact that proves Phase 1 done.
 
 ### 1.5 Phase 1 deliverables
 
@@ -346,7 +383,7 @@ This is the heart of the project. Get this right before touching anything else.
 - [ ] **Tests**:
   - [ ] ≥40 unit tests across daemon + cli
   - [ ] ≥8 integration tests covering replication, writer changes, concurrent writes, API cross-daemon, task races
-  - [ ] ≥6 e2e CLI tests including `full-flow.test.js`
+  - [ ] ≥6 e2e CLI tests including `full-flow.test.ts`
   - [ ] Coverage gates met (daemon 80/75, cli 70/65, `apply` 95/90)
   - [ ] CI green on Node 20 + 22 × Ubuntu + macOS
 
@@ -372,20 +409,20 @@ This is the heart of the project. Get this right before touching anything else.
 #### 2.1 Tests
 
 - [ ] **Unit** (`packages/skill-openclaw/test/unit/`):
-  - [ ] `tool-shape.test.js` — each tool definition parses as valid OpenClaw skill YAML; required fields present
-  - [ ] `curl-builder.test.js` — generated curl commands have correct URL, method, JSON body, error handling
+  - [ ] `tool-shape.test.ts` — each tool definition parses as valid OpenClaw skill YAML; required fields present
+  - [ ] `curl-builder.test.ts` — generated curl commands have correct URL, method, JSON body, error handling
 - [ ] **Integration** (`packages/skill-openclaw/test/integration/`):
-  - [ ] `tool-against-daemon.test.js` — boot a daemon via `tmpDaemon()`; invoke each tool's underlying command (extracted into a runnable shell script); assert daemon state changed correctly
+  - [ ] `tool-against-daemon.test.ts` — boot a daemon via `tmpDaemon()`; invoke each tool's underlying command (extracted into a runnable shell script); assert daemon state changed correctly
 - [ ] **Smoke** (manual, documented in README): a real OpenClaw instance reads from and writes to the pact during normal operation. Recorded as a checkbox in the PR template.
 
 **Test checkpoint:** Integration tests pass. Manual OpenClaw smoke logged in PR.
 
-### 2.2 Node.js SDK
+### 2.2 SDK (TypeScript)
 
-- [ ] Create `packages/sdk/` as `@openpact/sdk`
+- [ ] Create `packages/sdk/` as `@openpact/sdk` — written in TS
 - [ ] Simple client class:
-  ```javascript
-  const { OpenPact } = require('@openpact/sdk')
+  ```typescript
+  import { OpenPact } from '@openpact/sdk'
 
   const pact = new OpenPact({ port: 7331 })
 
@@ -409,19 +446,22 @@ This is the heart of the project. Get this right before touching anything else.
   const peers = await pact.peers()
   ```
 - [ ] Lightweight: just wraps `fetch` calls, no heavy dependencies
-- [ ] TypeScript types included (ship `.d.ts` files)
-- [ ] Publish to npm as `@openpact/sdk`
+- [ ] **Build step**: SDK is the first package we publish, so it needs a
+  `tsc` build that emits both CommonJS and ESM (`dist/cjs/`, `dist/esm/`)
+  plus generated `.d.ts`. Daemon and CLI follow the same pattern in Phase 4.
+- [ ] Publish to npm as `@openpact/sdk` with `main`, `module`, and `types`
+  fields set
 
 #### 2.2 Tests
 
 - [ ] **Unit** (`packages/sdk/test/unit/`) — mock `fetch` via `globalThis.fetch = ...`:
-  - [ ] `knowledge.test.js` — list/create build correct URLs + bodies; parse responses; surface errors as typed exceptions
-  - [ ] `tasks.test.js` — full lifecycle; 409 on double-claim → `TaskAlreadyClaimedError`
-  - [ ] `messages.test.js` — `since` cursor; broadcast vs direct
-  - [ ] `errors.test.js` — every server error code maps to the right SDK error class
+  - [ ] `knowledge.test.ts` — list/create build correct URLs + bodies; parse responses; surface errors as typed exceptions
+  - [ ] `tasks.test.ts` — full lifecycle; 409 on double-claim → `TaskAlreadyClaimedError`
+  - [ ] `messages.test.ts` — `since` cursor; broadcast vs direct
+  - [ ] `errors.test.ts` — every server error code maps to the right SDK error class
   - [ ] `types.test.ts` — type-only test file compiled by `tsc --noEmit` to catch `.d.ts` regressions
 - [ ] **Integration** (`packages/sdk/test/integration/`):
-  - [ ] `against-daemon.test.js` — boot a daemon, point SDK at it, run every method; assert end-to-end behaviour
+  - [ ] `against-daemon.test.ts` — boot a daemon, point SDK at it, run every method; assert end-to-end behaviour
 - [ ] **Coverage gate**: sdk ≥90% lines / 85% branches
 
 ### 2.3 Example integrations
@@ -434,7 +474,7 @@ This is the heart of the project. Get this right before touching anything else.
 #### 2.3 Tests
 
 - [ ] **Smoke** (`examples/*/test/`):
-  - [ ] Each example has a `smoke.test.js` (or `smoke.sh` for shell) that boots a tmp daemon, runs the example, asserts the expected entry appears in the pact
+  - [ ] Each example has a `smoke.test.ts` (or `smoke.sh` for shell) that boots a tmp daemon, runs the example, asserts the expected entry appears in the pact
   - [ ] Python example: a tiny pytest that runs the LangChain script against a tmp daemon
   - [ ] Examples are wired into CI as a separate `examples` job (allowed to skip Python on macOS if Python is unavailable)
 
@@ -448,11 +488,11 @@ This is the heart of the project. Get this right before touching anything else.
 #### 2.4 Tests
 
 - [ ] **Unit** (`packages/daemon/test/unit/tasks/`):
-  - [ ] `state-machine.test.js` — every legal transition; every illegal transition rejected with the right error code
-  - [ ] `expiry.test.js` — fake clock; claimed task past TTL → reverts to open; not-yet-expired stays claimed
+  - [ ] `state-machine.test.ts` — every legal transition; every illegal transition rejected with the right error code
+  - [ ] `expiry.test.ts` — fake clock; claimed task past TTL → reverts to open; not-yet-expired stays claimed
 - [ ] **Integration** (`packages/daemon/test/integration/tasks/`):
-  - [ ] `concurrent-claim.test.js` — 3 daemons race to claim same task; exactly one wins; losers see 409 after sync; task history shows all attempts
-  - [ ] `claimer-offline.test.js` — A claims, A goes offline, advance fake clock past TTL, B sees task back in `open`, B claims successfully
+  - [ ] `concurrent-claim.test.ts` — 3 daemons race to claim same task; exactly one wins; losers see 409 after sync; task history shows all attempts
+  - [ ] `claimer-offline.test.ts` — A claims, A goes offline, advance fake clock past TTL, B sees task back in `open`, B claims successfully
 
 ### 2.5 Skill sharing
 
@@ -465,11 +505,11 @@ This is the heart of the project. Get this right before touching anything else.
 #### 2.5 Tests
 
 - [ ] **Unit** (`packages/daemon/test/unit/skills/`):
-  - [ ] `checksum.test.js` — POST with mismatched checksum → 400; correct checksum → 201
-  - [ ] `format-filter.test.js` — GET filters by format; invalid format → 400
+  - [ ] `checksum.test.ts` — POST with mismatched checksum → 400; correct checksum → 201
+  - [ ] `format-filter.test.ts` — GET filters by format; invalid format → 400
 - [ ] **Integration**:
-  - [ ] `tampered-content.test.js` — manually corrupt the stored skill content; `GET /:id/content` detects mismatch and returns 500 with `SKILL_CHECKSUM_MISMATCH`
-  - [ ] `requires-approval.test.js` — flagged skills appear in list with the flag preserved across replication
+  - [ ] `tampered-content.test.ts` — manually corrupt the stored skill content; `GET /:id/content` detects mismatch and returns 500 with `SKILL_CHECKSUM_MISMATCH`
+  - [ ] `requires-approval.test.ts` — flagged skills appear in list with the flag preserved across replication
 
 ### 2.6 Phase 2 deliverables
 
@@ -504,11 +544,11 @@ This is the heart of the project. Get this right before touching anything else.
 #### 3.1 Tests
 
 - [ ] **Unit** (`packages/desktop/test/unit/`):
-  - [ ] `api-client.test.js` — same SDK contract; pure functions for transforming API responses into view-models
-  - [ ] `daemon-detect.test.js` — daemon-not-running state surfaces the prompt
+  - [ ] `api-client.test.ts` — same SDK contract; pure functions for transforming API responses into view-models
+  - [ ] `daemon-detect.test.ts` — daemon-not-running state surfaces the prompt
 - [ ] **UI bootstrap** (`packages/desktop/test/ui/`):
-  - [ ] `playwright.config.js` launches the Pear app via `pear-electron`'s test harness against a stub daemon
-  - [ ] `boot.spec.js` — app window opens, dashboard loads, no console errors
+  - [ ] `playwright.config.ts` launches the Pear app via `pear-electron`'s test harness against a stub daemon
+  - [ ] `boot.spec.ts` — app window opens, dashboard loads, no console errors
 
 ### 3.2 Dashboard screen
 
@@ -520,7 +560,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.2 Tests
 
-- [ ] `dashboard.spec.js` — metric cards reflect stub daemon state; activity feed shows the last 20 entries in correct order; refresh interval observed (use Playwright's clock control)
+- [ ] `dashboard.spec.ts` — metric cards reflect stub daemon state; activity feed shows the last 20 entries in correct order; refresh interval observed (use Playwright's clock control)
 
 ### 3.3 Knowledge browser
 
@@ -529,7 +569,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.3 Tests
 
-- [ ] `knowledge.spec.js` — search input filters list; topic chips combine; confidence slider filters; clicking a card navigates to trace view
+- [ ] `knowledge.spec.ts` — search input filters list; topic chips combine; confidence slider filters; clicking a card navigates to trace view
 
 ### 3.4 Task board
 
@@ -538,7 +578,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.4 Tests
 
-- [ ] `tasks.spec.js` — tasks land in the correct column based on status; detail view shows full claim history
+- [ ] `tasks.spec.ts` — tasks land in the correct column based on status; detail view shows full claim history
 
 ### 3.5 Skill registry
 
@@ -548,8 +588,8 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.5 Tests
 
-- [ ] `skills.spec.js` — skills appear in correct section; Install button writes to configurable dir (verify via filesystem); Inspect opens code viewer with verified-checksum content
-- [ ] `skill-install-safety.spec.js` — install never auto-executes the skill (regression guard)
+- [ ] `skills.spec.ts` — skills appear in correct section; Install button writes to configurable dir (verify via filesystem); Inspect opens code viewer with verified-checksum content
+- [ ] `skill-install-safety.spec.ts` — install never auto-executes the skill (regression guard)
 
 ### 3.6 Network view
 
@@ -559,7 +599,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.6 Tests
 
-- [ ] `network.spec.js` — peer list reflects stub state; admin controls hidden for non-creators; promote button calls correct API endpoint
+- [ ] `network.spec.ts` — peer list reflects stub state; admin controls hidden for non-creators; promote button calls correct API endpoint
 
 ### 3.7 Entry trace
 
@@ -569,7 +609,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 3.7 Tests
 
-- [ ] `trace.spec.js` — given a known entry, all provenance fields render; refs link to other entries; task lifecycle renders all events in order
+- [ ] `trace.spec.ts` — given a known entry, all provenance fields render; refs link to other entries; task lifecycle renders all events in order
 
 ### 3.8 Phase 3 deliverables
 
@@ -599,7 +639,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 4.1 Tests
 
-- [ ] **Doc tests** — extract code snippets from the docs and run them as tests (use a small `extract-snippets.js` helper that pulls fenced ```javascript / ```bash blocks tagged `@runnable`)
+- [ ] **Doc tests** — extract code snippets from the docs and run them as tests (use a small `extract-snippets.ts` helper that pulls fenced ```typescript / ```javascript / ```bash blocks tagged `@runnable`)
 - [ ] Link-check CI step (`lychee` or similar) — broken links fail the build
 
 ### 4.2 Seed node guide
@@ -610,7 +650,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 #### 4.2 Tests
 
-- [ ] `seed-node-image.test.js` — build the Docker image, run it in detached mode, verify it joins a tmp pact and stays online for 60s without errors
+- [ ] `seed-node-image.test.ts` — build the Docker image, run it in detached mode, verify it joins a tmp pact and stays online for 60s without errors
 - [ ] CI builds the image on every PR that touches `seed-node/`
 
 ### 4.3 Security review
@@ -624,14 +664,14 @@ This is the heart of the project. Get this right before touching anything else.
 #### 4.3 Tests
 
 - [ ] **Security suite** (`packages/daemon/test/security/`):
-  - [ ] `inject-via-payload.test.js` — fuzzed payloads with prototype pollution, oversized fields, deep nesting; `apply` rejects all
-  - [ ] `forge-entry.test.js` — attempt to write an entry signed by another peer's key → rejected at Hypercore level
-  - [ ] `rate-limit.test.js` — burst N requests, the (N+1)th returns 429
-  - [ ] `bind-network.test.js` — simulated request from non-localhost origin → refused
+  - [ ] `inject-via-payload.test.ts` — fuzzed payloads with prototype pollution, oversized fields, deep nesting; `apply` rejects all
+  - [ ] `forge-entry.test.ts` — attempt to write an entry signed by another peer's key → rejected at Hypercore level
+  - [ ] `rate-limit.test.ts` — burst N requests, the (N+1)th returns 429
+  - [ ] `bind-network.test.ts` — simulated request from non-localhost origin → refused
 - [ ] **Chaos suite** (`packages/daemon/test/chaos/`):
-  - [ ] `kill-during-replication.test.js` — kill a daemon mid-sync; restart; view converges
-  - [ ] `partition.test.js` — split a 4-daemon swarm into two pairs; each side writes; heal partition; final state converges
-  - [ ] `slow-peer.test.js` — inject latency on one peer's connection; system stays responsive
+  - [ ] `kill-during-replication.test.ts` — kill a daemon mid-sync; restart; view converges
+  - [ ] `partition.test.ts` — split a 4-daemon swarm into two pairs; each side writes; heal partition; final state converges
+  - [ ] `slow-peer.test.ts` — inject latency on one peer's connection; system stays responsive
 
 ### 4.4 Demo and launch content
 
@@ -651,7 +691,7 @@ This is the heart of the project. Get this right before touching anything else.
 - [ ] Chaos suite passing on every PR
 - [ ] Demo video recorded
 - [ ] Launch posts drafted
-- [ ] v0.1.0 tagged and published to npm
+- [ ] v0.1.0 tagged and published to npm (each publishable package emits CJS + ESM + `.d.ts` via `tsc`; publish via `npm publish` from each package's `dist/`)
 - [ ] **Tests**:
   - [ ] Full suite (unit + integration + e2e + UI + security + chaos) green across the matrix
   - [ ] Aggregate coverage report published
@@ -664,18 +704,24 @@ This is the heart of the project. Get this right before touching anything else.
 
 | Package | Purpose | Why this one |
 |---------|---------|-------------|
-| `hypercore` | Append-only log | Core of the Pear stack, stable |
-| `autobase` | Multi-writer merging | Only option for multi-writer Hypercore |
-| `hyperswarm` | Peer discovery | Built for Hypercore replication |
-| `corestore` | Hypercore management | Simplifies managing multiple cores |
-| `hyperbee` | Sorted key-value on Hypercore | For indexed queries on the view |
-| `fastify` | HTTP server | Fast, lightweight, good plugin system |
-| `commander` | CLI parsing | Simple, well-documented |
-| `ajv` | JSON schema validation | Fastest, used by fastify internally |
+| `typescript` | Source language | Compile-time types over the parts we control |
+| `tsx` | TS execution at dev/test time | No build step in the inner loop |
+| `typescript-eslint` | Lint TS sources | Standard for ESLint flat config + TS |
+| `@types/node` | Node.js stdlib types | Required for any TS Node project |
+| `hypercore` | Append-only log | Core of the Pear stack, stable. Untyped → ambient `any` |
+| `autobase` | Multi-writer merging | Only option for multi-writer Hypercore. Untyped → ambient `any` |
+| `hyperswarm` | Peer discovery | Built for Hypercore replication. Untyped → ambient `any` |
+| `corestore` | Hypercore management | Simplifies managing multiple cores. Untyped → ambient `any` |
+| `hyperbee` | Sorted key-value on Hypercore | For indexed queries on the view. Untyped → ambient `any` |
+| `hyperdht` | DHT (carries `hyperdht/testnet` for tests) | Underlies Hyperswarm. Untyped → ambient `any` |
+| `b4a` | Buffer / Uint8Array helpers | Used everywhere the Hyper stack passes Buffers |
+| `fastify` | HTTP server | Fast, lightweight, good plugin system. Ships TS types |
+| `commander` | CLI parsing | Simple, well-documented. Ships TS types |
+| `ajv` | JSON schema validation | Fastest, used by fastify internally. Ships TS types |
 | `brittle` | Test runner | Used by the entire Holepunch stack |
-| `c8` | Coverage | V8-native, no Babel |
+| `c8` | Coverage | V8-native, no Babel; instruments `.ts` via tsx |
 | `execa` | Subprocess for e2e CLI tests | Ergonomic API, good defaults |
-| `fast-check` | Property-based testing | Best-in-class for JS |
+| `fast-check` | Property-based testing | Best-in-class for JS/TS |
 | `playwright` | Desktop UI tests (Phase 3) | Stable Electron support |
 
 ### Data directory
@@ -698,7 +744,7 @@ This is the heart of the project. Get this right before touching anything else.
 - API routes: `/v1/<resource>` (knowledge, tasks, skills, messages, peers, status)
 - Entry IDs: `<core_short_id>-<sequence_number>` (e.g. `a7f2-412`)
 - Peer handles: `anon-<word>-<4hex>` derived from public key (e.g. `anon-krait-7f2d`)
-- Test files: `*.test.js` (or `*.spec.js` for Playwright UI tests)
+- Test files: `*.test.ts` (or `*.spec.ts` for Playwright UI tests)
 - Test helpers: `packages/*/test/helpers/`
 
 ### Error handling
@@ -723,7 +769,7 @@ Standard error codes:
 
 Every PR must:
 - [ ] Include tests for the change (unit + integration where applicable)
-- [ ] Pass `npm run lint` and `npm run test:coverage` locally
+- [ ] Pass `npm run lint`, `npm run typecheck`, and `npm run test:coverage` locally
 - [ ] Not lower coverage on any package below its threshold
 - [ ] Update docs if API or CLI surface changes
 - [ ] Note any new dependency and justify it
@@ -734,7 +780,7 @@ Every PR must:
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|-----------|------------|
-| Autobase reordering causes confusing UX | Medium | Medium | Surface reorder events in the API, let agents handle gracefully; covered by `concurrent-writes.test.js` |
+| Autobase reordering causes confusing UX | Medium | Medium | Surface reorder events in the API, let agents handle gracefully; covered by `concurrent-writes.test.ts` |
 | Hyperswarm NAT holepunching fails in some networks | High | Low | Document fallback (relay via seed node), test on corporate networks; `integration-network` CI job exercises real DHT |
 | OpenClaw skill format changes | Medium | Medium | Keep skill minimal, pin to documented OpenClaw features only; tool-shape test catches format drift |
 | Log grows too large over time | Medium | High | Implement compaction/archiving in Phase 2 or 3, document size limits |
