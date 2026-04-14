@@ -5,12 +5,17 @@
   "description": "OpenPact CLI: openpact <verb>",
   "license": "MIT",
   "bin": {
-    "openpact": "src/bin.js"
+    "openpact": "bin/openpact.js"
   },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "brittle 'test/{unit,e2e}/**/*.test.js'"
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,e2e}/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@openpact/daemon": "*",
+    "commander": "^14.0.3",
+    "picocolors": "^1.1.1"
   }
 }

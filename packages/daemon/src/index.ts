@@ -11,6 +11,8 @@ export type {
   InvalidInfo,
   AppliedInfo,
 } from './apply'
+export { createApi, bind, HttpError, DEFAULT_PORT } from './api'
+export type { ApiOpts, BindOpts, ErrorEnvelope } from './api'
 export * as schemas from './schemas'
 export * as entryId from './entry-id'
 export * as peerHandle from './peer-handle'

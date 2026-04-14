@@ -47,8 +47,5 @@ jobs:
           node-version: '22.x'
           cache: npm
       - run: npm ci
-      # TODO(Phase 1.4): drop the `|| echo` once real e2e tests exist.
-      # Brittle errors when its glob matches no files; the fallback keeps CI
-      # green until packages/cli/test/e2e/ has actual tests.
       - name: Run e2e tests
-        run: npm run test:e2e || echo "no e2e tests yet (Phase 1.4)"
+        run: npm run test:e2e

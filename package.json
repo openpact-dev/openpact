@@ -20,7 +20,8 @@
     "test:unit": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/unit/**/*.test.ts'",
     "test:e2e": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/e2e/**/*.test.ts'",
     "test:watch": "NODE_OPTIONS='--import tsx' brittle --watch 'packages/*/test/unit/**/*.test.ts'",
-    "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm test && node scripts/check-apply-coverage.js",
+    "test:all": "npm test && npm run test:e2e",
+    "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:all && node scripts/check-apply-coverage.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint packages && prettier --check packages",
     "format": "prettier --write packages"
@@ -31,7 +32,7 @@
     "brittle": "^3.7.0",
     "c8": "^10.1.2",
     "eslint": "^9.13.0",
-    "execa": "^9.5.0",
+    "execa": "^8.0.1",
     "fast-check": "^3.22.0",
     "globals": "^15.11.0",
     "prettier": "^3.3.3",
