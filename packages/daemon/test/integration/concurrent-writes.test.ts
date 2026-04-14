@@ -60,7 +60,7 @@ async function waitForCount(
 }
 
 async function readKnowledge(daemon: Daemon): Promise<any[]> {
-  const stream = daemon._internalView.createReadStream({
+  const stream = daemon.view.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })

@@ -21,7 +21,7 @@ test('creator promotes B to writer; B appends; A sees B entry', async (t) => {
 
   await a.daemon.waitForViewVersion(3, { timeout: 15000 })
 
-  const stream = a.daemon._internalView.createReadStream({
+  const stream = a.daemon.view.createReadStream({
     gte: 'message/',
     lt: 'message0',
   })
@@ -48,7 +48,7 @@ test('creator promotes B as indexer; B can append', async (t) => {
 
   await waitForKnowledge(a.daemon, 'b-topic', { timeout: 30000 })
 
-  const stream = a.daemon._internalView.createReadStream({
+  const stream = a.daemon.view.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })
@@ -66,7 +66,7 @@ async function waitForKnowledge(
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
     await daemon.update()
-    const stream = daemon._internalView.createReadStream({
+    const stream = daemon.view.createReadStream({
       gte: 'knowledge/',
       lt: 'knowledge0',
     })

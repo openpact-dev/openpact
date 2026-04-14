@@ -13,7 +13,7 @@ test('A appends knowledge, B sees it via replication', async (t) => {
 
   await b.daemon.waitForViewVersion(2, { timeout: 15000 })
 
-  const stream = b.daemon._internalView.createReadStream({
+  const stream = b.daemon.view.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })
@@ -40,7 +40,7 @@ test('A appends multiple entries, B sees them all in order', async (t) => {
 
   await b.daemon.waitForViewVersion(4, { timeout: 15000 })
 
-  const stream = b.daemon._internalView.createReadStream({
+  const stream = b.daemon.view.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })

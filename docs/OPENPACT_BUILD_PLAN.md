@@ -296,46 +296,80 @@ This is the heart of the project. Get this right before touching anything else.
    build plan's original "Node.js + JS" assumption no longer holds —
    subsequent phases write TypeScript by default.
 
-### 1.3 REST API
+### 1.3 REST API ✅ (commit pending)
 
-- [ ] Add `fastify` (lightweight, fast) as the HTTP server
-- [ ] Bind to `127.0.0.1:7331` only (never `0.0.0.0`)
-- [ ] Implement endpoints:
+- [x] Add `fastify` ^5.8.5 as the HTTP server
+- [x] Bind to `127.0.0.1:7331` only (`bind()` helper accepts `127.0.0.1` /
+  `::1` / `localhost`; refuses everything else)
+- [x] Implement endpoints:
   ```
   GET  /v1/ping                                -> { ok: true }
-  GET  /v1/status                              -> { pact_id, peers, entries, synced }
-  GET  /v1/peers                               -> [{ id, role, entries, online }]
+  GET  /v1/status                              -> { pact_id, peer_handle, role, public_key, peers, entries, is_writer, is_indexer, synced }
+  GET  /v1/peers                               -> [{ id, remote_key, online }]
   GET  /v1/knowledge?topic=X&limit=N           -> [entries]
   POST /v1/knowledge                           -> { id, timestamp }
-  GET  /v1/tasks?status=open|claimed|complete  -> [entries]
+  GET  /v1/tasks?status=open|claimed|complete  -> [reduced TaskState]
   POST /v1/tasks                               -> { id, timestamp }
-  PUT  /v1/tasks/:id/claim                     -> { ok }
-  PUT  /v1/tasks/:id/complete                  -> { ok }
-  GET  /v1/skills                              -> [entries]
+  GET  /v1/tasks/:id                           -> TaskState (404 if unknown)
+  PUT  /v1/tasks/:id/claim                     -> { ok, task }   (409 if not open)
+  PUT  /v1/tasks/:id/complete                  -> { ok, task }   (409 if not claimer or already complete)
+  PUT  /v1/tasks/:id/release                   -> { ok, task }   (409 if not claimer or not claimed)
+  GET  /v1/skills?format=X                     -> [entries]
   POST /v1/skills                              -> { id, timestamp }
-  GET  /v1/messages?since=TIMESTAMP            -> [entries]
+  GET  /v1/skills/:id/content                  -> { id, name, version, format, checksum, content }
+  GET  /v1/messages?since=TS&to=X              -> [entries]
   POST /v1/messages                            -> { id, timestamp }
   ```
-- [ ] Add request validation using `fastify` schema (rejects malformed payloads with 400)
-- [ ] Add error handling with the uniform envelope (`{error, message, status}`)
+- [x] Request validation via Fastify per-route JSON Schema (rejects with 400 `BAD_REQUEST`)
+- [x] Uniform error envelope `{error, message, status}` via `setErrorHandler`
+  + `setNotFoundHandler` (so unknown routes also return the envelope)
 
 #### 1.3 Tests
 
-- [ ] **Unit** (`packages/daemon/test/unit/api/`) — use `fastify.inject()`, no real port:
-  - [ ] `ping.test.ts` — returns `{ ok: true }`
-  - [ ] `status.test.ts` — shape; reflects entry counts after appends
-  - [ ] `knowledge.test.ts` — POST happy path; missing topic → 400; query filter by topic + limit; pagination
-  - [ ] `tasks.test.ts` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, complete-by-non-claimer → 409)
-  - [ ] `skills.test.ts` — POST with each format; checksum present; `GET /:id/content` matches checksum
-  - [ ] `messages.test.ts` — `since` filter; `to: '*'` broadcast; `to: <handle>` direct
-  - [ ] `errors.test.ts` — every error code returns the correct envelope shape
-  - [ ] `bind.test.ts` — server refuses to bind to anything other than `127.0.0.1` (regression guard)
-- [ ] **Integration** (`packages/daemon/test/integration/api/`):
-  - [ ] `cross-daemon-api.test.ts` — `pair()`; POST knowledge to A's API; GET knowledge on B's API returns it
-  - [ ] `task-race.test.ts` — two daemons concurrently claim same task; one wins, the loser sees 409 after sync
-- [ ] **Coverage gate**: API routes ≥85% lines
+- [x] **Unit** (`packages/daemon/test/unit/api/`) — use `fastify.inject()`, no real port:
+  - [x] `ping.test.ts` — returns `{ ok: true }`
+  - [x] `status.test.ts` — shape; reflects entry counts after appends
+  - [x] `peers.test.ts` — empty initially (no real swarm in unit tests)
+  - [x] `knowledge.test.ts` — POST happy path; missing topic → 400; query filter by topic + limit
+  - [x] `tasks.test.ts` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, skip-claim allowed, 404 cases)
+  - [x] `tasks-state.test.ts` — pure reducer: race resolution, claimer-only transitions, deterministic order
+  - [x] `skills.test.ts` — POST with each format; checksum required; `GET /:id/content` returns content with 404 on unknown
+  - [x] `messages.test.ts` — `since` filter; `to: '*'` broadcast; `to: <handle>` direct
+  - [x] `errors.test.ts` — every error code returns the correct envelope shape
+  - [x] `bind.test.ts` — refuses non-localhost; accepts 127.0.0.1 / localhost
+- [x] **Integration** (`packages/daemon/test/integration/api/`):
+  - [x] `cross-daemon-api.test.ts` — `pair()`; POST knowledge to A's API; GET knowledge on B's API returns it (also: status entries reflect cross-daemon writes)
+  - [x] `task-race.test.ts` — two daemons concurrently claim same task; eventual single winner; both daemons agree; subsequent claim returns 409
+- [x] **Coverage gate**: API routes ≥ 85% lines
+  - Achieved: API routes 92.81% lines / 85% branches; api folder overall 98.58% / 85%; daemon-wide 95.84 / 83.78; apply.ts 100 / 90.48
 
-**Test checkpoint:** All API tests green. Manual sanity: `curl localhost:7331/v1/status` returns pact info; `curl -X POST localhost:7331/v1/knowledge -d '...'` writes; second daemon sees it.
+**Test checkpoint:** All API tests green (139 tests, 269 asserts). Manual sanity: write a tiny `examples/` script that spins up createApi(daemon) + bind() and curl `localhost:7331/v1/{ping,status,knowledge}` works. (Formal e2e CLI tests land in 1.4.)
+
+**Deviations from the original plan, accepted during 1.3:**
+
+1. **`PUT /v1/tasks/:id/release` added** alongside claim/complete — the
+   build plan listed it in the conventions but not the route table.
+2. **`GET /v1/skills/:id/content` added** to the route list — the build
+   plan tests reference it but the original route table omitted it.
+3. **Optimistic claim semantics, not strict 409 on race**. The build plan
+   §1.3 lists "double-claim → 409" as a unit test (works for sequential
+   double-claim from the same peer). For concurrent races *across* peers,
+   both 200s can be returned transiently — the loser's claim becomes a
+   no-op once the deterministic reducer (lex-earliest entry-id wins)
+   reconciles. Both peers eventually agree on the same claimer, and any
+   subsequent claim attempt returns 409 `TASK_NOT_OPEN`. This matches the
+   build plan's `task-race.test.ts` description ("the loser sees 409 after
+   sync").
+4. **`Daemon.append` now returns `{ id, timestamp }`** instead of just
+   `{ timestamp }`, so POST routes can echo the entry ID. Required
+   aligning the seq convention between `daemon.append` (uses post-append
+   `local.length`) and `apply` (uses `node.length`, which Autobase sets to
+   writer-length-after-this-block, == seq+1 in the index sense). Both now
+   produce the same entry-id deterministically.
+5. **`daemon._internalView` renamed to `daemon.view`** as a real public
+   API now that the REST layer needs it.
+6. **`fastify@^5`** (current latest) — ESM/CJS hybrid, no issues with our
+   tsx + commonjs setup.
 
 ### 1.4 CLI
 

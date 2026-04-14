@@ -9,6 +9,7 @@ import { defaultDataDir, corestorePath } from './data-dir'
 import { loadConfig, saveConfig, DEFAULT_PORT, type Role, type Config } from './config'
 import { makeApply } from './apply'
 import * as peerHandle from './peer-handle'
+import * as entryId from './entry-id'
 
 export interface DaemonOpts {
   dataDir?: string
@@ -137,10 +138,15 @@ export class Daemon extends EventEmitter {
     this.emit('stop')
   }
 
-  async append(entry: Record<string, unknown>): Promise<{ timestamp: string }> {
+  async append(entry: Record<string, unknown>): Promise<{ id: string; timestamp: string }> {
     if (!this._base.writable) throw new Error('this daemon is not a writer for the pact')
     await this._base.append(entry)
-    return { timestamp: entry.timestamp as string }
+    // Match apply.ts convention: seq = writer length AFTER the append (autobase
+    // sets node.length = nodes.length + 1, so apply sees N+1 for the Nth-indexed
+    // block). Sequential awaits keep this read consistent.
+    const seq = this._base.local.length
+    const id = entryId.encode({ writerKey: this._base.local.key, seq })
+    return { id, timestamp: entry.timestamp as string }
   }
 
   async addWriter(
@@ -206,9 +212,9 @@ export class Daemon extends EventEmitter {
     return this._base && this._base.view ? (this._base.view.version as number) : 0
   }
 
-  // Exposed for integration tests that need to query the underlying view.
-  // Internal API; do not depend on this in external code.
-  get _internalView(): any {
+  // The Hyperbee view backing the autobase. Used by the REST API layer
+  // and by integration tests for direct queries. Returns null until start.
+  get view(): any {
     return this._base ? this._base.view : null
   }
 
