@@ -61,7 +61,7 @@ test('non-TTY: fail prints final line with cross', (t) => {
 
   const s = spinner('working').start()
   s.fail('boom')
-  t.ok(cap.written.includes('✗'))
+  t.ok(cap.written.includes('❌'))
   t.ok(cap.written.includes('boom'))
 })
 

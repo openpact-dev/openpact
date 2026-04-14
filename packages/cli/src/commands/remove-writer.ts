@@ -1,5 +1,5 @@
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
-import { c } from '../lib/theme'
+import { c, emoji } from '../lib/theme'
 
 export interface RemoveWriterOpts {
   port?: string | number
@@ -13,11 +13,11 @@ export async function removeWriterCmd(key: string, opts: RemoveWriterOpts): Prom
   try {
     await api.removeWriter(key)
     console.log(
-      `${c.brand('✗')} ${c.brandBold('The bond has been severed.')}  ${c.ash(`(${key.slice(0, 12)}…)`)}`,
+      `${emoji.sever} ${c.brandBold('The bond has been severed.')}  ${c.ash(`(${key.slice(0, 12)}…)`)}`,
     )
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(c.brand('✗ openpact daemon is not running'))
+      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
       process.exit(1)
     }
     throw err

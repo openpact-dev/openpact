@@ -4,7 +4,7 @@ import path from 'path'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { pidFileLooksAlive, writePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
-import { c, glyph } from '../lib/theme'
+import { c } from '../lib/theme'
 import { spinner } from '../lib/spinner'
 
 export interface StartOpts {
@@ -77,7 +77,7 @@ export async function startCmd(
   console.log(`  ${c.brandBold('Data dir')}   ${c.ash(dir)}`)
   console.log(`  ${c.brandBold('Logs')}       ${c.ash(logPath)}`)
   console.log()
-  console.log(c.ash(`  next ${glyph.arrow} openpact status`))
+  console.log(c.ash('  next:  openpact status'))
 }
 
 async function waitForReady(pid: number, port: number, timeoutMs = 10_000): Promise<boolean> {

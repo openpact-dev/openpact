@@ -1,5 +1,5 @@
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
-import { c, glyph } from '../lib/theme'
+import { c, emoji } from '../lib/theme'
 
 export interface AddWriterOpts {
   indexer?: boolean
@@ -15,13 +15,13 @@ export async function addWriterCmd(key: string, opts: AddWriterOpts): Promise<vo
     await api.addWriter(key, !!opts.indexer)
     const role = opts.indexer ? 'indexer' : 'writer'
     console.log(
-      `${c.brand(glyph.bind)} ${c.brandBold(`A new pact-bearer is bound.`)}  ${c.ash(`(${role})`)}`,
+      `${emoji.bind} ${c.brandBold('A new pact-bearer is bound.')}  ${c.ash(`(${role})`)}`,
     )
     console.log(`  ${c.ash(`key ${key.slice(0, 12)}…`)}`)
-    console.log(c.ash(`  the binding is broadcast to all peers as an admin entry`))
+    console.log(c.ash('  the binding is broadcast to all peers as an admin entry'))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(c.brand('✗ openpact daemon is not running'))
+      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
       process.exit(1)
     }
     throw err

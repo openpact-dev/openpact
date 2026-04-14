@@ -1,4 +1,4 @@
-import { c } from './theme'
+import { c, emoji } from './theme'
 
 const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const INTERVAL_MS = 80
@@ -43,11 +43,11 @@ export class Spinner {
   }
 
   succeed(text?: string): void {
-    this.finish(c.brand('🜏'), text ?? this.text)
+    this.finish(emoji.flame, text ?? this.text)
   }
 
   fail(text?: string): void {
-    this.finish(c.ember('✗'), text ?? this.text)
+    this.finish(emoji.cross, text ?? this.text)
   }
 
   stop(): void {

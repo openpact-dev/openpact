@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { c, banner } from './lib/theme'
+import { c, emoji, banner } from './lib/theme'
 import { initCmd } from './commands/init'
 import { joinCmd } from './commands/join'
 import { inviteCmd } from './commands/invite'
@@ -15,7 +15,9 @@ import { removeWriterCmd } from './commands/remove-writer'
 export function buildProgram(): Command {
   const program = new Command()
     .name('openpact')
-    .description('🜏 OpenPact — a pact among daemons. P2P shared memory for software agents.')
+    .description(
+      `${emoji.brand} OpenPact. A pact among daemons. P2P shared memory for software agents.`,
+    )
     .version('0.0.0')
     .option('--data-dir <path>', 'override data directory (default: ~/.openpact)')
     .enablePositionalOptions()
@@ -109,7 +111,7 @@ export async function run(argv = process.argv): Promise<void> {
 // Direct invocation guard: only run when executed (not when imported in tests).
 if (require.main === module || (process.argv[1] && process.argv[1].endsWith('openpact.js'))) {
   run().catch((err) => {
-    console.error(c.brand(`✗ ${(err as Error).message}`))
+    console.error(`${emoji.cross} ${c.brand((err as Error).message)}`)
     process.exit(1)
   })
 }

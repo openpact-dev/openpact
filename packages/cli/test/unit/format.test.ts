@@ -76,8 +76,7 @@ test('formatLogLine: knowledge', (t) => {
       id: 'aaaa-1',
     }),
   )
-  t.ok(out.includes('▲'), 'knowledge gets the brand triangle')
-  t.ok(out.includes('knowledge'))
+  t.ok(out.includes('knowledge'), 'type label present')
   t.ok(out.includes('topic=sales'))
   t.ok(out.includes('Tuesdays convert'))
 })
@@ -138,5 +137,5 @@ test('formatLogLine: long content truncated', (t) => {
 
 test('formatError', (t) => {
   t.ok(strip(formatError('boom')).includes('boom'))
-  t.ok(strip(formatError('boom')).includes('✗'))
+  t.ok(strip(formatError('boom')).includes('❌'))
 })

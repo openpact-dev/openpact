@@ -1,5 +1,5 @@
 import pc from 'picocolors'
-import { c, glyph, mark } from './theme'
+import { c, emoji, mark } from './theme'
 
 export interface StatusPayload {
   pact_id: string | null
@@ -27,13 +27,13 @@ export interface LogEntry {
   id?: string
 }
 
-// Each entry type gets a coloured glyph. Knowledge is the brand red; the
-// rest use complementary colours so the log scans visually.
-const TYPE_MARKS: Record<string, { glyph: string; colour: (s: string) => string }> = {
-  knowledge: { glyph: glyph.point, colour: c.brand },
-  task: { glyph: '◆', colour: c.ember },
-  skill: { glyph: '✶', colour: pc.magenta },
-  message: { glyph: '○', colour: pc.cyan },
+// Each entry type gets a distinct colour. No per-line glyphs — the colour
+// alone is enough to scan; adding a symbol on every line was noisy.
+const TYPE_COLOUR: Record<string, (s: string) => string> = {
+  knowledge: c.brand,
+  task: c.ember,
+  skill: pc.magenta,
+  message: pc.cyan,
 }
 
 export function formatStatus(s: StatusPayload): string {
@@ -65,16 +65,16 @@ export function formatPeers(peers: PeerPayload[]): string {
 }
 
 export function formatLogLine(entry: LogEntry): string {
-  const m = TYPE_MARKS[entry.type] ?? { glyph: glyph.bullet, colour: c.ash }
+  const colour = TYPE_COLOUR[entry.type] ?? c.ash
   const summary = summarise(entry)
-  return `${c.ash(entry.timestamp)}  ${m.colour(m.glyph)} ${m.colour(pad(entry.type, 9))} ${entry.agent_id}  ${summary}`
+  return `${c.ash(entry.timestamp)}  ${colour(pad(entry.type, 10))} ${entry.agent_id}  ${summary}`
 }
 
 function summarise(entry: LogEntry): string {
   const p = entry.payload as Record<string, unknown>
   switch (entry.type) {
     case 'knowledge':
-      return `${c.ash('topic=')}${p.topic} ${c.ash('—')} ${truncate(String(p.content ?? ''), 80)}`
+      return `${c.ash('topic=')}${p.topic}  ${truncate(String(p.content ?? ''), 80)}`
     case 'task':
       return `${p.title} ${c.ash(`[${p.status}${p.claimed_by ? ` by ${p.claimed_by}` : ''}]`)}`
     case 'skill':
@@ -99,5 +99,5 @@ function truncate(s: string, n: number): string {
 }
 
 export function formatError(message: string): string {
-  return c.brand(`✗ ${message}`)
+  return `${emoji.cross} ${c.brand(message)}`
 }

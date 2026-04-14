@@ -1,54 +1,66 @@
 import pc from 'picocolors'
 
 // ─── Palette ────────────────────────────────────────────────────────────────
-// Red is the brand colour — it does the heavy lifting. Yellow/orange for
-// caution. Dim grey for secondary text. Picocolors automatically respects
-// NO_COLOR and non-TTY contexts, so callers don't have to think about it.
+// Red carries the brand. Yellow for caution. Dim grey for secondary text.
+// Picocolors handles NO_COLOR and non-TTY automatically.
 
 export const c = {
   brand: pc.red,
   brandBold: (s: string) => pc.red(pc.bold(s)),
   brandBg: (s: string) => pc.bgRed(pc.white(pc.bold(s))),
-  ember: pc.yellow, // warnings, attention
-  ash: pc.dim, // secondary, paths, hex keys
+  ember: pc.yellow,
+  ash: pc.dim,
   bone: pc.white,
-  spark: pc.green, // success-y signal where red would be confusing (rare)
+  spark: pc.green,
 } as const
 
-// ─── Glyphs ────────────────────────────────────────────────────────────────
-// Unicode only — no emoji. These render consistently across modern terminals
-// (iTerm, Terminal.app, Alacritty, Wezterm, Windows Terminal) and copy/paste
-// cleanly into docs. The vibe is alchemical / heraldic, not occult.
+// ─── Emoji (sparing) ────────────────────────────────────────────────────────
+// One per "moment" — not on every line. Real emojis, not unicode glyphs:
+// the brand has a devilish edge and the colour adds punch.
 
-export const glyph = {
-  flame: '🜏', // alchemical sulfur — brimstone, the OpenPact mark
-  point: '▲', // ascending triangle — entry markers
-  seal: '✦', // sparkle/seal — pact created/joined
-  bind: '⚜', // fleur-de-lis — writer bound
-  sever: '✗', // cross — writer severed
-  bullet: '·',
-  arrow: '›',
-  rule: '─',
+export const emoji = {
+  brand: '😈', // OpenPact mark; banner / status / errors
+  flame: '🔥', // start / summon
+  bones: '💀', // stop / banish
+  bind: '⚜️', // add-writer
+  sever: '💔', // remove-writer
+  cross: '❌', // hard error
 } as const
 
-// ─── Banner ────────────────────────────────────────────────────────────────
-// Shown once per session on `init` and `start --foreground`. Compact (5
-// lines) so it doesn't dominate. Picocolors strips the colour codes when
-// stdout isn't a TTY, so the text remains readable in logs and CI.
+// ─── ASCII art ─────────────────────────────────────────────────────────────
+// Used only for the headline moments: --help, init, start (foreground), stop.
+// Six lines max. Designed to read in red on a dark terminal but plain enough
+// to survive in logs and pasted into docs.
 
-const HORIZ = glyph.rule.repeat(34)
+const WORDMARK = [
+  '   ___                  ____           _   ',
+  '  / _ \\ _ __   ___ _ _ |  _ \\ __ _  __| |_ ',
+  " | | | | '_ \\ / _ \\ '_ \\| |_) / _` |/ _| __|",
+  ' | |_| | |_) |  __/ | | |  __/ (_| | (__| |_ ',
+  '  \\___/| .__/ \\___|_| |_|_|   \\__,_|\\___|\\__|',
+  '       |_|                                   ',
+]
+
+const TAGLINE = '  a pact among daemons'
 
 export function banner(): string {
-  return [
-    '',
-    `  ${c.brand(glyph.flame)}  ${c.brandBold('OpenPact')}  ${c.brand(glyph.flame)}`,
-    `  ${c.ash(HORIZ)}`,
-    `  ${c.ash('a pact among daemons')}`,
-    '',
-  ].join('\n')
+  const wordmark = WORDMARK.map((line) => '  ' + c.brand(line)).join('\n')
+  return ['', wordmark, '', `${c.ash(TAGLINE)}`, ''].join('\n')
 }
 
-// Small one-line wordmark for embedded contexts (e.g. status command headers).
+// Tiny inline wordmark for places where the full banner would dominate
+// (status header, log header).
 export function mark(): string {
-  return `${c.brand(glyph.flame)} ${c.brandBold('OpenPact')}`
+  return `${emoji.brand} ${c.brandBold('OpenPact')}`
+}
+
+// ASCII for stop — a horns-down-and-fading shape. Three lines.
+const ASHES = [
+  '    .   ,   .   ,   .   ,   .',
+  '       . the daemon fades .   ',
+  '    ,   .   ,   .   ,   .   ,',
+]
+
+export function ashes(): string {
+  return ASHES.map((line) => c.ash(line)).join('\n')
 }

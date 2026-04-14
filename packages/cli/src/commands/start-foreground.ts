@@ -2,7 +2,7 @@ import { Daemon, createApi, bind } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { writePidFile, removePidFile } from '../lib/pid'
 import { resolveBootstrap } from '../lib/bootstrap'
-import { c, glyph, banner } from '../lib/theme'
+import { c, emoji, banner } from '../lib/theme'
 
 export interface StartForegroundOpts {
   port?: string | number
@@ -34,9 +34,7 @@ export async function startForegroundCmd(
   await writePidFile(dir, process.pid)
 
   process.stdout.write(banner())
-  console.log(
-    `  ${c.brand(glyph.flame)} ${c.brandBold('The daemon stirs.')}  listening on ${c.bone(url)}`,
-  )
+  console.log(`  ${emoji.flame} ${c.brandBold('The daemon stirs.')}  listening on ${c.bone(url)}`)
   console.log(`  ${c.ash(`pact ${daemon.pactKey?.slice(0, 12)}…   you ${daemon.peerHandle}`)}`)
   console.log()
 

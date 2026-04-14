@@ -1,6 +1,6 @@
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { readPidFile, isAlive, removePidFile } from '../lib/pid'
-import { c, glyph } from '../lib/theme'
+import { c, emoji, ashes } from '../lib/theme'
 
 export interface StopOpts {
   timeout?: string | number
@@ -13,12 +13,12 @@ export async function stopCmd(
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pid = await readPidFile(dir)
   if (pid === null) {
-    console.error(c.ash('no PID file — no daemon to banish'))
+    console.error(c.ash('no PID file. no daemon to banish.'))
     return
   }
 
   if (!isAlive(pid)) {
-    console.error(c.ash(`stale PID file (pid ${pid} is gone) — cleaning up`))
+    console.error(c.ash(`stale PID file (pid ${pid} is gone). cleaning up.`))
     await removePidFile(dir)
     return
   }
@@ -33,7 +33,7 @@ export async function stopCmd(
   }
 
   if (isAlive(pid)) {
-    console.error(c.ember(`daemon ${pid} did not exit within ${timeout}ms; forcing SIGKILL`))
+    console.error(c.ember(`daemon ${pid} did not exit within ${timeout}ms. forcing SIGKILL.`))
     try {
       process.kill(pid, 'SIGKILL')
     } catch {
@@ -42,7 +42,10 @@ export async function stopCmd(
   }
 
   await removePidFile(dir)
+  console.log()
+  console.log(ashes())
+  console.log()
   console.log(
-    `${c.brand(glyph.flame)} ${c.brandBold('The daemon has been banished.')} ${c.ash(`(pid ${pid})`)}`,
+    `  ${emoji.bones} ${c.brandBold('The daemon has been banished.')} ${c.ash(`(pid ${pid})`)}`,
   )
 }
