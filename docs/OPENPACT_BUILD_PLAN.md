@@ -296,7 +296,7 @@ This is the heart of the project. Get this right before touching anything else.
    build plan's original "Node.js + JS" assumption no longer holds —
    subsequent phases write TypeScript by default.
 
-### 1.3 REST API ✅ (commit pending)
+### 1.3 REST API ✅ (commit `8455243`)
 
 - [x] Add `fastify` ^5.8.5 as the HTTP server
 - [x] Bind to `127.0.0.1:7331` only (`bind()` helper accepts `127.0.0.1` /
