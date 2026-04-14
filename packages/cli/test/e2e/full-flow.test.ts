@@ -1,5 +1,6 @@
 import test from 'brittle'
-import { tmpHome, runWithDir } from './helpers/run-cli'
+import createTestnet from 'hyperdht/testnet'
+import { tmpHome, runCli } from './helpers/run-cli'
 import { readPidFile, isAlive } from '../../src/lib/pid'
 
 let nextPort = 17600
@@ -28,73 +29,125 @@ async function waitForPing(base: string, timeout = 15_000): Promise<void> {
   throw new Error(`daemon at ${base} did not become reachable within ${timeout}ms`)
 }
 
-test('full flow: A creates, B joins, A posts, B sees via log', async (t) => {
-  // NOTE: this test uses the real DHT (not testnet) because the CLI doesn't
-  // currently expose a swarm bootstrap override. The integration tests in
-  // packages/daemon/test/integration/api/cross-daemon-api.test.ts cover the
-  // testnet path; this test exists primarily to prove the CLI plumbing
-  // works end-to-end. It may be slower or flakier on networks without DHT
-  // access — if so, mark it skip until Phase 4 adds a --bootstrap CLI flag.
-  // For now we run a pair on the same machine via different data dirs and
-  // pact keys (NOT joined to the same pact; we just verify A and B both
-  // serve their own data).
-  // The TRUE two-machine flow lands when we add --bootstrap support.
+test(
+  'full flow: A creates pact, B joins; A promotes B; B writes; A sees',
+  { timeout: 90_000 },
+  async (t) => {
+    // Spin up an in-memory DHT testnet so the two daemons find each other
+    // without touching the public network.
+    const testnet = await createTestnet(3, t.teardown)
+    const bootstrap = testnet.bootstrap.map((b: any) => `${b.host}:${b.port}`).join(',')
 
-  const a = await tmpHome(t)
-  const b = await tmpHome(t)
-  const portA = nextPort++
-  const portB = nextPort++
+    const homeA = await tmpHome(t)
+    const homeB = await tmpHome(t)
+    const portA = nextPort++
+    const portB = nextPort++
 
-  // A: init + start
-  await runWithDir(a, ['init'])
-  await runWithDir(a, ['start', '--daemon', '--port', String(portA)])
-  const pidA = await readPidFile(a)
-  t.teardown(() => ensureKilled(pidA))
-  t.teardown(() => runWithDir(a, ['stop']).catch(() => {}))
+    // A: init + start with the testnet bootstrap.
+    await runCli(['--data-dir', homeA, 'init'])
+    await runCli([
+      '--data-dir',
+      homeA,
+      'start',
+      '--daemon',
+      '--port',
+      String(portA),
+      '--bootstrap',
+      bootstrap,
+    ])
+    const pidA = await readPidFile(homeA)
+    t.teardown(() => ensureKilled(pidA))
+    t.teardown(() => runCli(['--data-dir', homeA, 'stop']).catch(() => {}))
 
-  // B: init + start (separate pact for now — see note above)
-  await runWithDir(b, ['init'])
-  await runWithDir(b, ['start', '--daemon', '--port', String(portB)])
-  const pidB = await readPidFile(b)
-  t.teardown(() => ensureKilled(pidB))
-  t.teardown(() => runWithDir(b, ['stop']).catch(() => {}))
+    // A: invite → key
+    const inv = await runCli(['--data-dir', homeA, 'invite'])
+    const key = inv.stdout.trim()
+    t.ok(/^[0-9a-f]+$/.test(key), 'invite emitted a hex key')
 
-  await waitForPing(`http://127.0.0.1:${portA}`)
-  await waitForPing(`http://127.0.0.1:${portB}`)
+    // B: join + start with the same bootstrap.
+    await runCli(['--data-dir', homeB, 'join', key])
+    await runCli([
+      '--data-dir',
+      homeB,
+      'start',
+      '--daemon',
+      '--port',
+      String(portB),
+      '--bootstrap',
+      bootstrap,
+    ])
+    const pidB = await readPidFile(homeB)
+    t.teardown(() => ensureKilled(pidB))
+    t.teardown(() => runCli(['--data-dir', homeB, 'stop']).catch(() => {}))
 
-  // A: status works via CLI
-  const aStatus = await runWithDir(a, ['status', '--port', String(portA)])
-  t.is(aStatus.exitCode, 0)
-  t.ok(aStatus.stdout.includes('Pact:'))
-  t.ok(aStatus.stdout.includes('creator'))
+    await waitForPing(`http://127.0.0.1:${portA}`)
+    await waitForPing(`http://127.0.0.1:${portB}`)
 
-  // A: POST a knowledge entry
-  const post = await fetch(`http://127.0.0.1:${portA}/v1/knowledge`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ topic: 'cli-flow', content: 'end-to-end smoke' }),
-  })
-  t.is(post.status, 200)
+    // Get B's writer public key from its status (so A can promote it).
+    const bStatusRes = await fetch(`http://127.0.0.1:${portB}/v1/status`)
+    const bStatus = (await bStatusRes.json()) as { public_key: string; peer_handle: string }
+    t.ok(/^[0-9a-f]{64}$/.test(bStatus.public_key), 'B reports a 64-hex public key')
 
-  // Wait for it to appear in A's log via the CLI
-  const deadline = Date.now() + 10_000
-  let aLog = ''
-  while (Date.now() < deadline) {
-    const out = await runWithDir(a, ['log', '--port', String(portA)])
-    aLog = out.stdout
-    if (aLog.includes('end-to-end smoke')) break
-    await new Promise((r) => setTimeout(r, 200))
-  }
-  t.ok(aLog.includes('end-to-end smoke'), 'A sees its own entry via CLI log')
-  t.ok(aLog.includes('cli-flow'))
+    // Wait for A to see B as a peer (so the admin entry can replicate).
+    const peersDeadline = Date.now() + 15_000
+    let aPeers: number = 0
+    while (Date.now() < peersDeadline) {
+      const aStatus = (await (await fetch(`http://127.0.0.1:${portA}/v1/status`)).json()) as {
+        peers: number
+      }
+      aPeers = aStatus.peers
+      if (aPeers >= 1) break
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    t.ok(aPeers >= 1, 'A sees B as a peer')
 
-  // B's log on a separate pact should not see A's entry
-  const bLog = await runWithDir(b, ['log', '--port', String(portB)])
-  t.absent(bLog.stdout.includes('end-to-end smoke'), 'B (separate pact) does not see A entry')
+    // A promotes B as an indexer (so B can append; needed because the system
+    // core needs quorum to advance signedLength when there are multiple writers).
+    const promote = await runCli([
+      '--data-dir',
+      homeA,
+      'add-writer',
+      bStatus.public_key,
+      '--indexer',
+      '--port',
+      String(portA),
+    ])
+    t.is(promote.exitCode, 0, 'add-writer succeeded')
+    t.ok(promote.stdout.includes('promoted'))
 
-  // Stop both via CLI
-  const stopA = await runWithDir(a, ['stop'])
-  t.is(stopA.exitCode, 0)
-  const stopB = await runWithDir(b, ['stop'])
-  t.is(stopB.exitCode, 0)
-})
+    // Wait for B's autobase to recognise itself as writable, then have B post
+    // a knowledge entry via its own REST API.
+    const writableDeadline = Date.now() + 30_000
+    let bIsWriter = false
+    while (Date.now() < writableDeadline) {
+      const bs = (await (await fetch(`http://127.0.0.1:${portB}/v1/status`)).json()) as {
+        is_writer: boolean
+      }
+      if (bs.is_writer) {
+        bIsWriter = true
+        break
+      }
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    t.ok(bIsWriter, 'B is now a writer')
+
+    const post = await fetch(`http://127.0.0.1:${portB}/v1/knowledge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ topic: 'two-daemon', content: 'B wrote this; A should see it' }),
+    })
+    t.is(post.status, 200, 'B POST succeeded')
+
+    // Wait for A's openpact log to surface B's entry.
+    const logDeadline = Date.now() + 30_000
+    let aLog = ''
+    while (Date.now() < logDeadline) {
+      const out = await runCli(['--data-dir', homeA, 'log', '--port', String(portA)])
+      aLog = out.stdout
+      if (aLog.includes('B wrote this')) break
+      await new Promise((r) => setTimeout(r, 250))
+    }
+    t.ok(aLog.includes('B wrote this'), 'A sees B entry via openpact log')
+    t.ok(aLog.includes(bStatus.peer_handle), `log line shows B's handle`)
+  },
+)

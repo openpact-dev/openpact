@@ -9,6 +9,8 @@ import { stopCmd } from './commands/stop'
 import { statusCmd } from './commands/status'
 import { peersCmd } from './commands/peers'
 import { logCmd } from './commands/log'
+import { addWriterCmd } from './commands/add-writer'
+import { removeWriterCmd } from './commands/remove-writer'
 
 export function buildProgram(): Command {
   const program = new Command()
@@ -38,11 +40,16 @@ export function buildProgram(): Command {
     .description('start the daemon (REST API on :7331)')
     .option('--daemon', 'detach and run in the background')
     .option('--port <n>', 'REST API port', '7331')
+    .option(
+      '--bootstrap <list>',
+      'comma-separated host:port DHT bootstrap (advanced; default: public DHT)',
+    )
     .action(startCmd)
 
   program
     .command('start-foreground', { hidden: true })
     .option('--port <n>', '', '7331')
+    .option('--bootstrap <list>', '')
     .action(startForegroundCmd)
 
   program
@@ -62,6 +69,19 @@ export function buildProgram(): Command {
     .description('list connected peers')
     .option('--port <n>', '', '7331')
     .action(peersCmd)
+
+  program
+    .command('add-writer <key>')
+    .description('promote a peer (by hex public key) to writer or indexer')
+    .option('--indexer', 'promote as indexer (participates in consensus)')
+    .option('--port <n>', '', '7331')
+    .action(addWriterCmd)
+
+  program
+    .command('remove-writer <key>')
+    .description('remove a peer from the writer set')
+    .option('--port <n>', '', '7331')
+    .action(removeWriterCmd)
 
   program
     .command('log')

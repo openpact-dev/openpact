@@ -15,10 +15,9 @@ HyperDHT.
 
 ## Status
 
-**Phase 1 complete (alpha).** The daemon, REST API, and CLI all work locally:
-two daemons on different ports replicate via the in-memory testnet, and the
-build plan's two-machine network demo waits on a `--bootstrap` flag (Phase
-1.6). v0.1.0 lands when Phases 2–4 ship — see
+**Phase 1 complete (alpha).** Two daemons can pair via the CLI, promote each
+other, and replicate entries — proven end-to-end in `full-flow.test.ts`.
+v0.1.0 lands when Phases 2–4 ship — see
 [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
 
 | Phase | Status | Detail |
@@ -27,7 +26,7 @@ build plan's two-machine network demo waits on a `--bootstrap` flag (Phase
 | 1.2 daemon core            | ✅ shipped | Corestore + Autobase + Hyperswarm; `apply` 100/90 coverage |
 | 1.3 REST API on `:7331`    | ✅ shipped | Fastify; all v1 routes incl. task state machine |
 | 1.4 CLI                    | ✅ shipped | `openpact init / start / log / …`; PID file management |
-| 1.5 deliverables polish    | next       | README install steps, contributing guide, real-network demo |
+| 1.5 two-daemon flow        | ✅ shipped | `--bootstrap` flag + `add-writer` / `remove-writer` commands; full pair-and-replicate via the CLI |
 | 2.x agent integrations     | next       | `@openpact/sdk`, OpenClaw skill, framework examples |
 | 3.x desktop app            |            | Pear desktop, all 6 screens |
 | 4.x docs + launch          |            | seed node Docker, security review, demo video |
@@ -41,27 +40,59 @@ build plan's two-machine network demo waits on a `--bootstrap` flag (Phase
 
 ## Quickstart
 
-Requires Node.js ≥ 20. The CLI is not yet on npm — for now, run from a clone:
+Requires Node.js ≥ 20. The CLI isn't on npm yet — run from a clone for now:
 
 ```bash
 git clone https://github.com/openpact-dev/openpact.git
 cd openpact
 npm install
 
-# Create a pact, start the daemon in the background.
-node packages/cli/bin/openpact.js --data-dir /tmp/op init
-node packages/cli/bin/openpact.js --data-dir /tmp/op start --daemon
+# Set up a shorter alias for readability.
+alias openpact="node $(pwd)/packages/cli/bin/openpact.js"
 
-# Talk to it via the REST API.
-curl localhost:7331/v1/status
+# Create a pact, start the daemon in the background.
+openpact --data-dir /tmp/op init
+openpact --data-dir /tmp/op start --daemon
+
+# Talk to it.
+openpact --data-dir /tmp/op status
 curl -X POST localhost:7331/v1/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"sales","content":"Tuesdays convert better"}'
-
-# Or via the CLI.
-node packages/cli/bin/openpact.js --data-dir /tmp/op log
-node packages/cli/bin/openpact.js --data-dir /tmp/op stop
+openpact --data-dir /tmp/op log
+openpact --data-dir /tmp/op stop
 ```
+
+### Two daemons sharing a pact
+
+You can pair two daemons on the same machine (or across machines on the same
+network) and watch a knowledge entry on one show up on the other:
+
+```bash
+# Terminal A: create the pact.
+openpact --data-dir /tmp/op-a init
+openpact --data-dir /tmp/op-a start --daemon --port 7331
+KEY=$(openpact --data-dir /tmp/op-a invite)
+
+# Terminal B: join it.
+openpact --data-dir /tmp/op-b join "$KEY"
+openpact --data-dir /tmp/op-b start --daemon --port 7332
+
+# Wait a moment for them to find each other on the DHT, then promote B as
+# a writer (the creator's PUBLIC_KEY is in `openpact status` output).
+B_KEY=$(curl -s localhost:7332/v1/status | jq -r .public_key)
+openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer
+
+# B can now write; A sees it.
+curl -X POST localhost:7332/v1/knowledge \
+  -H 'content-type: application/json' \
+  -d '{"topic":"shared","content":"hello from B"}'
+openpact --data-dir /tmp/op-a log
+```
+
+For testing on a private network without hitting the public DHT, pass
+`--bootstrap host:port,host:port` to `start` (or set `OPENPACT_BOOTSTRAP`
+in the env).
 
 `@openpact/cli` lands on npm in Phase 4. Until then, the `bin/openpact.js`
 shim runs the TypeScript entry directly via `tsx`.

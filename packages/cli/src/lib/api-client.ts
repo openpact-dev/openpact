@@ -76,4 +76,16 @@ export class ApiClient {
     const qs = params.toString()
     return this.req(`/v1/${path}${qs ? `?${qs}` : ''}`)
   }
+
+  async addWriter(key: string, indexer = false): Promise<any> {
+    return this.req('/v1/admin/writers', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key, indexer }),
+    })
+  }
+
+  async removeWriter(key: string): Promise<any> {
+    return this.req(`/v1/admin/writers/${key}`, { method: 'DELETE' })
+  }
 }

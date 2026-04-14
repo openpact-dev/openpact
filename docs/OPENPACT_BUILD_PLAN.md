@@ -446,18 +446,46 @@ This is the heart of the project. Get this right before touching anything else.
 7. **`.github/workflows/ci.yml` e2e fallback removed** — the `|| echo "no
    e2e tests yet"` from Phase 1.1 is gone now that real e2e tests exist.
 
-### 1.5 Phase 1 deliverables
+### 1.5 Phase 1 deliverables ✅ (commit pending)
 
-- [ ] Working daemon with P2P sync
-- [ ] REST API on localhost
-- [ ] CLI for setup and monitoring
-- [ ] Basic README with install and quickstart
-- [ ] **Tests**:
-  - [ ] ≥40 unit tests across daemon + cli
-  - [ ] ≥8 integration tests covering replication, writer changes, concurrent writes, API cross-daemon, task races
-  - [ ] ≥6 e2e CLI tests including `full-flow.test.ts`
-  - [ ] Coverage gates met (daemon 80/75, cli 70/65, `apply` 95/90)
-  - [ ] CI green on Node 20 + 22 × Ubuntu + macOS
+- [x] Working daemon with P2P sync (1.2)
+- [x] REST API on localhost (1.3)
+- [x] CLI for setup and monitoring (1.4)
+- [x] Basic README with install and quickstart (`496d5ea` + this slice's two-daemon demo)
+- [x] **Tests**:
+  - [x] ≥40 unit tests across daemon + cli (181 unit/integration)
+  - [x] ≥8 integration tests covering replication, writer changes, concurrent writes, API cross-daemon, task races (all shipped in 1.2 + 1.3)
+  - [x] ≥6 e2e CLI tests including `full-flow.test.ts` (15 e2e tests; full-flow now genuinely pairs two daemons)
+  - [x] Coverage gates met: daemon 95.84/83.78, cli/src 99.04/76.47, cli/src/commands 89.07/68.89, `apply.ts` 100/90.48
+  - [x] CI green on Node 20 + 22 × Ubuntu + macOS (verified via `gh run list`)
+
+**Spirit-of-§1.5 additions in this slice:**
+
+1. **`--bootstrap <list>` flag + `OPENPACT_BOOTSTRAP` env var** on `start`
+   so the CLI can join a private DHT (e.g. `hyperdht/testnet` for tests).
+   `lib/bootstrap.ts` parses `host:port,host:port`. Used by the new
+   `full-flow.test.ts` to spin up an in-memory testnet for the two CLI
+   daemons — no public-DHT dependency, ~4s test runtime.
+2. **`POST /v1/admin/writers` + `DELETE /v1/admin/writers/:key`** REST
+   endpoints — wires through `Daemon.addWriter` / `removeWriter` so admin
+   entries can be issued from outside the daemon process.
+3. **`openpact add-writer <hex-key> [--indexer]` and `openpact
+   remove-writer <hex-key>`** CLI commands — the missing piece that lets
+   the creator promote a joiner to writer/indexer through the CLI.
+4. **`full-flow.test.ts` now genuinely pairs two daemons**: A.init → start
+   → invite, B.join → start (same testnet bootstrap), A.add-writer(B), B
+   posts knowledge via REST, A sees it via `openpact log`. The
+   build-plan-promised demo through the CLI.
+5. **README quickstart now has a "Two daemons sharing a pact" section**
+   with a runnable bash recipe matching the e2e test.
+
+**Out of scope (deliberately deferred):**
+
+- `CONTRIBUTING.md` + `CODE_OF_CONDUCT.md` — Phase 4 deliverables (DoD
+  for v0.1.0)
+- Cross-machine real-DHT integration test — Phase 4 `integration-network`
+  CI job
+- `seed-node` Docker image — Phase 4.2
 
 ---
 

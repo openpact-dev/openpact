@@ -2,9 +2,11 @@ import { Daemon, createApi, bind } from '@openpact/daemon'
 import pc from 'picocolors'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { writePidFile, removePidFile } from '../lib/pid'
+import { resolveBootstrap } from '../lib/bootstrap'
 
 export interface StartForegroundOpts {
   port?: string | number
+  bootstrap?: string
 }
 
 /**
@@ -20,8 +22,10 @@ export async function startForegroundCmd(
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const port = Number(opts.port ?? 7331)
+  const bootstrap = resolveBootstrap(opts.bootstrap)
 
-  const daemon = await Daemon.load({ dataDir: dir })
+  const swarm = bootstrap ? { bootstrap } : undefined
+  const daemon = await Daemon.load({ dataDir: dir, swarm })
   await daemon.start()
 
   const app = createApi(daemon)

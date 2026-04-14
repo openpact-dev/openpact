@@ -9,6 +9,7 @@ import { startForegroundCmd } from './start-foreground'
 export interface StartOpts {
   daemon?: boolean
   port?: string | number
+  bootstrap?: string
 }
 
 export async function startCmd(
@@ -39,6 +40,7 @@ export async function startCmd(
     dir,
     'start-foreground',
     ...(opts.port ? ['--port', String(opts.port)] : []),
+    ...(opts.bootstrap ? ['--bootstrap', opts.bootstrap] : []),
   ]
 
   const child = spawn(process.execPath, childArgs, {
