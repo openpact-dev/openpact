@@ -145,9 +145,9 @@ GitHub Actions matrix:
 
 **Duration:** ~2 weeks (revised: +2 days for test scaffolding)
 
-### 1.1 Project setup
+### 1.1 Project setup ✅ (commit `17add43`)
 
-- [ ] Initialise monorepo structure:
+- [x] Initialise monorepo structure:
   ```
   openpact/
     packages/
@@ -159,28 +159,28 @@ GitHub Actions matrix:
     README.md
     package.json (workspace root)
   ```
-- [ ] Set up npm workspaces
-- [ ] Add `.gitignore`, `.prettierrc`, `.eslintrc`
-- [ ] Write initial `README.md` with one-liner, what it does, and "coming soon" install instructions
-- [ ] **Test scaffolding:**
-  - [ ] Add devDeps to root: `brittle`, `c8`, `eslint`, `prettier`, `execa`, `fast-check`
-  - [ ] Root scripts:
-    ```json
-    {
-      "scripts": {
-        "test":          "brittle 'packages/*/test/{unit,integration}/**/*.test.js'",
-        "test:unit":     "brittle 'packages/*/test/unit/**/*.test.js'",
-        "test:e2e":      "brittle 'packages/*/test/e2e/**/*.test.js'",
-        "test:watch":    "brittle --watch 'packages/*/test/unit/**/*.test.js'",
-        "test:coverage": "c8 --check-coverage --reporter=lcov --reporter=text npm test",
-        "lint":          "eslint packages && prettier --check packages",
-        "format":        "prettier --write packages"
-      }
-    }
-    ```
-  - [ ] Add `c8` config to root `package.json` with per-package thresholds (see Coverage targets above)
-  - [ ] Create `.github/workflows/ci.yml` with the matrix described in Testing framework
-  - [ ] Add a placeholder smoke test (`packages/daemon/test/unit/smoke.test.js`) that asserts `1 + 1 === 2` so CI is green from day one
+- [x] Set up npm workspaces
+- [x] Add `.gitignore`, `.prettierrc`, `eslint.config.js` (see deviation below)
+- [x] Write initial `README.md` with one-liner, what it does, and "coming soon" install instructions
+- [x] **Test scaffolding:**
+  - [x] Add devDeps to root: `brittle`, `c8`, `eslint`, `@eslint/js`, `globals`, `prettier`, `execa`, `fast-check`
+  - [x] Root scripts (test, test:unit, test:e2e, test:watch, test:coverage, lint, format) — see deviation below
+  - [x] Add `c8` config to root `package.json` (thresholds defined but not yet enforced — see deviation)
+  - [x] Create `.github/workflows/ci.yml` with the matrix described in Testing framework
+  - [x] Add a placeholder smoke test (`packages/daemon/test/unit/smoke.test.js`) that asserts `1 + 1 === 2` so CI is green from day one
+
+**Deviations from the original plan, accepted during 1.1:**
+
+1. **ESLint flat config (`eslint.config.js`)** instead of legacy `.eslintrc`.
+   ESLint 9 ships flat config as the default; the legacy format is being
+   phased out. Required adding `@eslint/js` and `globals` to devDeps.
+2. **`c8 --check-coverage` is off in 1.1** because the empty packages would
+   trip any non-zero threshold. The `test:coverage` script reports but does
+   not gate. Re-enable in 1.2 once `apply.js` and friends exist; configure
+   per-package thresholds at that point.
+3. **e2e CI step is wrapped in `|| echo "no e2e tests yet"`** because brittle
+   errors when its glob matches no files. TODO comment in `ci.yml` reminds
+   to drop this fallback in 1.4 when real e2e tests land.
 
 ### 1.2 Daemon core
 
