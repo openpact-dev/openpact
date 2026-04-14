@@ -446,7 +446,7 @@ This is the heart of the project. Get this right before touching anything else.
 7. **`.github/workflows/ci.yml` e2e fallback removed** — the `|| echo "no
    e2e tests yet"` from Phase 1.1 is gone now that real e2e tests exist.
 
-### 1.5 Phase 1 deliverables ✅ (commit pending)
+### 1.5 Phase 1 deliverables ✅ (commit `eaa4ab1`)
 
 - [x] Working daemon with P2P sync (1.2)
 - [x] REST API on localhost (1.3)
