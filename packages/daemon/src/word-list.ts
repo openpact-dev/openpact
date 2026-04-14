@@ -1,4 +1,4 @@
-module.exports = [
+const wordList: readonly string[] = [
   'krait',
   'cobra',
   'viper',
@@ -256,3 +256,6 @@ module.exports = [
   'spring',
   'creek',
 ]
+
+export default wordList
+export { wordList }

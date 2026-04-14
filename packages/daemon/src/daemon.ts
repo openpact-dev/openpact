@@ -1,29 +1,47 @@
-const EventEmitter = require('events')
-const b4a = require('b4a')
-const Corestore = require('corestore')
-const Autobase = require('autobase')
-const Hyperbee = require('hyperbee')
-const Hyperswarm = require('hyperswarm')
+import EventEmitter from 'events'
+import b4a from 'b4a'
+import Corestore from 'corestore'
+import Autobase from 'autobase'
+import Hyperbee from 'hyperbee'
+import Hyperswarm from 'hyperswarm'
 
-const { defaultDataDir, corestorePath } = require('./data-dir')
-const { loadConfig, saveConfig, DEFAULT_PORT } = require('./config')
-const { makeApply } = require('./apply')
-const peerHandle = require('./peer-handle')
+import { defaultDataDir, corestorePath } from './data-dir'
+import { loadConfig, saveConfig, DEFAULT_PORT, type Role, type Config } from './config'
+import { makeApply } from './apply'
+import * as peerHandle from './peer-handle'
 
-class Daemon extends EventEmitter {
-  constructor({ dataDir, port = DEFAULT_PORT, swarm = {} } = {}) {
+export interface DaemonOpts {
+  dataDir?: string
+  port?: number
+  swarm?: Record<string, unknown>
+}
+
+export interface JoinOpts extends DaemonOpts {
+  joinKey: string
+}
+
+export interface WaitOpts {
+  timeout?: number
+}
+
+export class Daemon extends EventEmitter {
+  dataDir: string
+  port: number
+  private _swarmOpts: Record<string, unknown>
+  private _store: any = null
+  private _base: any = null
+  private _swarm: any = null
+  private _started = false
+  private _role: Role | null = null
+
+  constructor({ dataDir, port = DEFAULT_PORT, swarm = {} }: DaemonOpts = {}) {
     super()
     this.dataDir = dataDir || defaultDataDir()
     this.port = port
     this._swarmOpts = swarm
-    this._store = null
-    this._base = null
-    this._swarm = null
-    this._started = false
-    this._role = null
   }
 
-  static async create(opts = {}) {
+  static async create(opts: DaemonOpts = {}): Promise<Daemon> {
     const d = new Daemon(opts)
     await d._initStore()
     d._base = new Autobase(d._store, null, d._autobaseOpts())
@@ -33,7 +51,7 @@ class Daemon extends EventEmitter {
     return d
   }
 
-  static async join(opts = {}) {
+  static async join(opts: JoinOpts): Promise<Daemon> {
     if (!opts.joinKey) throw new Error('joinKey is required to join an existing pact')
     const d = new Daemon(opts)
     await d._initStore()
@@ -45,7 +63,7 @@ class Daemon extends EventEmitter {
     return d
   }
 
-  static async load(opts = {}) {
+  static async load(opts: DaemonOpts = {}): Promise<Daemon> {
     const d = new Daemon(opts)
     await d._initStore()
     const cfg = await loadConfig(d.dataDir)
@@ -59,15 +77,15 @@ class Daemon extends EventEmitter {
     return d
   }
 
-  async _initStore() {
+  private async _initStore(): Promise<void> {
     this._store = new Corestore(corestorePath(this.dataDir))
     await this._store.ready()
   }
 
-  _autobaseOpts() {
+  private _autobaseOpts(): Record<string, unknown> {
     return {
       valueEncoding: 'json',
-      open: (store) => {
+      open: (store: any) => {
         const core = store.get('view')
         return new Hyperbee(core, { keyEncoding: 'utf-8', valueEncoding: 'json' })
       },
@@ -78,18 +96,18 @@ class Daemon extends EventEmitter {
     }
   }
 
-  async _persistConfig() {
+  private async _persistConfig(): Promise<void> {
     const cfg = await loadConfig(this.dataDir)
     cfg.pactKey = b4a.toString(this._base.key, 'hex')
     if (this._role) cfg.role = this._role
     cfg.port = this.port
-    await saveConfig(this.dataDir, cfg)
+    await saveConfig(this.dataDir, cfg as Config)
   }
 
-  async start() {
+  async start(): Promise<void> {
     if (this._started) return
     this._swarm = new Hyperswarm(this._swarmOpts)
-    this._swarm.on('connection', (conn) => {
+    this._swarm.on('connection', (conn: any) => {
       this._store.replicate(conn)
       this.emit('peer-add', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
       conn.on('close', () =>
@@ -102,7 +120,7 @@ class Daemon extends EventEmitter {
     this.emit('start')
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     this._started = false
     if (this._swarm) {
       await this._swarm.destroy()
@@ -119,14 +137,17 @@ class Daemon extends EventEmitter {
     this.emit('stop')
   }
 
-  async append(entry) {
+  async append(entry: Record<string, unknown>): Promise<{ timestamp: string }> {
     if (!this._base.writable) throw new Error('this daemon is not a writer for the pact')
     await this._base.append(entry)
-    return { timestamp: entry.timestamp }
+    return { timestamp: entry.timestamp as string }
   }
 
-  async addWriter(key, { indexer = false } = {}) {
-    const keyHex = typeof key === 'string' ? key : b4a.toString(key, 'hex')
+  async addWriter(
+    key: Buffer | string,
+    { indexer = false }: { indexer?: boolean } = {},
+  ): Promise<void> {
+    const keyHex = typeof key === 'string' ? key : (b4a.toString(key, 'hex') as string)
     const adminEntry = {
       type: 'admin',
       timestamp: new Date().toISOString(),
@@ -136,8 +157,8 @@ class Daemon extends EventEmitter {
     await this._base.append(adminEntry)
   }
 
-  async removeWriter(key) {
-    const keyHex = typeof key === 'string' ? key : b4a.toString(key, 'hex')
+  async removeWriter(key: Buffer | string): Promise<void> {
+    const keyHex = typeof key === 'string' ? key : (b4a.toString(key, 'hex') as string)
     const adminEntry = {
       type: 'admin',
       timestamp: new Date().toISOString(),
@@ -147,45 +168,51 @@ class Daemon extends EventEmitter {
     await this._base.append(adminEntry)
   }
 
-  async update() {
+  async update(): Promise<void> {
     if (this._base) await this._base.update()
   }
 
-  get pactKey() {
-    return this._base ? b4a.toString(this._base.key, 'hex') : null
+  get pactKey(): string | null {
+    return this._base ? (b4a.toString(this._base.key, 'hex') as string) : null
   }
 
-  get publicKey() {
+  get publicKey(): string | null {
     if (!this._base || !this._base.local) return null
-    return b4a.toString(this._base.local.key, 'hex')
+    return b4a.toString(this._base.local.key, 'hex') as string
   }
 
-  get peerHandle() {
+  get peerHandle(): string | null {
     if (!this._base || !this._base.local) return null
     return peerHandle.derive(this._base.local.key)
   }
 
-  get role() {
+  get role(): Role | null {
     return this._role
   }
 
-  get isWriter() {
-    return this._base ? this._base.writable : false
+  get isWriter(): boolean {
+    return this._base ? !!this._base.writable : false
   }
 
-  get isIndexer() {
-    return this._base ? this._base.isIndexer : false
+  get isIndexer(): boolean {
+    return this._base ? !!this._base.isIndexer : false
   }
 
-  get connections() {
-    return this._swarm ? this._swarm.connections.size : 0
+  get connections(): number {
+    return this._swarm ? (this._swarm.connections.size as number) : 0
   }
 
-  get viewVersion() {
-    return this._base && this._base.view ? this._base.view.version : 0
+  get viewVersion(): number {
+    return this._base && this._base.view ? (this._base.view.version as number) : 0
   }
 
-  async waitForConnections(min = 1, { timeout = 5000 } = {}) {
+  // Exposed for integration tests that need to query the underlying view.
+  // Internal API; do not depend on this in external code.
+  get _internalView(): any {
+    return this._base ? this._base.view : null
+  }
+
+  async waitForConnections(min = 1, { timeout = 5000 }: WaitOpts = {}): Promise<void> {
     return _wait(
       () => this.connections >= min,
       timeout,
@@ -193,7 +220,7 @@ class Daemon extends EventEmitter {
     )
   }
 
-  async waitForViewVersion(n, { timeout = 5000 } = {}) {
+  async waitForViewVersion(n: number, { timeout = 5000 }: WaitOpts = {}): Promise<void> {
     return _wait(
       () => this.viewVersion >= n,
       timeout,
@@ -201,14 +228,14 @@ class Daemon extends EventEmitter {
     )
   }
 
-  async waitForWritable({ timeout = 5000 } = {}) {
+  async waitForWritable({ timeout = 5000 }: WaitOpts = {}): Promise<void> {
     if (this.isWriter) return
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       const t = setTimeout(() => {
         this._base.off('writable', onWrite)
         reject(new Error(`waitForWritable timeout`))
       }, timeout)
-      const onWrite = () => {
+      const onWrite = (): void => {
         clearTimeout(t)
         resolve()
       }
@@ -217,7 +244,11 @@ class Daemon extends EventEmitter {
   }
 }
 
-async function _wait(predicate, timeout, label) {
+async function _wait(
+  predicate: () => boolean,
+  timeout: number,
+  label: () => string,
+): Promise<void> {
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
     if (predicate()) return
@@ -225,5 +256,3 @@ async function _wait(predicate, timeout, label) {
   }
   throw new Error(`timeout: ${label()}`)
 }
-
-module.exports = { Daemon }

@@ -1,10 +1,10 @@
-const test = require('brittle')
-const { validate, MAX_PAYLOAD_BYTES } = require('../../src/schemas')
+import test from 'brittle'
+import { validate, MAX_PAYLOAD_BYTES } from '../../src/schemas'
 
 const validHandle = 'anon-krait-7f2d'
 const ts = '2026-04-14T10:30:00.000Z'
 
-function base(type, payload) {
+function base(type: string, payload: unknown): Record<string, unknown> {
   return { type, timestamp: ts, agent_id: validHandle, payload }
 }
 
@@ -16,7 +16,7 @@ test('knowledge: valid entry passes', (t) => {
 test('knowledge: missing topic rejects', (t) => {
   const r = validate(base('knowledge', { content: 'hello' }))
   t.is(r.valid, false)
-  t.is(r.reason, 'schema')
+  if (!r.valid) t.is(r.reason, 'schema')
 })
 
 test('knowledge: missing content rejects', (t) => {
@@ -114,13 +114,13 @@ test('common: missing timestamp rejects', (t) => {
 })
 
 test('common: bad agent_id pattern rejects', (t) => {
-  const e = base('knowledge', { topic: 'x', content: 'y' })
+  const e = base('knowledge', { topic: 'x', content: 'y' }) as any
   e.agent_id = 'james'
   t.is(validate(e).valid, false)
 })
 
 test('common: malformed timestamp rejects', (t) => {
-  const e = base('knowledge', { topic: 'x', content: 'y' })
+  const e = base('knowledge', { topic: 'x', content: 'y' }) as any
   e.timestamp = 'yesterday'
   t.is(validate(e).valid, false)
 })
@@ -133,13 +133,13 @@ test('common: extra top-level fields rejected', (t) => {
 test('common: unknown type rejects with unknown-type reason', (t) => {
   const r = validate({ type: 'bogus', timestamp: ts, agent_id: validHandle, payload: {} })
   t.is(r.valid, false)
-  t.is(r.reason, 'unknown-type')
+  if (!r.valid) t.is(r.reason, 'unknown-type')
 })
 
 test('common: null entry rejects', (t) => {
   const r = validate(null)
   t.is(r.valid, false)
-  t.is(r.reason, 'not-an-object')
+  if (!r.valid) t.is(r.reason, 'not-an-object')
 })
 
 test('common: non-object rejects', (t) => {
@@ -152,11 +152,10 @@ test('payload size: oversize rejects', (t) => {
   const big = 'x'.repeat(MAX_PAYLOAD_BYTES + 1)
   const r = validate(base('knowledge', { topic: 'x', content: big }))
   t.is(r.valid, false)
-  t.is(r.reason, 'payload-too-large')
+  if (!r.valid) t.is(r.reason, 'payload-too-large')
 })
 
 test('payload size: at-limit accepts', (t) => {
-  // build payload that serializes to exactly MAX_PAYLOAD_BYTES
   const overhead = JSON.stringify({ topic: 'x', content: '' }).length
   const content = 'x'.repeat(MAX_PAYLOAD_BYTES - overhead)
   const r = validate(base('knowledge', { topic: 'x', content }))

@@ -1,12 +1,29 @@
-const test = require('brittle')
-const b4a = require('b4a')
-const { makeApply, INDEXER_PREFIX } = require('../../src/apply')
+import test from 'brittle'
+import b4a from 'b4a'
+import {
+  makeApply,
+  INDEXER_PREFIX,
+  type ApplyView,
+  type ApplyHost,
+  type ApplyNode,
+  type InvalidInfo,
+  type AppliedInfo,
+} from '../../src/apply'
 
 const VALID_HANDLE = 'anon-krait-7f2d'
 const TS = '2026-04-14T10:30:00.000Z'
 
-function fakeView() {
-  const data = new Map()
+interface FakeView extends ApplyView {
+  _data: Map<string, unknown>
+  _keys(): string[]
+}
+
+interface FakeHost extends ApplyHost {
+  _calls: Array<{ method: string; key: string; opts?: { indexer: boolean } }>
+}
+
+function fakeView(): FakeView {
+  const data = new Map<string, unknown>()
   return {
     async get(key) {
       return data.has(key) ? { key, value: data.get(key) } : null
@@ -31,25 +48,37 @@ function fakeView() {
   }
 }
 
-function fakeHost() {
-  const calls = []
+function fakeHost(): FakeHost {
+  const calls: FakeHost['_calls'] = []
   return {
     async addWriter(key, opts) {
-      calls.push({ method: 'addWriter', key: b4a.toString(key, 'hex'), opts })
+      calls.push({ method: 'addWriter', key: b4a.toString(key, 'hex') as string, opts })
     },
     async removeWriter(key) {
-      calls.push({ method: 'removeWriter', key: b4a.toString(key, 'hex') })
+      calls.push({ method: 'removeWriter', key: b4a.toString(key, 'hex') as string })
     },
     _calls: calls,
   }
 }
 
-function node({ writerKey, length = 0, value }) {
-  const keyBuf = typeof writerKey === 'string' ? b4a.from(writerKey, 'hex') : writerKey
+function node({
+  writerKey,
+  length = 0,
+  value,
+}: {
+  writerKey: string | Buffer
+  length?: number
+  value: unknown
+}): ApplyNode {
+  const keyBuf = typeof writerKey === 'string' ? (b4a.from(writerKey, 'hex') as Buffer) : writerKey
   return { from: { key: keyBuf }, length, value }
 }
 
-function entry(type, payload, opts = {}) {
+function entry(
+  type: string,
+  payload: unknown,
+  opts: { ts?: string; handle?: string } = {},
+): Record<string, unknown> {
   return {
     type,
     timestamp: opts.ts || TS,
@@ -77,13 +106,13 @@ test('valid knowledge entry is appended to view', async (t) => {
     fakeHost(),
   )
   const keys = view._keys()
-  t.is(keys.length, 2) // _indexers/ entry + the knowledge entry
+  t.is(keys.length, 2)
   t.ok(keys.some((k) => k.startsWith('knowledge/')))
 })
 
 test('apply tolerates non-object node.value (drop)', async (t) => {
   const view = fakeView()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
   await apply(
     [node({ writerKey: KEY_A, value: null }), node({ writerKey: KEY_A, value: 'string' })],
@@ -97,10 +126,10 @@ test('apply tolerates non-object node.value (drop)', async (t) => {
 
 test('schema-invalid entries dropped with reason', async (t) => {
   const view = fakeView()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
   await apply(
-    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x' }) })], // missing content
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x' }) })],
     view,
     fakeHost(),
   )
@@ -111,7 +140,7 @@ test('schema-invalid entries dropped with reason', async (t) => {
 
 test('unknown entry type dropped', async (t) => {
   const view = fakeView()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
   await apply(
     [
@@ -131,7 +160,6 @@ test('admin addWriter from indexer calls host.addWriter and updates view', async
   const view = fakeView()
   const host = fakeHost()
   const apply = makeApply()
-  // Bootstrap: first entry from KEY_A makes them indexer
   await apply(
     [
       node({
@@ -143,7 +171,6 @@ test('admin addWriter from indexer calls host.addWriter and updates view', async
     view,
     host,
   )
-  // Then admin entry from KEY_A adds KEY_B
   await apply(
     [
       node({
@@ -158,23 +185,20 @@ test('admin addWriter from indexer calls host.addWriter and updates view', async
   t.is(host._calls.length, 1)
   t.is(host._calls[0].method, 'addWriter')
   t.is(host._calls[0].key, KEY_B)
-  t.is(host._calls[0].opts.indexer, true)
-  // KEY_B should now be in indexer set
+  t.is(host._calls[0].opts?.indexer, true)
   t.ok(await view.get(`${INDEXER_PREFIX}${KEY_B}`))
 })
 
 test('admin from non-indexer is ignored', async (t) => {
   const view = fakeView()
   const host = fakeHost()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
-  // KEY_A bootstraps as creator-indexer
   await apply(
     [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
     view,
     host,
   )
-  // KEY_C (not an indexer) tries to add KEY_B as writer
   await apply(
     [
       node({
@@ -185,11 +209,9 @@ test('admin from non-indexer is ignored', async (t) => {
     view,
     host,
   )
-  // host should not have been called
   t.is(host._calls.length, 0)
   t.is(invalid.length, 1)
   t.is(invalid[0].reason, 'admin-from-non-indexer')
-  // KEY_B should NOT be in indexer set
   t.absent(await view.get(`${INDEXER_PREFIX}${KEY_B}`))
 })
 
@@ -208,13 +230,11 @@ test('admin removeWriter from indexer calls host and removes from indexer set', 
   const view = fakeView()
   const host = fakeHost()
   const apply = makeApply()
-  // Bootstrap creator
   await apply(
     [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
     view,
     host,
   )
-  // Add KEY_B as indexer
   await apply(
     [
       node({
@@ -225,7 +245,6 @@ test('admin removeWriter from indexer calls host and removes from indexer set', 
     view,
     host,
   )
-  // Remove KEY_B
   await apply(
     [
       node({
@@ -261,7 +280,7 @@ test('admin addWriter without indexer flag does not update indexer set', async (
     view,
     host,
   )
-  t.is(host._calls[0].opts.indexer, false)
+  t.is(host._calls[0].opts?.indexer, false)
   t.absent(await view.get(`${INDEXER_PREFIX}${KEY_B}`))
 })
 
@@ -319,8 +338,8 @@ test('stored entry includes derived id field', async (t) => {
     view,
     fakeHost(),
   )
-  const knowledgeKey = view._keys().find((k) => k.startsWith('knowledge/'))
-  const stored = (await view.get(knowledgeKey)).value
+  const knowledgeKey = view._keys().find((k) => k.startsWith('knowledge/'))!
+  const stored = (await view.get(knowledgeKey))!.value as { id: string }
   t.is(stored.id, 'aaaa-7')
 })
 
@@ -354,7 +373,7 @@ test('multiple nodes in one apply call processed in order', async (t) => {
 
 test('node missing from.key dropped', async (t) => {
   const view = fakeView()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (i) => invalid.push(i) })
   await apply(
     [{ from: {}, length: 0, value: entry('knowledge', { topic: 'x', content: 'y' }) }],
@@ -366,7 +385,7 @@ test('node missing from.key dropped', async (t) => {
 
 test('payload too large dropped', async (t) => {
   const view = fakeView()
-  const invalid = []
+  const invalid: InvalidInfo[] = []
   const apply = makeApply({ onInvalid: (i) => invalid.push(i) })
   const big = 'x'.repeat(70 * 1024)
   await apply(
@@ -379,7 +398,7 @@ test('payload too large dropped', async (t) => {
 
 test('onApplied fires for both entries and admin', async (t) => {
   const view = fakeView()
-  const applied = []
+  const applied: AppliedInfo[] = []
   const apply = makeApply({ onApplied: (i) => applied.push(i) })
   await apply(
     [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
@@ -412,7 +431,11 @@ test('all four user types append to view', async (t) => {
         length: 0,
         value: entry('knowledge', { topic: 'x', content: 'y' }),
       }),
-      node({ writerKey: KEY_A, length: 1, value: entry('task', { title: 't', status: 'open' }) }),
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: entry('task', { title: 't', status: 'open' }),
+      }),
       node({
         writerKey: KEY_A,
         length: 2,
@@ -424,7 +447,11 @@ test('all four user types append to view', async (t) => {
           checksum: 'sha256:' + 'a'.repeat(64),
         }),
       }),
-      node({ writerKey: KEY_A, length: 3, value: entry('message', { to: '*', content: 'hi' }) }),
+      node({
+        writerKey: KEY_A,
+        length: 3,
+        value: entry('message', { to: '*', content: 'hi' }),
+      }),
     ],
     view,
     host,

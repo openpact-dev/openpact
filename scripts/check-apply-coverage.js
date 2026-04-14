@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 const REPORT = path.resolve('coverage/coverage-final.json')
-const TARGET_BASENAME = 'apply.js'
+const TARGET_BASENAME = 'apply.ts'
 const LINE_FLOOR = 95
 const BRANCH_FLOOR = 90
 
@@ -36,18 +36,18 @@ const branchPct = bTotal === 0 ? 100 : (bCovered / bTotal) * 100
 let ok = true
 if (linePct < LINE_FLOOR) {
   console.error(
-    `apply.js line coverage ${linePct.toFixed(2)}% below floor ${LINE_FLOOR}%`,
+    `apply.ts line coverage ${linePct.toFixed(2)}% below floor ${LINE_FLOOR}%`,
   )
   ok = false
 }
 if (branchPct < BRANCH_FLOOR) {
   console.error(
-    `apply.js branch coverage ${branchPct.toFixed(2)}% below floor ${BRANCH_FLOOR}%`,
+    `apply.ts branch coverage ${branchPct.toFixed(2)}% below floor ${BRANCH_FLOOR}%`,
   )
   ok = false
 }
 
 if (!ok) process.exit(1)
 console.log(
-  `apply.js coverage OK — lines ${linePct.toFixed(2)}%, branches ${branchPct.toFixed(2)}%`,
+  `apply.ts coverage OK — lines ${linePct.toFixed(2)}%, branches ${branchPct.toFixed(2)}%`,
 )

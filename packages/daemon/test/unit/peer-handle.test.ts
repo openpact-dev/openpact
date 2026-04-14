@@ -1,6 +1,6 @@
-const test = require('brittle')
-const fc = require('fast-check')
-const peerHandle = require('../../src/peer-handle')
+import test from 'brittle'
+import fc from 'fast-check'
+import * as peerHandle from '../../src/peer-handle'
 
 test('derive: standard case', (t) => {
   const buf = Buffer.from([0x12, 0x34, 0x7f, 0x2d, 0x99, 0x99])
@@ -24,14 +24,14 @@ test('derive: rejects too-short input', (t) => {
 })
 
 test('derive: rejects non-buffer non-string', (t) => {
-  t.exception.all(() => peerHandle.derive(42))
-  t.exception.all(() => peerHandle.derive(null))
+  t.exception.all(() => peerHandle.derive(42 as any))
+  t.exception.all(() => peerHandle.derive(null as any))
 })
 
 test('isValid', (t) => {
   t.ok(peerHandle.isValid('anon-krait-7f2d'))
   t.ok(peerHandle.isValid('anon-cobra-0000'))
-  t.absent(peerHandle.isValid('anon-krait-7F2D')) // uppercase
+  t.absent(peerHandle.isValid('anon-krait-7F2D'))
   t.absent(peerHandle.isValid('krait-7f2d'))
   t.absent(peerHandle.isValid('anon-krait-7f2'))
   t.absent(peerHandle.isValid('anon--7f2d'))
@@ -50,7 +50,7 @@ test('property: same key always derives same handle and matches regex', (t) => {
 })
 
 test('property: handles span the word list reasonably', (t) => {
-  const seen = new Set()
+  const seen = new Set<string>()
   for (let i = 0; i < 256; i++) {
     for (let j = 0; j < 256; j++) {
       const buf = Buffer.from([i, j, 0, 0])
@@ -58,6 +58,5 @@ test('property: handles span the word list reasonably', (t) => {
       seen.add(h.split('-')[1])
     }
   }
-  // Should hit most words in the list
   t.ok(seen.size >= peerHandle.wordList.length * 0.95, 'words used >= 95%')
 })

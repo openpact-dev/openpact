@@ -1,8 +1,9 @@
-const { baseEntry } = require('./common')
+import { baseEntry } from './common'
 
-const ADMIN_ACTIONS = ['addWriter', 'removeWriter']
+export const ADMIN_ACTIONS = ['addWriter', 'removeWriter'] as const
+export type AdminAction = (typeof ADMIN_ACTIONS)[number]
 
-module.exports = {
+const adminSchema = {
   ...baseEntry,
   properties: {
     ...baseEntry.properties,
@@ -10,7 +11,7 @@ module.exports = {
     payload: {
       type: 'object',
       properties: {
-        action: { enum: ADMIN_ACTIONS },
+        action: { enum: ADMIN_ACTIONS as unknown as string[] },
         key: { type: 'string', pattern: '^[0-9a-f]{64}$' },
         indexer: { type: 'boolean' },
       },
@@ -20,4 +21,4 @@ module.exports = {
   },
 }
 
-module.exports.ADMIN_ACTIONS = ADMIN_ACTIONS
+export default adminSchema

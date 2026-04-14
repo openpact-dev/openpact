@@ -1,8 +1,9 @@
-const { baseEntry, PEER_HANDLE_RE } = require('./common')
+import { baseEntry, PEER_HANDLE_RE } from './common'
 
-const MESSAGE_PRIORITIES = ['low', 'normal', 'high']
+export const MESSAGE_PRIORITIES = ['low', 'normal', 'high'] as const
+export type MessagePriority = (typeof MESSAGE_PRIORITIES)[number]
 
-module.exports = {
+const messageSchema = {
   ...baseEntry,
   properties: {
     ...baseEntry.properties,
@@ -14,7 +15,7 @@ module.exports = {
           oneOf: [{ const: '*' }, { type: 'string', pattern: PEER_HANDLE_RE }],
         },
         content: { type: 'string', minLength: 1 },
-        priority: { enum: MESSAGE_PRIORITIES },
+        priority: { enum: MESSAGE_PRIORITIES as unknown as string[] },
       },
       required: ['to', 'content'],
       additionalProperties: true,
@@ -22,4 +23,4 @@ module.exports = {
   },
 }
 
-module.exports.MESSAGE_PRIORITIES = MESSAGE_PRIORITIES
+export default messageSchema

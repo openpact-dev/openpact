@@ -1,11 +1,11 @@
-const test = require('brittle')
-const fs = require('fs/promises')
-const os = require('os')
-const path = require('path')
-const config = require('../../src/config')
-const { configPath } = require('../../src/data-dir')
+import test from 'brittle'
+import fs from 'fs/promises'
+import os from 'os'
+import path from 'path'
+import * as config from '../../src/config'
+import { configPath } from '../../src/data-dir'
 
-async function tmpDir(t) {
+async function tmpDir(t: any): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-cfg-'))
   t.teardown(() => fs.rm(dir, { recursive: true, force: true }))
   return dir
@@ -49,7 +49,10 @@ test('loadConfig: non-object JSON throws', async (t) => {
 })
 
 test('validate: invalid role rejects', (t) => {
-  t.exception(() => config.validate({ pactKey: null, role: 'admin', port: 7331 }), /invalid role/)
+  t.exception(
+    () => config.validate({ pactKey: null, role: 'admin' as any, port: 7331 }),
+    /invalid role/,
+  )
 })
 
 test('validate: bad port rejects', (t) => {
@@ -67,7 +70,7 @@ test('validate: null pactKey allowed', (t) => {
 
 test('saveConfig: invalid config rejects', async (t) => {
   const dir = await tmpDir(t)
-  await t.exception.all(() => config.saveConfig(dir, { role: 'x', port: 7331 }))
+  await t.exception.all(() => config.saveConfig(dir, { role: 'x' as any, port: 7331 } as any))
 })
 
 test('loadConfig: partial file fills with defaults', async (t) => {

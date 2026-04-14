@@ -45,7 +45,11 @@ openpact/
   docs/
 ```
 
-JavaScript / npm workspaces. The Pear/Hyper stack is JS-native — don't propose another language without strong justification.
+**TypeScript** + npm workspaces. CommonJS module output (matches the
+Pear/Hyper stack). All `.ts`, run via `tsx` (no build step for tests). The
+Hyper stack itself ships zero `.d.ts` — we use ambient `declare module`
+shims in `types/hyper-stack.d.ts` and `any`-typed bindings inside the
+Daemon class. Don't propose another language without strong justification.
 
 ## Architectural invariants
 
@@ -159,30 +163,36 @@ For Pear runtime, CLI, config, or P2P primitive APIs — invoke the `/pears` ski
 
 Run from the repo root unless noted. Requires Node.js ≥ 20.
 
-| Command                     | What it does                                          |
-| --------------------------- | ----------------------------------------------------- |
-| `npm install`               | Install dev tooling and link workspaces.              |
-| `npm test`                  | Unit + integration tests via `brittle`.               |
-| `npm run test:unit`         | Unit tests only.                                      |
-| `npm run test:e2e`          | End-to-end CLI tests (no tests until Phase 1.4).      |
-| `npm run test:watch`        | Re-run unit tests on file change.                     |
-| `npm run test:coverage`     | Run tests under `c8`; writes `coverage/lcov.info`.    |
-| `npm run lint`              | `eslint` + `prettier --check` over `packages/`.       |
-| `npm run format`            | `prettier --write` over `packages/`.                  |
+| Command                     | What it does                                                  |
+| --------------------------- | ------------------------------------------------------------- |
+| `npm install`               | Install dev tooling and link workspaces.                      |
+| `npm test`                  | Unit + integration tests via `brittle` + `tsx`.               |
+| `npm run test:unit`         | Unit tests only.                                              |
+| `npm run test:e2e`          | End-to-end CLI tests (no tests until Phase 1.4).              |
+| `npm run test:watch`        | Re-run unit tests on file change.                             |
+| `npm run test:coverage`     | Run tests under `c8`; writes `coverage/lcov.info`. Enforces gates. |
+| `npm run typecheck`         | `tsc --noEmit` over the whole repo.                           |
+| `npm run lint`              | `eslint` (with `typescript-eslint`) + `prettier --check`.      |
+| `npm run format`            | `prettier --write` over `packages/`.                          |
 
-Single test file: `npx brittle packages/daemon/test/unit/<file>.test.js`.
+Single test file:
+`NODE_OPTIONS='--import tsx' npx brittle packages/daemon/test/unit/<file>.test.ts`.
 
-Workspaces: `@openpact/daemon` and `@openpact/cli` live under `packages/*`.
-Per-package scripts (e.g. `npm test -w @openpact/daemon`) work but the root
-scripts are the canonical entry point and what CI runs.
+Workspaces: `@openpact/daemon`, `@openpact/cli`, `openpact` (placeholder)
+under `packages/*`. Root scripts are canonical and what CI runs.
 
-ESLint config is **flat config** (`eslint.config.js`), not legacy
-`.eslintrc.json`. CommonJS modules throughout (no ESM yet).
+**TypeScript setup:**
+- Source + tests are all `.ts`, run via `tsx` (no build step for tests/CI;
+  daemon ships precompiled in Phase 4)
+- tsconfig: `module: commonjs`, `strict: true`, `noImplicitAny: false`
+  (the Hyper stack is opaque — typed `any` deliberately)
+- Ambient module declarations for Hyper packages in
+  `types/hyper-stack.d.ts` (none of them ship `.d.ts`)
+- ESLint flat config (`eslint.config.js`) extended with `typescript-eslint`
 
-Coverage thresholds (`daemon` 80/75, `cli` 70/65, `apply` 95/90) are
-**defined in the build plan but not yet enforced** — `c8 --check-coverage`
-turns on in Phase 1.2 once there's real code to cover. Until then
-`test:coverage` only reports.
+Coverage gate is enforced in CI:
+- `daemon` ≥ 80 / 75 lines/branches
+- `apply.ts` per-file ≥ 95 / 90 (post-test script `scripts/check-apply-coverage.js`)
 
 ## When tooling lands
 

@@ -16,34 +16,41 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "brittle 'packages/*/test/{unit,integration}/**/*.test.js'",
-    "test:unit": "brittle 'packages/*/test/unit/**/*.test.js'",
-    "test:e2e": "brittle 'packages/*/test/e2e/**/*.test.js'",
-    "test:watch": "brittle --watch 'packages/*/test/unit/**/*.test.js'",
-    "test:coverage": "c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm test && node scripts/check-apply-coverage.js",
+    "test": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/{unit,integration}/**/*.test.ts'",
+    "test:unit": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/unit/**/*.test.ts'",
+    "test:e2e": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/e2e/**/*.test.ts'",
+    "test:watch": "NODE_OPTIONS='--import tsx' brittle --watch 'packages/*/test/unit/**/*.test.ts'",
+    "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm test && node scripts/check-apply-coverage.js",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint packages && prettier --check packages",
     "format": "prettier --write packages"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@types/node": "^22.7.5",
     "brittle": "^3.7.0",
     "c8": "^10.1.2",
     "eslint": "^9.13.0",
     "execa": "^9.5.0",
     "fast-check": "^3.22.0",
     "globals": "^15.11.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.10.0"
   },
   "c8": {
     "all": true,
     "include": [
-      "packages/*/src/**/*.js"
+      "packages/*/src/**/*.ts"
     ],
     "exclude": [
       "**/test/**",
       "**/node_modules/**",
+      "**/*.d.ts",
       "packages/openpact/**"
     ],
+    "extension": [".ts"],
     "lines": 80,
     "branches": 75,
     "functions": 80,

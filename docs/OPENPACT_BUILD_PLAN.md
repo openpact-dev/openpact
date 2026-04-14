@@ -251,6 +251,13 @@ This is the heart of the project. Get this right before touching anything else.
    `waitForKnowledge`/`waitForCount` polling helper rather than counting on
    `viewVersion` for user-facing entries. To be revisited if a public
    `userEntryCount` accessor proves useful in 1.3.
+6. **TypeScript everywhere** (added post-1.2). All `.js` source and tests
+   converted to `.ts`; tests run via `tsx` (`NODE_OPTIONS='--import tsx'
+   brittle ...`); typecheck step (`npm run typecheck` → `tsc --noEmit`) runs
+   in CI alongside lint and coverage. The Holepunch stack ships no `.d.ts`,
+   so `types/hyper-stack.d.ts` declares each module as ambient `any`. The
+   build plan's original "Node.js + JS" assumption no longer holds —
+   subsequent phases write TypeScript by default.
 
 ### 1.3 REST API
 

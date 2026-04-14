@@ -1,14 +1,16 @@
-const wordList = require('./word-list')
+import { wordList } from './word-list'
 
-const HANDLE_RE = /^anon-[a-z]+-[0-9a-f]{4}$/
+export const HANDLE_RE = /^anon-[a-z]+-[0-9a-f]{4}$/
 
-function toBuffer(input) {
+export type PublicKey = Buffer | string
+
+function toBuffer(input: PublicKey): Buffer {
   if (Buffer.isBuffer(input)) return input
   if (typeof input === 'string') return Buffer.from(input, 'hex')
   throw new TypeError('publicKey must be a Buffer or hex string')
 }
 
-function derive(publicKey) {
+export function derive(publicKey: PublicKey): string {
   const buf = toBuffer(publicKey)
   if (buf.length < 4) throw new TypeError('publicKey must be at least 4 bytes')
   const wordIndex = (buf[0] + buf[1] * 256) % wordList.length
@@ -17,8 +19,8 @@ function derive(publicKey) {
   return `anon-${word}-${suffix}`
 }
 
-function isValid(handle) {
+export function isValid(handle: unknown): handle is string {
   return typeof handle === 'string' && HANDLE_RE.test(handle)
 }
 
-module.exports = { derive, isValid, HANDLE_RE, wordList }
+export { wordList }

@@ -1,5 +1,5 @@
-const test = require('brittle')
-const { pair } = require('../helpers/pair')
+import test from 'brittle'
+import { pair } from '../helpers/pair'
 
 test('A appends knowledge, B sees it via replication', async (t) => {
   const { a, b } = await pair(t)
@@ -7,19 +7,17 @@ test('A appends knowledge, B sees it via replication', async (t) => {
   await a.daemon.append({
     type: 'knowledge',
     timestamp: new Date().toISOString(),
-    agent_id: a.daemon.peerHandle,
+    agent_id: a.daemon.peerHandle!,
     payload: { topic: 'sales', content: 'Tuesdays convert better' },
   })
 
-  // Wait for B's view to reflect both the bootstrap indexer entry and the knowledge entry.
   await b.daemon.waitForViewVersion(2, { timeout: 15000 })
 
-  // Verify B can read the entry from its view.
-  const stream = b.daemon._base.view.createReadStream({
+  const stream = b.daemon._internalView.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })
-  const entries = []
+  const entries: any[] = []
   for await (const { value } of stream) entries.push(value)
 
   t.is(entries.length, 1, 'B sees exactly one knowledge entry')
@@ -35,19 +33,18 @@ test('A appends multiple entries, B sees them all in order', async (t) => {
     await a.daemon.append({
       type: 'knowledge',
       timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(),
-      agent_id: a.daemon.peerHandle,
+      agent_id: a.daemon.peerHandle!,
       payload: { topic: 'count', content: `entry-${i}` },
     })
   }
 
-  // 1 bootstrap _indexers entry + 3 knowledge entries
   await b.daemon.waitForViewVersion(4, { timeout: 15000 })
 
-  const stream = b.daemon._base.view.createReadStream({
+  const stream = b.daemon._internalView.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })
-  const contents = []
+  const contents: string[] = []
   for await (const { value } of stream) contents.push(value.payload.content)
   t.alike(contents, ['entry-0', 'entry-1', 'entry-2'])
 })

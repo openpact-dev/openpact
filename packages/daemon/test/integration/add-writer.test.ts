@@ -1,36 +1,31 @@
-const test = require('brittle')
-const { pair } = require('../helpers/pair')
+import test from 'brittle'
+import { pair } from '../helpers/pair'
+import type { Daemon } from '../../src/daemon'
 
 test('creator promotes B to writer; B appends; A sees B entry', async (t) => {
   const { a, b } = await pair(t)
 
-  // Initially, B is not a writer
   t.absent(b.daemon.isWriter, 'B starts as non-writer')
 
-  // A promotes B
-  await a.daemon.addWriter(b.daemon.publicKey, { indexer: false })
+  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: false })
 
-  // Wait for B's autobase to recognize itself as writable
   await b.daemon.waitForWritable({ timeout: 15000 })
   t.ok(b.daemon.isWriter, 'B is now a writer')
 
-  // B appends an entry
   await b.daemon.append({
     type: 'message',
     timestamp: new Date().toISOString(),
-    agent_id: b.daemon.peerHandle,
+    agent_id: b.daemon.peerHandle!,
     payload: { to: '*', content: 'hello from B' },
   })
 
-  // Wait for the message to land in A's view
-  await a.daemon.waitForViewVersion(3, { timeout: 15000 }) // 1 indexer + 1 admin* + 1 message
-  // *admin doesn't actually go in the view; counted just to be safe
+  await a.daemon.waitForViewVersion(3, { timeout: 15000 })
 
-  const stream = a.daemon._base.view.createReadStream({
+  const stream = a.daemon._internalView.createReadStream({
     gte: 'message/',
     lt: 'message0',
   })
-  const messages = []
+  const messages: any[] = []
   for await (const { value } of stream) messages.push(value)
 
   t.is(messages.length, 1, 'A sees B message')
@@ -41,37 +36,37 @@ test('creator promotes B to writer; B appends; A sees B entry', async (t) => {
 test('creator promotes B as indexer; B can append', async (t) => {
   const { a, b } = await pair(t)
 
-  // A promotes B as indexer
-  await a.daemon.addWriter(b.daemon.publicKey, { indexer: true })
+  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: true })
   await b.daemon.waitForWritable({ timeout: 30000 })
 
-  // B appends a knowledge entry
   await b.daemon.append({
     type: 'knowledge',
     timestamp: new Date().toISOString(),
-    agent_id: b.daemon.peerHandle,
+    agent_id: b.daemon.peerHandle!,
     payload: { topic: 'b-topic', content: 'B knows things' },
   })
 
-  // Both daemons should converge — wait for the entry to land in A's view.
-  // 2 indexers means quorum of 2 — both must ack before signedLength advances.
   await waitForKnowledge(a.daemon, 'b-topic', { timeout: 30000 })
 
-  const stream = a.daemon._base.view.createReadStream({
+  const stream = a.daemon._internalView.createReadStream({
     gte: 'knowledge/',
     lt: 'knowledge0',
   })
-  const entries = []
+  const entries: any[] = []
   for await (const { value } of stream) entries.push(value)
   t.is(entries.length, 1)
   t.is(entries[0].payload.topic, 'b-topic')
 })
 
-async function waitForKnowledge(daemon, topic, { timeout = 10000 } = {}) {
+async function waitForKnowledge(
+  daemon: Daemon,
+  topic: string,
+  { timeout = 10000 }: { timeout?: number } = {},
+): Promise<void> {
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
     await daemon.update()
-    const stream = daemon._base.view.createReadStream({
+    const stream = daemon._internalView.createReadStream({
       gte: 'knowledge/',
       lt: 'knowledge0',
     })

@@ -1,6 +1,6 @@
-const test = require('brittle')
-const fc = require('fast-check')
-const entryId = require('../../src/entry-id')
+import test from 'brittle'
+import fc from 'fast-check'
+import * as entryId from '../../src/entry-id'
 
 test('encode: standard case', (t) => {
   const id = entryId.encode({ writerKey: 'a7f2bcde', seq: 412 })

@@ -1,6 +1,6 @@
-const { baseEntry } = require('./common')
+import { baseEntry } from './common'
 
-module.exports = {
+const knowledgeSchema = {
   ...baseEntry,
   properties: {
     ...baseEntry.properties,
@@ -18,3 +18,5 @@ module.exports = {
     },
   },
 }
+
+export default knowledgeSchema
