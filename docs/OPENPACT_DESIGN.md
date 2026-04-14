@@ -358,7 +358,7 @@ A lightweight Node.js SDK (`@openpact/sdk`) is planned for Phase 2 to simplify i
 
 ### 7.1 Setup flow
 
-1. Install the daemon: `npm i -g openpact`
+1. Install the daemon: `npm i -g @openpact/cli` (provides the `openpact` command)
 2. Create a new pact: `openpact init` (generates keypair, creates local storage)
 3. Get a share key: `openpact invite` (prints a join key)
 4. Connect your agent to `localhost:7331` (via skill, SDK, or raw HTTP)

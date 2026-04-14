@@ -1,0 +1,29 @@
+{
+  "name": "openpact",
+  "version": "0.0.1",
+  "description": "Placeholder for the OpenPact CLI. Install @openpact/cli for the pre-release daemon CLI.",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openpact-dev/openpact.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "openpact",
+    "p2p",
+    "agents",
+    "hypercore",
+    "autobase",
+    "shared-memory"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "openpact": "bin.js"
+  },
+  "files": [
+    "bin.js",
+    "README.md"
+  ]
+}
