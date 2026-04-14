@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import { Daemon, config as daemonConfig, dataDir as daemonDataDir } from '@openpact/daemon'
-import pc from 'picocolors'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
+import { c, glyph } from '../lib/theme'
 
 export interface JoinOpts {
   force?: boolean
@@ -20,7 +20,7 @@ export async function joinCmd(
   const cfg = await daemonConfig.loadConfig(dir).catch(() => daemonConfig.defaults())
   if (cfg.pactKey && !opts.force) {
     throw new Error(
-      `pact already initialised at ${dir} (key ${cfg.pactKey.slice(0, 12)}…). Pass --force to overwrite.`,
+      `pact already sealed at ${dir} (key ${cfg.pactKey.slice(0, 12)}…). Pass --force to break it.`,
     )
   }
 
@@ -30,14 +30,16 @@ export async function joinCmd(
 
   const daemon = await Daemon.join({ dataDir: dir, joinKey })
   try {
-    console.log(pc.green('Pact joined.'))
-    console.log(`  ${pc.bold('Data dir:')}   ${dir}`)
-    console.log(`  ${pc.bold('Pact key:')}   ${daemon.pactKey}`)
-    console.log(`  ${pc.bold('Your handle:')} ${daemon.peerHandle}`)
+    console.log()
+    console.log(`  ${c.brand(glyph.seal)} ${c.brandBold('You have entered the pact.')}`)
+    console.log()
+    console.log(`  ${c.brandBold('Data dir')}    ${c.ash(dir)}`)
+    console.log(`  ${c.brandBold('Pact key')}    ${c.bone(daemon.pactKey ?? '')}`)
+    console.log(`  ${c.brandBold('Your mark')}   ${daemon.peerHandle}`)
     console.log()
     console.log(
-      pc.dim(
-        'Next: openpact start (the creator must promote you with openpact-cli addWriter eventually)',
+      c.ash(
+        `  next ${glyph.arrow} openpact start    (the creator must bind you as a writer to write entries)`,
       ),
     )
   } finally {

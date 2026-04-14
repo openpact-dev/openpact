@@ -15,7 +15,7 @@ test('invite prints pact key; join writes config', async (t) => {
 
   const join = await runWithDir(b, ['join', key])
   t.is(join.exitCode, 0)
-  t.ok(join.stdout.includes('Pact joined'))
+  t.ok(join.stdout.includes('entered the pact'))
 
   const cfg = JSON.parse(await fs.readFile(path.join(b, 'config.json'), 'utf8'))
   t.is(cfg.pactKey, key)

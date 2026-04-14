@@ -1,8 +1,8 @@
 import { Daemon, createApi, bind } from '@openpact/daemon'
-import pc from 'picocolors'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { writePidFile, removePidFile } from '../lib/pid'
 import { resolveBootstrap } from '../lib/bootstrap'
+import { c, glyph, banner } from '../lib/theme'
 
 export interface StartForegroundOpts {
   port?: string | number
@@ -33,21 +33,24 @@ export async function startForegroundCmd(
 
   await writePidFile(dir, process.pid)
 
-  console.log(pc.green(`openpact daemon listening on ${url}`))
-  console.log(pc.dim(`  pact: ${daemon.pactKey}`))
-  console.log(pc.dim(`  you:  ${daemon.peerHandle}`))
+  process.stdout.write(banner())
+  console.log(
+    `  ${c.brand(glyph.flame)} ${c.brandBold('The daemon stirs.')}  listening on ${c.bone(url)}`,
+  )
+  console.log(`  ${c.ash(`pact ${daemon.pactKey?.slice(0, 12)}…   you ${daemon.peerHandle}`)}`)
+  console.log()
 
   let shuttingDown = false
   const shutdown = async (signal: string) => {
     if (shuttingDown) return
     shuttingDown = true
-    console.error(pc.dim(`\nreceived ${signal}, shutting down…`))
+    console.error(c.ash(`\nreceived ${signal}, banishing…`))
     try {
       await app.close()
       await daemon.stop()
       await removePidFile(dir)
     } catch (err) {
-      console.error(pc.red(`error during shutdown: ${(err as Error).message}`))
+      console.error(c.brand(`✗ error during shutdown: ${(err as Error).message}`))
     }
     process.exit(0)
   }

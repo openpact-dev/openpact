@@ -1,7 +1,7 @@
-import pc from 'picocolors'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { formatStatus } from '../lib/format'
+import { c } from '../lib/theme'
 
 export interface StatusOpts {
   port?: string | number
@@ -18,9 +18,9 @@ export async function statusCmd(
     console.log(formatStatus(status))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(pc.red('openpact daemon is not running'))
-      console.error(pc.dim(`  data dir: ${dir}`))
-      console.error(pc.dim(`  start it: openpact start --daemon`))
+      console.error(c.brand('✗ openpact daemon is not running'))
+      console.error(c.ash(`  data dir   ${dir}`))
+      console.error(c.ash(`  summon it  openpact start --daemon`))
       process.exit(1)
     }
     throw err

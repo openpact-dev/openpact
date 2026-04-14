@@ -1,5 +1,5 @@
-import pc from 'picocolors'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
+import { c } from '../lib/theme'
 
 export interface RemoveWriterOpts {
   port?: string | number
@@ -12,10 +12,12 @@ export async function removeWriterCmd(key: string, opts: RemoveWriterOpts): Prom
   const api = new ApiClient({ port: Number(opts.port ?? 7331) })
   try {
     await api.removeWriter(key)
-    console.log(pc.green(`removed writer ${key.slice(0, 12)}…`))
+    console.log(
+      `${c.brand('✗')} ${c.brandBold('The bond has been severed.')}  ${c.ash(`(${key.slice(0, 12)}…)`)}`,
+    )
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(pc.red('openpact daemon is not running'))
+      console.error(c.brand('✗ openpact daemon is not running'))
       process.exit(1)
     }
     throw err

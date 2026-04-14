@@ -1,10 +1,11 @@
 import { spawn } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
-import pc from 'picocolors'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
-import { pidFileLooksAlive, writePidFile, pidPath } from '../lib/pid'
+import { pidFileLooksAlive, writePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
+import { c, glyph } from '../lib/theme'
+import { spinner } from '../lib/spinner'
 
 export interface StartOpts {
   daemon?: boolean
@@ -20,7 +21,7 @@ export async function startCmd(
 
   if (await pidFileLooksAlive(dir)) {
     throw new Error(
-      `a daemon already appears to be running (PID file at ${pidPath(dir)}). Run \`openpact stop\` first.`,
+      `a daemon already appears to be bound (PID file at ${pidPath(dir)}). Run \`openpact stop\` first.`,
     )
   }
 
@@ -55,13 +56,41 @@ export async function startCmd(
     throw new Error('failed to spawn detached daemon')
   }
 
-  // Give the child a brief moment to either crash or write its own pid.
-  // We write our best-guess pid immediately so subsequent commands see it
+  // Write our best-guess pid immediately so subsequent commands see it
   // even if the child hasn't run startForegroundCmd yet.
   await writePidFile(dir, child.pid)
 
-  console.log(pc.green(`openpact daemon started`))
-  console.log(`  ${pc.bold('PID:')}      ${child.pid}`)
-  console.log(`  ${pc.bold('Data dir:')} ${dir}`)
-  console.log(`  ${pc.bold('Logs:')}     ${logPath}`)
+  // Wait for the API to actually answer ping — confirms the daemon bound
+  // its port. If it dies before binding, surface that immediately rather
+  // than leaving the user with a stale "started" message.
+  const port = Number(opts.port ?? 7331)
+  const sp = spinner(`summoning the daemon on :${port}…`).start()
+  const ready = await waitForReady(child.pid, port)
+  if (!ready) {
+    sp.fail(c.brand(`the daemon failed to bind. see logs at ${logPath}`))
+    process.exit(1)
+  }
+  sp.succeed(c.brandBold('The daemon stirs.'))
+
+  console.log(`  ${c.brandBold('Listening')}  ${c.bone(`http://127.0.0.1:${port}`)}`)
+  console.log(`  ${c.brandBold('PID')}        ${child.pid}`)
+  console.log(`  ${c.brandBold('Data dir')}   ${c.ash(dir)}`)
+  console.log(`  ${c.brandBold('Logs')}       ${c.ash(logPath)}`)
+  console.log()
+  console.log(c.ash(`  next ${glyph.arrow} openpact status`))
+}
+
+async function waitForReady(pid: number, port: number, timeoutMs = 10_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!isAlive(pid)) return false
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/v1/ping`)
+      if (res.ok) return true
+    } catch {
+      /* keep polling */
+    }
+    await new Promise((r) => setTimeout(r, 150))
+  }
+  return false
 }

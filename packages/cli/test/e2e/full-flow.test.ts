@@ -113,7 +113,7 @@ test(
       String(portA),
     ])
     t.is(promote.exitCode, 0, 'add-writer succeeded')
-    t.ok(promote.stdout.includes('promoted'))
+    t.ok(promote.stdout.includes('pact-bearer is bound') || promote.stdout.includes('bound'))
 
     // Wait for B's autobase to recognise itself as writable, then have B post
     // a knowledge entry via its own REST API.

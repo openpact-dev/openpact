@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import pc from 'picocolors'
+import { c } from './lib/theme'
 import { initCmd } from './commands/init'
 import { joinCmd } from './commands/join'
 import { inviteCmd } from './commands/invite'
@@ -15,7 +15,7 @@ import { removeWriterCmd } from './commands/remove-writer'
 export function buildProgram(): Command {
   const program = new Command()
     .name('openpact')
-    .description('P2P shared memory for software agents')
+    .description('🜏 OpenPact — a pact among daemons. P2P shared memory for software agents.')
     .version('0.0.0')
     .option('--data-dir <path>', 'override data directory (default: ~/.openpact)')
     .enablePositionalOptions()
@@ -23,21 +23,24 @@ export function buildProgram(): Command {
 
   program
     .command('init')
-    .description('create a new pact in the data directory')
-    .option('--force', 'overwrite an existing pact')
+    .description('seal a new pact')
+    .option('--force', 'break the existing pact and seal a fresh one')
     .action(initCmd)
 
   program
     .command('join <key>')
-    .description('join an existing pact using its hex key')
-    .option('--force', 'overwrite an existing pact')
+    .description('enter an existing pact using its hex key')
+    .option('--force', 'break the existing pact and join the new one')
     .action(joinCmd)
 
-  program.command('invite').description('print the join key for the local pact').action(inviteCmd)
+  program
+    .command('invite')
+    .description('print the pact key (share to invite a peer)')
+    .action(inviteCmd)
 
   program
     .command('start')
-    .description('start the daemon (REST API on :7331)')
+    .description('summon the daemon (REST API on :7331)')
     .option('--daemon', 'detach and run in the background')
     .option('--port <n>', 'REST API port', '7331')
     .option(
@@ -54,38 +57,38 @@ export function buildProgram(): Command {
 
   program
     .command('stop')
-    .description('stop a running daemon')
+    .description('banish the daemon')
     .option('--timeout <ms>', 'graceful shutdown timeout', '5000')
     .action(stopCmd)
 
   program
     .command('status')
-    .description('show daemon status')
+    .description('show pact status')
     .option('--port <n>', '', '7331')
     .action(statusCmd)
 
   program
     .command('peers')
-    .description('list connected peers')
+    .description('list peers bound to the pact')
     .option('--port <n>', '', '7331')
     .action(peersCmd)
 
   program
     .command('add-writer <key>')
-    .description('promote a peer (by hex public key) to writer or indexer')
-    .option('--indexer', 'promote as indexer (participates in consensus)')
+    .description('bind a peer (by hex public key) as a writer or indexer')
+    .option('--indexer', 'bind as indexer (participates in consensus)')
     .option('--port <n>', '', '7331')
     .action(addWriterCmd)
 
   program
     .command('remove-writer <key>')
-    .description('remove a peer from the writer set')
+    .description('sever a peer from the writer set')
     .option('--port <n>', '', '7331')
     .action(removeWriterCmd)
 
   program
     .command('log')
-    .description('print recent shared-memory entries')
+    .description('print recent entries from the pact')
     .option('--type <t>', 'filter by entry type (knowledge|task|skill|message)')
     .option('--limit <n>', 'maximum entries to print', '20')
     .option('--port <n>', '', '7331')
@@ -102,7 +105,7 @@ export async function run(argv = process.argv): Promise<void> {
 // Direct invocation guard: only run when executed (not when imported in tests).
 if (require.main === module || (process.argv[1] && process.argv[1].endsWith('openpact.js'))) {
   run().catch((err) => {
-    console.error(pc.red(`error: ${(err as Error).message}`))
+    console.error(c.brand(`✗ ${(err as Error).message}`))
     process.exit(1)
   })
 }

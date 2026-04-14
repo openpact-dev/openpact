@@ -1,5 +1,5 @@
-import pc from 'picocolors'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
+import { c, glyph } from '../lib/theme'
 
 export interface AddWriterOpts {
   indexer?: boolean
@@ -13,11 +13,15 @@ export async function addWriterCmd(key: string, opts: AddWriterOpts): Promise<vo
   const api = new ApiClient({ port: Number(opts.port ?? 7331) })
   try {
     await api.addWriter(key, !!opts.indexer)
-    console.log(pc.green(`promoted ${key.slice(0, 12)}… to ${opts.indexer ? 'indexer' : 'writer'}`))
-    console.log(pc.dim('  the change is broadcast to peers as an admin entry'))
+    const role = opts.indexer ? 'indexer' : 'writer'
+    console.log(
+      `${c.brand(glyph.bind)} ${c.brandBold(`A new pact-bearer is bound.`)}  ${c.ash(`(${role})`)}`,
+    )
+    console.log(`  ${c.ash(`key ${key.slice(0, 12)}…`)}`)
+    console.log(c.ash(`  the binding is broadcast to all peers as an admin entry`))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(pc.red('openpact daemon is not running'))
+      console.error(c.brand('✗ openpact daemon is not running'))
       process.exit(1)
     }
     throw err

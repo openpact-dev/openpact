@@ -1,6 +1,6 @@
-import pc from 'picocolors'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { formatLogLine, type LogEntry } from '../lib/format'
+import { c } from '../lib/theme'
 
 const TYPES = ['knowledge', 'task', 'skill', 'message'] as const
 type EntryType = (typeof TYPES)[number]
@@ -34,7 +34,7 @@ export async function logCmd(opts: LogOpts): Promise<void> {
     collected.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
     const tail = collected.slice(-limit)
     if (tail.length === 0) {
-      console.log(pc.dim('(no entries)'))
+      console.log(c.ash('(the pact is silent)'))
       return
     }
     for (const entry of tail) {
@@ -42,7 +42,7 @@ export async function logCmd(opts: LogOpts): Promise<void> {
     }
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(pc.red('openpact daemon is not running'))
+      console.error(c.brand('✗ openpact daemon is not running'))
       process.exit(1)
     }
     throw err

@@ -21,14 +21,15 @@ test('formatStatus: includes all fields', (t) => {
       synced: true,
     }),
   )
-  t.ok(out.includes('Pact:'))
+  t.ok(out.includes('Pact'))
   t.ok(out.includes('deadbeefcafe'))
   t.ok(out.includes('anon-krait-7f2d'))
   t.ok(out.includes('creator'))
-  t.ok(out.includes('Peers:'))
-  t.ok(out.includes('2 online'))
-  t.ok(out.includes('Entries:'))
+  t.ok(out.includes('Peers'))
+  t.ok(out.includes('2'))
+  t.ok(out.includes('Entries'))
   t.ok(out.includes('14'))
+  t.ok(out.includes('OpenPact'), 'wordmark in header')
 })
 
 test('formatStatus: handles uninitialised state', (t) => {
@@ -45,11 +46,11 @@ test('formatStatus: handles uninitialised state', (t) => {
       synced: false,
     }),
   )
-  t.ok(out.includes('not initialised'))
+  t.ok(out.includes('—'), 'em-dash placeholder for missing values')
 })
 
 test('formatPeers: empty list', (t) => {
-  t.ok(strip(formatPeers([])).includes('no peers connected'))
+  t.ok(strip(formatPeers([])).includes('no peers bound'))
 })
 
 test('formatPeers: tabular rows', (t) => {
@@ -75,7 +76,8 @@ test('formatLogLine: knowledge', (t) => {
       id: 'aaaa-1',
     }),
   )
-  t.ok(out.includes('[knowledge]'))
+  t.ok(out.includes('▲'), 'knowledge gets the brand triangle')
+  t.ok(out.includes('knowledge'))
   t.ok(out.includes('topic=sales'))
   t.ok(out.includes('Tuesdays convert'))
 })
@@ -90,9 +92,9 @@ test('formatLogLine: task', (t) => {
       id: 'aaaa-2',
     }),
   )
-  t.ok(out.includes('[task]'))
+  t.ok(out.includes('task'))
   t.ok(out.includes('Build it'))
-  t.ok(out.includes('[claimed by anon-cobra-3e91]'))
+  t.ok(out.includes('claimed by anon-cobra-3e91'))
 })
 
 test('formatLogLine: skill', (t) => {
@@ -135,5 +137,6 @@ test('formatLogLine: long content truncated', (t) => {
 })
 
 test('formatError', (t) => {
-  t.ok(strip(formatError('boom')).includes('error: boom'))
+  t.ok(strip(formatError('boom')).includes('boom'))
+  t.ok(strip(formatError('boom')).includes('✗'))
 })

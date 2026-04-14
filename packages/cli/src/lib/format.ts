@@ -1,4 +1,5 @@
 import pc from 'picocolors'
+import { c, glyph, mark } from './theme'
 
 export interface StatusPayload {
   pact_id: string | null
@@ -26,51 +27,60 @@ export interface LogEntry {
   id?: string
 }
 
-const TYPE_COLOURS: Record<string, (s: string) => string> = {
-  knowledge: pc.cyan,
-  task: pc.yellow,
-  skill: pc.magenta,
-  message: pc.green,
+// Each entry type gets a coloured glyph. Knowledge is the brand red; the
+// rest use complementary colours so the log scans visually.
+const TYPE_MARKS: Record<string, { glyph: string; colour: (s: string) => string }> = {
+  knowledge: { glyph: glyph.point, colour: c.brand },
+  task: { glyph: '◆', colour: c.ember },
+  skill: { glyph: '✶', colour: pc.magenta },
+  message: { glyph: '○', colour: pc.cyan },
 }
 
 export function formatStatus(s: StatusPayload): string {
+  const yes = c.brand('●')
+  const no = c.ash('○')
+  const unknown = c.ash('—')
+  const synced = s.synced ? c.brand('synced') : c.ember('not synced')
+
   const lines = [
-    `${pc.bold('Pact:')}    ${s.pact_id ? short(s.pact_id) : pc.dim('(not initialised)')}`,
-    `${pc.bold('You:')}     ${s.peer_handle ?? pc.dim('(unknown)')}  (role: ${s.role ?? pc.dim('?')})`,
-    `${pc.bold('Peers:')}   ${s.peers} online`,
-    `${pc.bold('Entries:')} ${s.entries}`,
-    `${pc.bold('Writer:')}  ${s.is_writer ? pc.green('yes') : pc.dim('no')}    ${pc.bold('Indexer:')} ${s.is_indexer ? pc.green('yes') : pc.dim('no')}`,
+    `  ${mark()}`,
+    '',
+    `  ${c.brandBold('Pact')}     ${s.pact_id ? c.bone(short(s.pact_id, 16)) : unknown}`,
+    `  ${c.brandBold('You')}      ${s.peer_handle ?? unknown}  ${c.ash(`(${s.role ?? '?'})`)}`,
+    `  ${c.brandBold('Peers')}    ${s.peers}`,
+    `  ${c.brandBold('Entries')}  ${s.entries}  ${c.ash(synced)}`,
+    `  ${c.brandBold('Writer')}   ${s.is_writer ? yes : no}    ${c.brandBold('Indexer')} ${s.is_indexer ? yes : no}`,
   ]
   return lines.join('\n')
 }
 
 export function formatPeers(peers: PeerPayload[]): string {
-  if (peers.length === 0) return pc.dim('(no peers connected)')
+  if (peers.length === 0) return c.ash('(no peers bound to this pact)')
   const header = `${pad('HANDLE', 24)} ${pad('REMOTE KEY', 16)} STATUS`
   const rows = peers.map(
     (p) =>
-      `${pad(p.id, 24)} ${pad(short(p.remote_key), 16)} ${p.online ? pc.green('online') : pc.dim('offline')}`,
+      `${pad(p.id, 24)} ${pad(short(p.remote_key), 16)} ${p.online ? c.brand('●') + ' online' : c.ash('○ offline')}`,
   )
-  return [pc.bold(header), ...rows].join('\n')
+  return [c.brandBold(header), ...rows].join('\n')
 }
 
 export function formatLogLine(entry: LogEntry): string {
-  const colour = TYPE_COLOURS[entry.type] ?? ((s: string) => s)
+  const m = TYPE_MARKS[entry.type] ?? { glyph: glyph.bullet, colour: c.ash }
   const summary = summarise(entry)
-  return `${pc.dim(entry.timestamp)}  ${colour(`[${entry.type}]`)} ${entry.agent_id}  ${summary}`
+  return `${c.ash(entry.timestamp)}  ${m.colour(m.glyph)} ${m.colour(pad(entry.type, 9))} ${entry.agent_id}  ${summary}`
 }
 
 function summarise(entry: LogEntry): string {
   const p = entry.payload as Record<string, unknown>
   switch (entry.type) {
     case 'knowledge':
-      return `topic=${p.topic} — ${truncate(String(p.content ?? ''), 80)}`
+      return `${c.ash('topic=')}${p.topic} ${c.ash('—')} ${truncate(String(p.content ?? ''), 80)}`
     case 'task':
-      return `${p.title} [${p.status}${p.claimed_by ? ` by ${p.claimed_by}` : ''}]`
+      return `${p.title} ${c.ash(`[${p.status}${p.claimed_by ? ` by ${p.claimed_by}` : ''}]`)}`
     case 'skill':
-      return `${p.name}@${p.version} (${p.format})`
+      return `${p.name}${c.ash('@')}${p.version} ${c.ash(`(${p.format})`)}`
     case 'message':
-      return `to ${p.to}: ${truncate(String(p.content ?? ''), 80)}`
+      return `${c.ash('to')} ${p.to}: ${truncate(String(p.content ?? ''), 80)}`
     default:
       return JSON.stringify(p)
   }
@@ -89,5 +99,5 @@ function truncate(s: string, n: number): string {
 }
 
 export function formatError(message: string): string {
-  return pc.red(`error: ${message}`)
+  return c.brand(`✗ ${message}`)
 }

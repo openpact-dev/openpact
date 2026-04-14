@@ -7,8 +7,8 @@ test('openpact init creates ~/.openpact/ with config', async (t) => {
   const home = await tmpHome(t)
   const res = await runWithDir(home, ['init'])
   t.is(res.exitCode, 0)
-  t.ok(res.stdout.includes('Pact created'))
-  t.ok(res.stdout.includes('Pact key:'))
+  t.ok(res.stdout.includes('pact has been sealed'))
+  t.ok(res.stdout.includes('Pact key'))
 
   const cfg = JSON.parse(await fs.readFile(path.join(home, 'config.json'), 'utf8'))
   t.ok(typeof cfg.pactKey === 'string')
@@ -20,7 +20,7 @@ test('openpact init: refuses second init without --force', async (t) => {
   await runWithDir(home, ['init'])
   const res = await runWithDir(home, ['init'])
   t.not(res.exitCode, 0)
-  t.ok(res.stderr.includes('already initialised'))
+  t.ok(res.stderr.includes('already sealed'))
 })
 
 test('openpact init: --force overwrites', async (t) => {

@@ -30,7 +30,7 @@ test('initCmd creates a pact', async (t) => {
 test('initCmd: refuses second init without --force', async (t) => {
   const dir = await tmpHome(t)
   await initCmd({}, ctx(dir))
-  await t.exception(() => initCmd({}, ctx(dir)), /already initialised/)
+  await t.exception(() => initCmd({}, ctx(dir)), /already sealed/)
 })
 
 test('initCmd: --force overwrites', async (t) => {
@@ -65,7 +65,7 @@ test('joinCmd: refuses second join without --force', async (t) => {
   await initCmd({}, ctx(a))
   const aKey = (await daemonConfig.loadConfig(a)).pactKey!
   await joinCmd(aKey, {}, ctx(b))
-  await t.exception(() => joinCmd(aKey, {}, ctx(b)), /already initialised/)
+  await t.exception(() => joinCmd(aKey, {}, ctx(b)), /already sealed/)
 })
 
 test('inviteCmd: errors when no pact', async (t) => {
