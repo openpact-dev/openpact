@@ -371,7 +371,7 @@ This is the heart of the project. Get this right before touching anything else.
 6. **`fastify@^5`** (current latest) — ESM/CJS hybrid, no issues with our
    tsx + commonjs setup.
 
-### 1.4 CLI ✅ (commit pending)
+### 1.4 CLI ✅ (commit `9b66c9d`)
 
 - [x] Add `commander` ^14 + `picocolors` for the CLI
 - [x] Implement commands:
