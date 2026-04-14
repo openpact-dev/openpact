@@ -9,7 +9,7 @@
 <h1 align="center">OpenPact</h1>
 
 <p align="center">
-  <em>P2P shared memory for software agents — a shared brain for your agents that no one owns.</em>
+  <em>P2P shared memory for software agents.</em>
 </p>
 
 <p align="center">
@@ -22,34 +22,33 @@
 
 ---
 
-OpenPact solves two problems for software agents: **shared memory** (agents on
-different machines can access the same knowledge, without a central server)
-and **peer coordination** (agents can divide work, share skills, and build on
-each other's discoveries, without anyone directing them).
+OpenPact lets software agents share memory and coordinate work without a central server.
 
-It's a lightweight peer-to-peer daemon that any HTTP-speaking software —
-OpenClaw, Claude Code, LangChain, CrewAI, shell scripts — can plug into.
-No central server. Eventually consistent. Tamper-proof. Built on the
-[Holepunch / Pear](https://pears.com) stack: Hypercore, Autobase, Hyperswarm,
-HyperDHT.
+It solves two problems:
+
+1. **Shared memory.** Agents on different machines can read and write the same knowledge.
+2. **Peer coordination.** Agents can divide work, share skills, and build on each other's discoveries.
+
+It runs as a small daemon on each agent's machine. Any program that can make HTTP calls can use it. That includes OpenClaw, Claude Code, LangChain, CrewAI, and plain shell scripts.
+
+Under the hood it uses the [Holepunch / Pear](https://pears.com) stack: Hypercore, Autobase, Hyperswarm, HyperDHT. Data replicates peer to peer. There is no server. The view is eventually consistent. Each agent's writes are signed and tamper-proof.
 
 ## 🜏 Status
 
-**Phase 1 complete (alpha).** Two daemons can pair via the CLI, promote each
-other, and replicate entries — proven end-to-end in `full-flow.test.ts`.
-v0.1.0 lands when Phases 2–4 ship — see
-[`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
+Phase 1 is done. Two daemons can pair through the CLI, promote each other, and replicate entries. The full flow is covered by an end-to-end test.
+
+Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
 
 | Phase | Status | Detail |
 | ----- | ------ | ------ |
-| 1.1 monorepo + tooling     | 🔥 shipped | TypeScript, brittle, c8, ESLint, GitHub Actions |
-| 1.2 daemon core            | 🔥 shipped | Corestore + Autobase + Hyperswarm; `apply` 100/90 coverage |
-| 1.3 REST API on `:7331`    | 🔥 shipped | Fastify; all v1 routes incl. task state machine |
-| 1.4 CLI                    | 🔥 shipped | `openpact init / start / log / …`; PID file management |
-| 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag + `add-writer / remove-writer` commands; full pair-and-replicate via the CLI |
+| 1.1 monorepo and tooling   | 🔥 shipped | TypeScript, brittle, c8, ESLint, GitHub Actions |
+| 1.2 daemon core            | 🔥 shipped | Corestore, Autobase, Hyperswarm. apply has 100/90 coverage. |
+| 1.3 REST API on `:7331`    | 🔥 shipped | Fastify. All v1 routes, including the task state machine. |
+| 1.4 CLI                    | 🔥 shipped | `openpact init / start / log` and friends. PID file management. |
+| 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag plus `add-writer` and `remove-writer` commands. Full pair-and-replicate via the CLI. |
 | 2.x agent integrations     | 🩸 next    | `@openpact/sdk`, OpenClaw skill, framework examples |
 | 3.x desktop app            | 🕯 later   | Pear desktop, all 6 screens |
-| 4.x docs + launch          | 🕯 later   | seed-node Docker image, security review, demo video |
+| 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 
 | Resource    | Location                                                                     |
 | ----------- | ---------------------------------------------------------------------------- |
@@ -61,17 +60,17 @@ v0.1.0 lands when Phases 2–4 ship — see
 
 ## 🔥 Quickstart
 
-Requires Node.js ≥ 20. The CLI isn't on npm yet — run from a clone for now:
+You need Node.js 20 or newer. The CLI is not on npm yet. For now, run it from a clone:
 
 ```bash
 git clone https://github.com/openpact-dev/openpact.git
 cd openpact
 npm install
 
-# Set up a shorter alias for readability.
+# Shorter alias for the rest of the commands.
 alias openpact="node $(pwd)/packages/cli/bin/openpact.js"
 
-# Seal a pact, summon the daemon in the background.
+# Seal a pact and summon the daemon in the background.
 openpact --data-dir /tmp/op init
 openpact --data-dir /tmp/op start --daemon
 
@@ -86,8 +85,7 @@ openpact --data-dir /tmp/op stop
 
 ### ⚜ Two daemons sharing a pact
 
-You can pair two daemons on the same machine (or across machines on the same
-network) and watch a knowledge entry on one show up on the other:
+You can pair two daemons on the same machine, or two different machines on the same network, and watch a knowledge entry on one show up on the other.
 
 ```bash
 # Terminal A: seal the pact and summon.
@@ -99,56 +97,50 @@ KEY=$(openpact --data-dir /tmp/op-a invite)
 openpact --data-dir /tmp/op-b join "$KEY"
 openpact --data-dir /tmp/op-b start --daemon --port 7332
 
-# Wait a moment for them to find each other on the DHT, then bind B as
-# a writer (B's public key is in `openpact status` output).
+# Wait a moment for the daemons to find each other on the DHT, then
+# bind B as a writer. B's public key is in the status output.
 B_KEY=$(curl -s localhost:7332/v1/status | jq -r .public_key)
 openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer
 
-# B can now write; A sees it.
+# B can now write. A sees it.
 curl -X POST localhost:7332/v1/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"shared","content":"hello from B"}'
 openpact --data-dir /tmp/op-a log
 ```
 
-For testing on a private network without hitting the public DHT, pass
-`--bootstrap host:port,host:port` to `start` (or set `OPENPACT_BOOTSTRAP`
-in the env).
+To run on a private network without using the public DHT, pass `--bootstrap host:port,host:port` to `start`. You can also set `OPENPACT_BOOTSTRAP` in the environment.
 
-`@openpact/cli` lands on npm in Phase 4. Until then, the `bin/openpact.js`
-shim runs the TypeScript entry directly via `tsx`.
+`@openpact/cli` will be on npm in phase 4. Until then, the `bin/openpact.js` shim runs the TypeScript entry through `tsx`.
 
 ## 📜 Documentation
 
-- [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md) — functional design (what / why)
-- [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md) — phased build plan (how)
-- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md) — v0.2+ vision (MCP server, federated pacts, public commons)
-- [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md) — tone, logo usage, palette
+- [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md). What it does and why.
+- [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md). The phased plan.
+- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md). Vision for v0.2 and beyond. MCP server, federated pacts, public commons.
+- [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md). Tone, logo, palette.
 
 ## 🛠 Working on this repo
 
 ```bash
 npm install            # install dev tooling
-npm test               # unit + integration tests (brittle)
+npm test               # unit and integration tests (brittle)
 npm run test:e2e       # e2e CLI tests via execa subprocesses
 npm run test:all       # both
 npm run test:coverage  # combined coverage with c8 gates enforced
 npm run typecheck      # tsc --noEmit
-npm run lint           # eslint + prettier --check
+npm run lint           # eslint and prettier --check
 npm run format         # prettier --write
 ```
 
-TypeScript throughout. No build step in dev — tests run via `tsx`. See
-[`CLAUDE.md`](CLAUDE.md) for fuller conventions.
+Everything is TypeScript. There is no build step in development. Tests run through `tsx`. See [`CLAUDE.md`](CLAUDE.md) for fuller conventions.
 
 ## 👹 Contributing
 
-Contributing guide and code of conduct land alongside the v0.1.0 launch.
-Until then, open an issue to discuss any non-trivial change. The pact
-welcomes new bearers.
+A contributing guide and code of conduct land alongside the v0.1.0 launch. Until then, open an issue to discuss any non-trivial change.
 
 ---
 
 <p align="center">
-  <sub>🜏 a pact among daemons · MIT · made for agents</sub>
+  <sub>🜏 a pact among daemons. MIT licence.</sub>
 </p>

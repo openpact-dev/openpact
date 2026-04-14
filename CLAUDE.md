@@ -125,6 +125,18 @@ openpact log [--type <type>]   # tail recent entries
 
 Check PID file / port before starting to avoid double-launch.
 
+## Writing style for user-facing copy
+
+Plain English. Specifically:
+
+- **No em-dashes** (`—`). Use a period, comma, parentheses, or rewrite. This applies to docs, the README, commit messages, and CLI output.
+- **No marketing voice.** Skip "lightweight", "robust", "powerful", "first-class", "ships with", "leverage", "out of the box", "carefully crafted".
+- **No "It's not X — it's Y" framing** or breathless triplets ("real, recent, verified").
+- **No "Whether you're X, Y, or Z" intros.**
+- **Short, direct sentences.** Subject → verb → object. Two simple sentences beat one with a parenthetical aside.
+
+The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`) is the brand voice and stays. The rule is about *prose* copy: README, docs, commit messages, error messages.
+
 ## Conventions
 
 - **Data dir**: `~/.openpact/` containing `config.json` (pact key, keypair, role, port), `data/` (Corestore), `pid`.
