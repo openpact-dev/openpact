@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { c } from './lib/theme'
+import { c, banner } from './lib/theme'
 import { initCmd } from './commands/init'
 import { joinCmd } from './commands/join'
 import { inviteCmd } from './commands/invite'
@@ -20,6 +20,10 @@ export function buildProgram(): Command {
     .option('--data-dir <path>', 'override data directory (default: ~/.openpact)')
     .enablePositionalOptions()
     .showHelpAfterError()
+
+  // Banner on top-level help only — not on subcommand help (would be noisy
+  // on every `openpact <verb> --help`).
+  program.addHelpText('before', banner())
 
   program
     .command('init')
