@@ -297,6 +297,52 @@ Sigils + type verbs for the activity feed:
 
 ---
 
+## Word lists
+
+`openpact init` and `openpact join` suggest themed defaults so the
+prompt never feels like filler. Every value is overridable via flag
+or prompt input; the suggestions just make "press enter" worth it.
+They live in `packages/cli/src/lib/themes.ts`.
+
+### Pact name
+
+`The {adjective} {noun}`. 30 adjectives × 20 nouns = 600 combinations,
+so collisions are rare even without deduping.
+
+**Adjectives** (forge / candle / vellum register):
+Obsidian, Ember, Iron, Crimson, Silent, Ashen, Brass, Forge, Gilded,
+Vesper, Hollow, Sable, Velvet, Molten, Lacquer, Midnight, Whispering,
+Tallow, Smoldering, Kindled, Smoke, Cinder, Ferrous, Parched, Bone,
+Thorn, Flint, Raven, Briar, Umber.
+
+**Nouns** (binding-ritual register):
+Accord, Compact, Oath, Covenant, Rite, Pact, Circle, Vow, Knot, Seal,
+Binding, Thread, Mark, Ledger, Chorus, Cipher, Register, Sigil, Troth,
+Concord.
+
+### Pact purpose
+
+Short one-liners that sound like a sentence from a codex:
+"a pact among daemons", "a circle of signals", "a quiet ledger",
+"a memory shared in the dark", "a binding between agents", "a codex
+kept in common", "a forge for shared rites", "a chorus of daemons",
+"a thread between peers", "a sealed exchange".
+
+### Display names
+
+Single evocative words — daemon-adjacent, mineral, bestiary: Cinnabar,
+Asmodeus, Wyrm, Thorn, Ember, Raven, Marrow, Briar, Cinder, Corvid,
+Vesper, Moth, Orpheus, Quill, Sable, Salt, Shadow, Tallow, Velvet,
+Wren.
+
+These are distinct from the deterministic peer handle (see
+[`@openpact/daemon/peer-handle.ts`](../packages/daemon/src/peer-handle.ts)):
+display names are advisory display labels, peer handles are the
+cryptographically-derived canonical ID that remains verifiable on every
+entry regardless of what someone types.
+
+---
+
 ## Social and profiles
 
 - **GitHub avatar:** openpact-logo-512.png

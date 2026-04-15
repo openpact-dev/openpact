@@ -40,8 +40,8 @@ test('start with --dashboard-port binds the dashboard and proxies to the daemon'
   const ping = await fetch(`http://127.0.0.1:${port}/v1/ping`)
   t.is(ping.status, 200)
 
-  // Dashboard proxies /api/ping → daemon /v1/ping.
-  const proxied = await fetch(`http://127.0.0.1:${dashPort}/api/ping`)
+  // Dashboard proxies /api/v1/ping → daemon /v1/ping (proxy strips /api).
+  const proxied = await fetch(`http://127.0.0.1:${dashPort}/api/v1/ping`)
   t.is(proxied.status, 200)
   t.alike(await proxied.json(), { ok: true })
 

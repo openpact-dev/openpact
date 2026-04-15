@@ -32,12 +32,18 @@ export function buildProgram(): Command {
     .command('init')
     .description('seal a new pact')
     .option('--force', 'break the existing pact and seal a fresh one')
+    .option('--name <str>', 'pact name (e.g. "The Obsidian Accord")')
+    .option('--purpose <str>', 'one-line purpose statement for the pact')
+    .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
+    .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .action(initCmd)
 
   program
     .command('join <key>')
     .description('enter an existing pact using its hex key')
     .option('--force', 'break the existing pact and join the new one')
+    .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
+    .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .action(joinCmd)
 
   program
