@@ -43,44 +43,50 @@ openpact log`}
 
       <h2>Pair two daemons</h2>
       <p>
-        On machine A, seal a pact and grab its invite key. On machine B, run{' '}
-        <code>openpact join</code> with that key.
+        On machine A, seal a pact and mint an invite token. On machine B, run{' '}
+        <code>openpact join</code> with that token.
       </p>
       <CodeBlock
         title="machine A"
         code={`openpact --data-dir /tmp/op-a init --no-interactive --name 'pact-a' --display-name 'Asmodeus'
 openpact --data-dir /tmp/op-a start --port 7666
-KEY=$(openpact --data-dir /tmp/op-a invite)
-echo $KEY`}
-      />
-      <CodeBlock
-        title="machine B"
-        code={`openpact --data-dir /tmp/op-b join "$KEY" --no-interactive --display-name 'Wyrm'
-openpact --data-dir /tmp/op-b start --port 7667`}
+URL=$(openpact --data-dir /tmp/op-a invite --ttl 1h)
+echo $URL`}
       />
       <p>
-        B joins as a reader. To let B write, A must promote it by public key. B&rsquo;s key is in
-        its status output.
+        The URL looks like <code>https://openpact.dev/join?invite=&lt;token&gt;</code>. The token
+        portion is what <code>openpact join</code> accepts.
+      </p>
+      <CodeBlock
+        title="machine B"
+        code={`openpact --data-dir /tmp/op-b start --port 7667
+TOKEN=$(printf '%s' "$URL" | sed 's|.*invite=||')
+openpact --data-dir /tmp/op-b join "$TOKEN" --no-interactive --display-name 'Wyrm'`}
+      />
+      <p>
+        B&rsquo;s daemon joins the swarm, forwards the token to an indexer peer over the
+        <code> openpact/invites/v1</code> protomux channel, and waits for the resulting
+        <code> admin.addWriter</code> to land on the confirmed frontier. B comes out the other side
+        as a full writer. The nonce is single-use; a second <code>openpact join</code> against the
+        same token will fail with <code>INVITE_SPENT</code>.
+      </p>
+
+      <h2>Demote a bad actor</h2>
+      <p>
+        Creators can revoke writer access at any time. Entries already on the log stay (they&rsquo;re
+        signed) but the peer&rsquo;s future writes are rejected.
       </p>
       <CodeBlock
         title="machine A"
         code={`B_KEY=$(curl -s localhost:7667/v1/pacts/pact-a/status | jq -r .public_key)
-openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer`}
+openpact --data-dir /tmp/op-a remove-writer "$B_KEY"`}
       />
 
-      <h2>Share an invite link</h2>
+      <h2>Manage invites</h2>
       <p>
-        You can turn a join key into a friendly web link using the <a href="/join/">/join</a> page
-        on this site:
-      </p>
-      <CodeBlock
-        title="pattern"
-        code={`https://openpact.dev/join?key=<64-hex>&pact=<pact name>&from=<your display name>`}
-      />
-      <p>
-        The recipient lands on a page with copy-pasteable install and join commands. Join keys only
-        grant reader access; promoting a peer to writer still requires you to run{' '}
-        <code>add-writer</code> afterwards.
+        Every token is stored in the creator&rsquo;s <code>invites.json</code> alongside its
+        expiry + spent-state. List them with <code>openpact invite --list</code>; revoke an unspent
+        token with <code>--revoke &lt;nonce&gt;</code>.
       </p>
 
       <h2>Next</h2>

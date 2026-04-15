@@ -83,9 +83,10 @@ Load-bearing. Don't violate without explicit user sign-off:
 1. **No central server in the data path.** DHT bootstrap nodes and optional seed nodes for availability are fine; nothing else routes user data.
 2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK, MCP server, and the generic skill are conveniences that wrap it, not the only way in.
 3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
-4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, display_name?, payload, refs, ttl}`. `agent_id` is the canonical, verified peer handle; `display_name` is a nullable advisory label with no authority. Adding a new top-level *type* requires a design-doc update first. Adding an optional field to the existing four types is a lighter bar but must still land alongside a design-doc update (see §5.2).
+4. **Entry schema is fixed at six types**: `knowledge`, `task`, `skill`, `message`, `admin`, `invite-redeemed`. The first four are user-facing; `admin` and `invite-redeemed` are infrastructure entries written only by indexers. Each entry: `{type, timestamp, agent_id, display_name?, payload, refs, ttl}`. `agent_id` is the canonical, verified peer handle; `display_name` is a nullable advisory label with no authority. Adding a new top-level *type* requires a design-doc update first. Adding an optional field to the existing types is a lighter bar but must still land alongside a design-doc update (see §5.2).
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
-6. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
+6. **Invite tokens are the only path to writer admission.** New peers get writer access by redeeming a one-time, time-limited, bearer token minted by the creator. The token carries `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}` base64url-encoded. Single-use is enforced by the `_invites/<nonce>` view key written in apply(); expired tokens are rejected at redemption. The creator can also `openpact remove-writer <key>` to demote a bad actor after promotion. The raw discovery key is still durable read access — guard invite URLs like any bearer credential.
+7. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
 
 ## Site conventions
 
@@ -245,6 +246,14 @@ PUT  /pact                                    -> body { name?, purpose? } (creat
 PUT  /me                                      -> body { display_name? }
 POST /admin/promote                           -> body { key, confirm: true } (creator only)
 POST /admin/remove                            -> body { key, confirm: true } (creator only)
+
+POST /invites                                 -> body { ttl_ms?, confirm: true } (creator only)
+GET  /invites                                 -> ListPage<InviteSummary>
+DELETE /invites/:nonce                        -> body { confirm: <nonce> } (creator only)
+POST /invites/redeem                          -> body { token, writer_key, confirm: true }
+                                                 (local indexer path if we are one,
+                                                  otherwise forwards via protomux
+                                                  `openpact/invites/v1` to a peer)
 ```
 
 **Error envelope** (uniform):
@@ -255,6 +264,7 @@ Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
 New codes from §3: `NOT_INDEXER` (409), `BAD_SKILL_NAME` (400), `NOT_CONFIRMED` (400), `SKILL_CHECKSUM_MISMATCH` (409).
 New codes from §4b: `UNKNOWN_PACT` (404), `PACT_ALIAS_TAKEN` (409), `NO_CURRENT_PACT` (409).
 New code from list-envelope refactor: `BAD_CURSOR` (400).
+New codes from invite tokens: `INVITE_BAD_SHAPE` (400), `INVITE_WRONG_PACT` (400), `UNKNOWN_INVITE` (404), `INVITE_REVOKED` (409), `INVITE_SPENT` (409), `INVITE_NOT_INDEXER` (409), `INVITE_EXPIRED` (410), `NO_PEERS` / `NO_INDEXER_REACHABLE` / `PEER_DISCONNECTED` (503), `NOT_CREATOR` (409).
 
 The web dashboard runs on `:7667` by default (localhost only). The
 SPA at `/` talks to the daemon through a Fastify proxy at `/api/*`.
@@ -267,8 +277,12 @@ re-prepend `/v1` in the proxy or the path gets doubled.
 
 ```
 openpact init                    # create pact (interactive prompts for name / purpose / display-name)
-openpact join <key>              # join existing pact (prompts for display-name + alias)
-openpact invite [--pact <alias>] # print join key for current or named pact
+openpact join <token>            # redeem a one-time invite token; joins swarm + auto-promotes to writer
+openpact invite [flags]          # mint a one-time token and print openpact.dev/join?invite=<token>
+                                 #   --ttl <duration>   default 7d
+                                 #   --list             show live + dead invites
+                                 #   --revoke <nonce>   revoke an unspent invite
+                                 #   --pact <alias>     defaults to current pact
 openpact start [--foreground]    # detached by default; --foreground to block
                                  #   also boots the dashboard on :7667 unless --no-dashboard
                                  #   --dashboard-port <n> overrides 7667

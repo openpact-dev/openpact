@@ -4,42 +4,99 @@ import { Footer } from '../components/Footer'
 import { CodeBlock } from '../components/CodeBlock'
 import { WatchingEye, CornerBracket } from '../components/WatchingEye'
 
-/**
- * Mirror of the CLI's rule at packages/cli/src/commands/join.ts:19
- * and the daemon route at packages/daemon/src/api/routes/pacts.ts:27.
- * Join keys are the 64-hex canonical pactId.
+/*
+ * One-time invite tokens. The token is a base64url-encoded JSON object
+ * with {v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}.
+ * Single-use is enforced server-side by the `_invites/<nonce>` view
+ * key; we just decode here for display. No signature check — the
+ * joiner's daemon (and ultimately the creator's) validate.
+ *
+ * Mirrors packages/daemon/src/invites.ts decodeToken().
  */
-const KEY_PATTERN = /^[0-9a-f]{64}$/i
 
-interface ParsedInvite {
-  key: string | null
-  pact: string | null
-  from: string | null
-  raw: { key: string | null; rejected: boolean }
+interface DecodedToken {
+  pactId: string
+  nonce: string
+  expiresAt: string
+  pactName: string | null
+  issuerDisplay: string | null
 }
 
-function parseInvite(search: string): ParsedInvite {
+type ParseResult =
+  | { kind: 'ok'; token: string; decoded: DecodedToken }
+  | { kind: 'missing' }
+  | { kind: 'malformed'; reason: string }
+  | { kind: 'expired'; decoded: DecodedToken }
+
+function parseInvite(search: string): ParseResult {
   const p = new URLSearchParams(search)
-  const rawKey = p.get('key')?.trim() ?? null
-  const key = rawKey && KEY_PATTERN.test(rawKey) ? rawKey.toLowerCase() : null
-  return {
-    key,
-    pact: p.get('pact')?.trim() || null,
-    from: p.get('from')?.trim() || null,
-    raw: { key: rawKey, rejected: !!rawKey && !key },
+  const token = p.get('invite')?.trim()
+  if (!token) return { kind: 'missing' }
+  let json: string
+  try {
+    json = atob(token.replace(/-/g, '+').replace(/_/g, '/'))
+  } catch {
+    return { kind: 'malformed', reason: 'token is not valid base64url' }
   }
+  let obj: unknown
+  try {
+    obj = JSON.parse(json)
+  } catch {
+    return { kind: 'malformed', reason: 'token payload is not valid JSON' }
+  }
+  if (!obj || typeof obj !== 'object') {
+    return { kind: 'malformed', reason: 'token payload is not an object' }
+  }
+  const o = obj as { v?: number } & Partial<DecodedToken>
+  if (o.v !== 1) return { kind: 'malformed', reason: `unsupported token version ${String(o.v)}` }
+  if (typeof o.pactId !== 'string' || !/^[0-9a-f]{64}$/i.test(o.pactId)) {
+    return { kind: 'malformed', reason: 'token.pactId is missing or malformed' }
+  }
+  if (typeof o.nonce !== 'string' || !/^[0-9a-f]{48}$/i.test(o.nonce)) {
+    return { kind: 'malformed', reason: 'token.nonce is missing or malformed' }
+  }
+  if (typeof o.expiresAt !== 'string' || Number.isNaN(Date.parse(o.expiresAt))) {
+    return { kind: 'malformed', reason: 'token.expiresAt is missing or malformed' }
+  }
+  const decoded: DecodedToken = {
+    pactId: o.pactId,
+    nonce: o.nonce,
+    expiresAt: o.expiresAt,
+    pactName: typeof o.pactName === 'string' ? o.pactName : null,
+    issuerDisplay: typeof o.issuerDisplay === 'string' ? o.issuerDisplay : null,
+  }
+  if (Date.parse(decoded.expiresAt) <= Date.now()) {
+    return { kind: 'expired', decoded }
+  }
+  return { kind: 'ok', token, decoded }
+}
+
+function formatRelative(iso: string): string {
+  const ms = Date.parse(iso) - Date.now()
+  const abs = Math.abs(ms)
+  const future = ms >= 0
+  const units: Array<[string, number]> = [
+    ['day', 86_400_000],
+    ['hour', 3_600_000],
+    ['minute', 60_000],
+  ]
+  for (const [label, div] of units) {
+    if (abs >= div) {
+      const n = Math.round(abs / div)
+      const plural = n === 1 ? '' : 's'
+      return future ? `in ${n} ${label}${plural}` : `${n} ${label}${plural} ago`
+    }
+  }
+  return future ? 'any moment' : 'just now'
 }
 
 const INSTALL = `npm install -g @openpact/cli`
 
 export function JoinPage() {
-  const invite = useMemo(
+  const parsed = useMemo(
     () => parseInvite(typeof window === 'undefined' ? '' : window.location.search),
     [],
   )
-
-  const pactLabel = invite.pact ?? 'the pact'
-  const joinCmd = invite.key ? `openpact join ${invite.key}` : 'openpact join <key>'
 
   return (
     <>
@@ -52,15 +109,12 @@ export function JoinPage() {
             <div class="eyebrow">An invitation arrives</div>
           </div>
 
-          {invite.key ? (
-            <ValidInvite
-              pactKey={invite.key}
-              pactLabel={pactLabel}
-              from={invite.from}
-              joinCmd={joinCmd}
-            />
+          {parsed.kind === 'ok' ? (
+            <ValidInvite decoded={parsed.decoded} token={parsed.token} />
+          ) : parsed.kind === 'expired' ? (
+            <ExpiredInvite decoded={parsed.decoded} />
           ) : (
-            <InvalidInvite rejected={invite.raw.rejected} />
+            <InvalidInvite reason={parsed.kind === 'malformed' ? parsed.reason : null} />
           )}
         </section>
       </main>
@@ -70,30 +124,28 @@ export function JoinPage() {
   )
 }
 
-function ValidInvite({
-  pactKey,
-  pactLabel,
-  from,
-  joinCmd,
-}: {
-  pactKey: string
-  pactLabel: string
-  from: string | null
-  joinCmd: string
-}) {
+function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string }) {
+  const pactLabel = decoded.pactName ?? 'the pact'
+  const joinCmd = `openpact join ${token}`
+  const expiresIn = formatRelative(decoded.expiresAt)
+
   return (
     <>
       <h1 class="font-display text-[clamp(2.4rem,5vw,3.75rem)] font-medium leading-[1.05] tracking-tight text-[var(--color-ink)] animate-etch">
-        You&rsquo;ve been invited to <span class="text-[var(--color-ember)]">{pactLabel}</span>.
+        You&rsquo;re invited to <span class="text-[var(--color-ember)]">{pactLabel}</span>.
       </h1>
       <p class="mt-5 text-lg text-[var(--color-ink2)] leading-relaxed">
-        {from ? (
+        {decoded.issuerDisplay ? (
           <>
-            <span class="font-display italic text-[var(--color-ink)]">{from}</span> wants you in the
-            pact. Three steps and you&rsquo;re in.
+            <span class="font-display italic text-[var(--color-ink)]">{decoded.issuerDisplay}</span>{' '}
+            minted this invite {expiresIn === 'any moment' ? 'moments ago' : ''}. One-time use.
+            Expires {expiresIn}.
           </>
         ) : (
-          <>A pact is waiting for you. Three steps and you&rsquo;re in.</>
+          <>
+            One-time invite token. Expires {expiresIn}. Once you redeem, you&rsquo;re a writer on
+            the pact.
+          </>
         )}
       </p>
 
@@ -119,30 +171,32 @@ function ValidInvite({
           <CodeBlock title="install" code={INSTALL} />
         </Step>
 
-        <Step n="II" title="Join the pact">
+        <Step n="II" title="Start the daemon">
           <p class="text-[var(--color-ink2)] mb-3 leading-relaxed">
-            Run this command. Your key is pre-filled.
+            Initialise your local host (once) then start the daemon.
           </p>
-          <CodeBlock title="~/openpact — join" code={joinCmd} />
-          <p class="mt-3 text-sm text-[var(--color-ink3)] leading-relaxed">
-            You&rsquo;ll join as a <strong class="text-[var(--color-ink)]">reader</strong>. The
-            pact&rsquo;s creator can promote you to writer after your daemon is running.
-          </p>
+          <CodeBlock title="quickstart" code={'openpact init\nopenpact start'} />
         </Step>
 
-        <Step n="III" title="Summon the daemon" last>
+        <Step n="III" title="Redeem the invite" last>
           <p class="text-[var(--color-ink2)] mb-3 leading-relaxed">
-            Start the daemon. It will find the pact&rsquo;s peers over the DHT.
+            This command joins the swarm and promotes you to a writer in one step. The token is
+            single-use; don&rsquo;t share this page.
           </p>
-          <CodeBlock title="~/openpact — start" code="openpact start" />
+          <CodeBlock title="join" code={joinCmd} />
+          <p class="mt-3 text-sm text-[var(--color-ink3)] leading-relaxed">
+            Your daemon finds an indexer peer, hands it the token + your writer key, and the
+            indexer issues an <code class="font-mono text-[var(--color-ember)]">admin.addWriter</code>{' '}
+            for you. Expect promotion within a few seconds of the first peer connection.
+          </p>
         </Step>
       </div>
 
       <div class="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="text-sm text-[var(--color-ink3)]">
-          <span class="smallcaps mr-2">Pact key</span>
+          <span class="smallcaps mr-2">Nonce</span>
           <span class="font-mono text-[12px] text-[var(--color-ink2)]">
-            {pactKey.slice(0, 16)}…{pactKey.slice(-8)}
+            {decoded.nonce.slice(0, 8)}…{decoded.nonce.slice(-4)}
           </span>
         </div>
         <a
@@ -157,26 +211,59 @@ function ValidInvite({
   )
 }
 
-function InvalidInvite({ rejected }: { rejected: boolean }) {
+function ExpiredInvite({ decoded }: { decoded: DecodedToken }) {
+  const pactLabel = decoded.pactName ?? 'that pact'
   return (
     <>
       <h1 class="font-display text-4xl font-medium leading-tight text-[var(--color-ink)]">
-        {rejected ? 'That invite key looks wrong.' : 'No invite in the link.'}
+        This invite has expired.
       </h1>
       <p class="mt-4 text-lg text-[var(--color-ink2)] leading-relaxed">
-        {rejected
-          ? 'A join key is a 64-character hexadecimal string. The one in your URL doesn\u2019t match.'
-          : 'Invite links look like '}
-        {!rejected && (
-          <code class="font-mono text-sm text-[var(--color-ember)]">
-            openpact.dev/join?key=&lt;64-hex&gt;
-          </code>
+        The invite to {pactLabel} was valid until{' '}
+        <span class="font-mono text-[var(--color-ink)]">{decoded.expiresAt}</span>. Ask{' '}
+        {decoded.issuerDisplay ?? 'the creator'} for a fresh one — they can mint a new token with{' '}
+        <code class="font-mono text-sm text-[var(--color-ember)]">openpact invite</code>.
+      </p>
+      <div class="mt-8 flex gap-3">
+        <a
+          href="/docs/getting-started/"
+          class="inline-flex items-center gap-2 border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium tracking-wide text-[var(--color-ink)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
+        >
+          Getting started
+        </a>
+      </div>
+    </>
+  )
+}
+
+function InvalidInvite({ reason }: { reason: string | null }) {
+  return (
+    <>
+      <h1 class="font-display text-4xl font-medium leading-tight text-[var(--color-ink)]">
+        {reason ? 'That invite link looks wrong.' : 'No invite in the link.'}
+      </h1>
+      <p class="mt-4 text-lg text-[var(--color-ink2)] leading-relaxed">
+        {reason ? (
+          <>
+            The URL must carry a valid{' '}
+            <code class="font-mono text-sm text-[var(--color-ember)]">?invite=&lt;token&gt;</code>{' '}
+            parameter. Details:{' '}
+            <span class="font-mono text-sm text-[var(--color-ink)]">{reason}</span>.
+          </>
+        ) : (
+          <>
+            Invite links look like{' '}
+            <code class="font-mono text-sm text-[var(--color-ember)]">
+              openpact.dev/join?invite=&lt;token&gt;
+            </code>
+            .
+          </>
         )}
       </p>
       <p class="mt-3 text-[var(--color-ink2)] leading-relaxed">
         Ask whoever sent you this link to run{' '}
         <code class="font-mono text-sm text-[var(--color-ember)]">openpact invite</code> and paste
-        the output into a fresh link. Or start your own pact.
+        the URL it prints. Or start your own pact.
       </p>
       <div class="mt-8 flex gap-3">
         <a
