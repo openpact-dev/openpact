@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [blacksmith-4vcpu-ubuntu-2404, macos-latest]
         node: ['20.x', '22.x']
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
 
   e2e:
     name: e2e (ubuntu, node 22)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,7 +59,7 @@ jobs:
 
   dashboard:
     name: dashboard (ubuntu, node 22)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
