@@ -6,6 +6,8 @@ export const INDEXER_PREFIX = '_indexers/'
 // '/' is 0x2F, '0' is 0x30, so '_indexers0' bounds the prefix range exactly.
 const INDEXER_RANGE_END = '_indexers0'
 
+export const INVITE_PREFIX = '_invites/'
+
 export interface ApplyNode {
   value: unknown
   from?: { key?: Buffer | null } | null
@@ -31,6 +33,8 @@ export type InvalidReason =
   | 'payload-too-large'
   | 'no-writer-key'
   | 'admin-from-non-indexer'
+  | 'invite-from-non-indexer'
+  | 'invite-already-spent'
 
 export interface InvalidInfo {
   reason: InvalidReason
@@ -40,7 +44,7 @@ export interface InvalidInfo {
 }
 
 export interface AppliedInfo {
-  kind: 'entry' | 'admin'
+  kind: 'entry' | 'admin' | 'invite-redeemed'
   entry: unknown
   node: ApplyNode
   key?: string
@@ -108,6 +112,30 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
         }
         await applyAdmin(typedEntry, view, host)
         onApplied({ kind: 'admin', entry, node })
+        continue
+      }
+
+      if (typedEntry.type === 'invite-redeemed') {
+        if (!isIndexer) {
+          onInvalid({ reason: 'invite-from-non-indexer', node, entry })
+          continue
+        }
+        const redeemPayload = typedEntry.payload as { nonce?: string; redeemed_by?: string }
+        const nonce = redeemPayload.nonce
+        const existing = nonce ? await view.get(`${INVITE_PREFIX}${nonce}`) : null
+        if (existing) {
+          // First redeem wins, even when two indexers race the same nonce.
+          onInvalid({ reason: 'invite-already-spent', node, entry })
+          continue
+        }
+        if (nonce) {
+          await view.put(`${INVITE_PREFIX}${nonce}`, {
+            redeemed_by: redeemPayload.redeemed_by,
+            redeemed_at: typedEntry.timestamp,
+            redeemer: typedEntry.agent_id,
+          })
+        }
+        onApplied({ kind: 'invite-redeemed', entry, node })
         continue
       }
 

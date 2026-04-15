@@ -42,6 +42,10 @@ export function pactStorePath(pactDir: string): string {
   return path.join(pactDir, 'data')
 }
 
+export function pactInvitesPath(pactDir: string): string {
+  return path.join(pactDir, 'invites.json')
+}
+
 export function pidPath(hostDir: string): string {
   return path.join(hostDir, 'pid')
 }

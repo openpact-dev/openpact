@@ -1,6 +1,13 @@
 export const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{4}$'
 
-export const ENTRY_TYPES = ['knowledge', 'task', 'skill', 'message', 'admin'] as const
+export const ENTRY_TYPES = [
+  'knowledge',
+  'task',
+  'skill',
+  'message',
+  'admin',
+  'invite-redeemed',
+] as const
 export type EntryType = (typeof ENTRY_TYPES)[number]
 
 // Display names are advisory — the canonical, verified identity of an

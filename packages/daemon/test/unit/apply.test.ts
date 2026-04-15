@@ -3,6 +3,7 @@ import b4a from 'b4a'
 import {
   makeApply,
   INDEXER_PREFIX,
+  INVITE_PREFIX,
   type ApplyView,
   type ApplyHost,
   type ApplyNode,
@@ -524,4 +525,124 @@ test('display_name missing field is preserved (backward compat from pre-4a pacts
   const kKey = view._keys().find((k) => k.startsWith('knowledge/'))!
   const stored = view._data.get(kKey) as { display_name?: string | null }
   t.is(stored.display_name, undefined) // field never existed, not added by apply
+})
+
+// ─────── invite-redeemed ────────────────────────────────────────────
+
+const NONCE_A = '11'.repeat(24)
+const NONCE_B = '22'.repeat(24)
+
+test('invite-redeemed from indexer writes _invites/<nonce>', async (t) => {
+  const view = fakeView()
+  const host = fakeHost()
+  const applied: AppliedInfo[] = []
+  const apply = makeApply({ onApplied: (info) => applied.push(info) })
+  // KEY_A becomes implicit indexer on its first append.
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    host,
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        value: entry('invite-redeemed', { nonce: NONCE_A, redeemed_by: KEY_B }),
+      }),
+    ],
+    view,
+    host,
+  )
+  const spent = (await view.get(`${INVITE_PREFIX}${NONCE_A}`)) as {
+    value: { redeemed_by: string; redeemer: string }
+  } | null
+  t.ok(spent)
+  t.is(spent!.value.redeemed_by, KEY_B)
+  t.is(applied.at(-1)?.kind, 'invite-redeemed')
+})
+
+test('invite-redeemed from non-indexer is ignored', async (t) => {
+  const view = fakeView()
+  const host = fakeHost()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  // KEY_A is bootstrapped as indexer; KEY_C is a random non-indexer.
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    host,
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_C,
+        value: entry('invite-redeemed', { nonce: NONCE_A, redeemed_by: KEY_B }),
+      }),
+    ],
+    view,
+    host,
+  )
+  t.absent(await view.get(`${INVITE_PREFIX}${NONCE_A}`))
+  t.ok(invalid.some((i) => i.reason === 'invite-from-non-indexer'))
+})
+
+test('second redeem of same nonce is rejected as invite-already-spent', async (t) => {
+  const view = fakeView()
+  const host = fakeHost()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    host,
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        value: entry('invite-redeemed', { nonce: NONCE_A, redeemed_by: KEY_B }),
+      }),
+    ],
+    view,
+    host,
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        value: entry('invite-redeemed', { nonce: NONCE_A, redeemed_by: KEY_C }),
+      }),
+    ],
+    view,
+    host,
+  )
+  const spent = (await view.get(`${INVITE_PREFIX}${NONCE_A}`)) as {
+    value: { redeemed_by: string }
+  } | null
+  // First-writer-wins: the replay keeps the original record.
+  t.is(spent!.value.redeemed_by, KEY_B)
+  t.ok(invalid.some((i) => i.reason === 'invite-already-spent'))
+})
+
+test('invite-redeemed schema-validates nonce length', async (t) => {
+  const view = fakeView()
+  const host = fakeHost()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    host,
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        value: entry('invite-redeemed', { nonce: 'tooshort', redeemed_by: KEY_B }),
+      }),
+    ],
+    view,
+    host,
+  )
+  t.ok(invalid.some((i) => i.reason === 'schema'))
 })

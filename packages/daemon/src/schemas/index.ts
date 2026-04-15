@@ -6,6 +6,7 @@ import task from './task'
 import skill from './skill'
 import message from './message'
 import admin from './admin'
+import inviteRedeemed from './invite'
 import type { EntryType } from './common'
 
 export const MAX_PAYLOAD_BYTES = 64 * 1024
@@ -19,6 +20,7 @@ export const validators: Record<EntryType, ValidateFunction> = {
   skill: ajv.compile(skill),
   message: ajv.compile(message),
   admin: ajv.compile(admin),
+  'invite-redeemed': ajv.compile(inviteRedeemed),
 }
 
 export type ValidationReason = 'not-an-object' | 'unknown-type' | 'schema' | 'payload-too-large'
@@ -53,4 +55,4 @@ export function validate(entry: unknown): ValidationResult {
   return { valid: true }
 }
 
-export const schemas = { knowledge, task, skill, message, admin }
+export const schemas = { knowledge, task, skill, message, admin, 'invite-redeemed': inviteRedeemed }
