@@ -1,25 +1,94 @@
-import { Daemon, config as daemonConfig } from '@openpact/daemon'
-import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
+import { type GlobalCliOpts } from '../lib/data-dir'
+import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 import { askText } from '../lib/prompt'
 import { suggestDisplayName } from '../lib/themes'
 
+/**
+ * Lightweight token decoder — mirrors the daemon's invites.ts. Kept
+ * local so the CLI can surface pact name and expiry before it even
+ * talks to the daemon.
+ */
+interface Decoded {
+  pactId: string
+  nonce: string
+  expiresAt: string
+  pactName: string | null
+  issuerDisplay: string | null
+}
+
+function decodeToken(token: string): Decoded {
+  if (typeof token !== 'string' || token.length === 0) {
+    throw new Error('empty token')
+  }
+  let json: string
+  try {
+    json = Buffer.from(token, 'base64url').toString('utf8')
+  } catch {
+    throw new Error('token is not valid base64url')
+  }
+  let obj: unknown
+  try {
+    obj = JSON.parse(json)
+  } catch {
+    throw new Error('token payload is not valid JSON')
+  }
+  if (!obj || typeof obj !== 'object') {
+    throw new Error('token payload must be a JSON object')
+  }
+  const p = obj as Partial<Decoded> & { v?: number }
+  if (p.v !== 1) {
+    throw new Error(`unsupported token version: ${String(p.v)}`)
+  }
+  if (typeof p.pactId !== 'string' || !/^[0-9a-f]{64}$/i.test(p.pactId)) {
+    throw new Error('token.pactId is missing or not 64-hex')
+  }
+  if (typeof p.nonce !== 'string' || !/^[0-9a-f]{48}$/i.test(p.nonce)) {
+    throw new Error('token.nonce is missing or not 48-hex')
+  }
+  if (typeof p.expiresAt !== 'string' || Number.isNaN(Date.parse(p.expiresAt))) {
+    throw new Error('token.expiresAt is missing or not an ISO timestamp')
+  }
+  return {
+    pactId: p.pactId,
+    nonce: p.nonce,
+    expiresAt: p.expiresAt,
+    pactName: typeof p.pactName === 'string' ? p.pactName : null,
+    issuerDisplay: typeof p.issuerDisplay === 'string' ? p.issuerDisplay : null,
+  }
+}
+
 export interface JoinOpts {
-  force?: boolean
   displayName?: string
   alias?: string
   interactive?: boolean
+  port?: string | number
+  /** How long to wait for a peer connection before giving up on the redeem. */
+  timeout?: string | number
 }
 
 export async function joinCmd(
-  joinKey: string,
+  tokenArg: string,
   opts: JoinOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
-  if (!/^[0-9a-f]+$/i.test(joinKey)) {
-    throw new Error(`join key must be hex (got ${joinKey.slice(0, 16)}…)`)
+  let decoded: Decoded
+  try {
+    decoded = decodeToken(tokenArg)
+  } catch (err) {
+    throw new Error(`invalid invite token: ${(err as Error).message}`)
   }
-  const hostDir = resolveDataDir(cmd.optsWithGlobals())
+  if (Date.parse(decoded.expiresAt) <= Date.now()) {
+    throw new Error(
+      `invite token expired at ${decoded.expiresAt}. Ask ${decoded.issuerDisplay ?? 'the creator'} for a fresh one.`,
+    )
+  }
+
+  // optsWithGlobals is required for parity with other commands; data
+  // dir isn't needed here because the daemon is the source of truth.
+  void cmd.optsWithGlobals()
+  const apiPort = Number(opts.port ?? 7666)
+  const timeoutMs = Number(opts.timeout ?? 30) * 1000
 
   const nonInteractive = opts.interactive === false
   const displayName = await askText({
@@ -30,43 +99,128 @@ export async function joinCmd(
     max: 64,
   })
 
-  const registry = await daemonConfig
-    .loadDaemonConfig(hostDir)
-    .catch(() => daemonConfig.daemonDefaults())
-  const daemon = new Daemon({ dataDir: hostDir })
+  const chosenAlias = opts.alias ?? slugify(decoded.pactName ?? '') ?? `joined-${decoded.pactId.slice(0, 8)}`
 
-  const chosenAlias = opts.alias ?? `joined-${joinKey.slice(0, 8)}`
-  const existing = new Set(registry.pacts.map((p) => p.alias))
-  if (existing.has(chosenAlias)) {
-    if (!opts.force) {
-      throw new Error(
-        `a pact named ${chosenAlias} already exists at ${hostDir}. Pass --force to break it, or --alias <name>.`,
+  const hostApi = new ApiClient({ port: apiPort })
+  try {
+    await hostApi.ping()
+  } catch (err) {
+    if (err instanceof DaemonNotRunningError) {
+      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
+      console.error(c.ash(`  start it with:  openpact start`))
+      console.error(c.ash(`  then re-run:    openpact join <token>`))
+      process.exit(1)
+    }
+    throw err
+  }
+
+  // 1. Join the swarm using the pactId extracted from the token.
+  let joined: { alias: string; pact_id: string }
+  try {
+    const res = await hostApi.joinPact(decoded.pactId, {
+      alias: chosenAlias,
+      display_name: displayName,
+    })
+    joined = { alias: res.alias, pact_id: res.pact_id }
+  } catch (err) {
+    const e = err as { code?: string; message: string }
+    // The daemon surfaces "alias already exists" as a 409; translate
+    // to something more human without losing the underlying message.
+    throw new Error(`could not join: ${e.message}`)
+  }
+
+  if (process.stdout.isTTY) {
+    process.stderr.write('\n')
+    process.stderr.write(
+      `  ${emoji.brand} ${c.brandBold('Swarm joined. Asking an indexer to promote…')}\n`,
+    )
+    if (decoded.pactName) {
+      process.stderr.write(c.ash(`  Pact    ${decoded.pactName}\n`))
+    }
+    if (decoded.issuerDisplay) {
+      process.stderr.write(c.ash(`  Invite  from ${decoded.issuerDisplay}\n`))
+    }
+    process.stderr.write(c.ash(`  Alias   ${joined.alias}\n`))
+  }
+
+  const pactApi = new ApiClient({ port: apiPort, pactId: joined.alias })
+
+  // 2. Find our own writer key.
+  const status = await pactApi.status()
+  const writerKey = status.public_key as string
+
+  // 3. Wait for at least one peer, then redeem.
+  const deadline = Date.now() + timeoutMs
+  let lastErr: unknown = null
+  while (Date.now() < deadline) {
+    const peers = await pactApi.peers().catch(() => [])
+    if (peers.length > 0) {
+      try {
+        await pactApi.redeemInvite(tokenArg, writerKey)
+        lastErr = null
+        break
+      } catch (err) {
+        lastErr = err
+        const code = (err as { code?: string }).code
+        // Transient / retry-worthy codes: NO_PEERS, NO_INDEXER_REACHABLE, TIMEOUT.
+        if (code === 'INVITE_SPENT' || code === 'INVITE_EXPIRED' || code === 'INVITE_REVOKED') {
+          throw err
+        }
+      }
+    }
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  if (lastErr) throw lastErr
+  if (Date.now() >= deadline) {
+    throw new Error(
+      `could not find an indexer peer within ${timeoutMs / 1000}s — is the creator online?`,
+    )
+  }
+
+  // 4. Wait for the admin.addWriter to confirm on our frontier.
+  const writerDeadline = Date.now() + timeoutMs
+  while (Date.now() < writerDeadline) {
+    const s = await pactApi.status()
+    if (s.is_writer === true) break
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  const finalStatus = await pactApi.status()
+
+  if (process.stdout.isTTY) {
+    process.stderr.write('\n')
+    if (finalStatus.is_writer) {
+      process.stderr.write(
+        `  ${emoji.brand} ${c.brandBold('Promoted to writer. Welcome to the pact.')}\n`,
+      )
+    } else {
+      process.stderr.write(
+        `  ${emoji.cross} ${c.brand('redeem succeeded but writer promotion has not landed yet.')}\n`,
+      )
+      process.stderr.write(
+        c.ash('  Give Autobase a moment to converge, then check with `openpact status`.\n'),
       )
     }
-    await daemon.removePact(chosenAlias)
-  }
-
-  const { pact, alias } = await daemon.joinPact({
-    alias: chosenAlias,
-    joinKey,
-    displayName,
-    setCurrent: true,
-  })
-  try {
-    console.log()
-    console.log(`  ${emoji.brand} ${c.brandBold('Agent bound to the pact.')}`)
-    console.log()
-    console.log(`  ${c.brandBold('Alias')}       ${c.ash(alias)}`)
-    console.log(`  ${c.brandBold('Data dir')}    ${c.ash(hostDir)}`)
-    console.log(`  ${c.brandBold('Pact key')}    ${c.bone(pact.pactKey ?? '')}`)
-    console.log(`  ${c.brandBold('Agent')}       ${displayName} ${c.ash(`(${pact.peerHandle})`)}`)
-    console.log()
-    console.log(
-      c.ash(
-        '  next:  openpact start    (the creator must bind this agent as a writer before it can post entries)',
-      ),
+    process.stderr.write(
+      c.ash(`  Agent   ${displayName} (${finalStatus.peer_handle})\n`),
     )
-  } finally {
-    await daemon.stop()
+  } else {
+    // Piped / scripted: one JSON line on stdout.
+    console.log(
+      JSON.stringify({
+        alias: joined.alias,
+        pact_id: joined.pact_id,
+        writer: finalStatus.is_writer,
+        peer_handle: finalStatus.peer_handle,
+      }),
+    )
   }
+}
+
+function slugify(s: string): string | null {
+  const out = s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return out || null
 }

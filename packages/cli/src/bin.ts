@@ -48,17 +48,23 @@ export function buildProgram(): Command {
     .action(initCmd)
 
   program
-    .command('join <key>')
-    .description('enter an existing pact using its hex key')
-    .option('--force', 'break the existing pact at this alias and re-join')
-    .option('--alias <str>', 'short local alias (default: joined-<first8hex>)')
+    .command('join <token>')
+    .description('redeem a one-time invite token; joins the swarm and gets promoted to writer')
+    .option('--alias <str>', 'short local alias (default: slug of the pact name)')
     .option('--display-name <str>', 'agent display name (advisory; peer handle stays canonical)')
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
+    .option('--port <n>', 'REST port of the running daemon', '7666')
+    .option('--timeout <s>', 'how long to wait for an indexer peer (seconds)', '30')
     .action(joinCmd)
 
   program
     .command('invite')
-    .description('print the pact key (share to invite a peer)')
+    .description('mint a one-time invite token (share to add a new writer)')
+    .option('--pact <alias>', 'pact to invite into (default: current pact)')
+    .option('--port <n>', 'REST port of the running daemon', '7666')
+    .option('--ttl <duration>', 'invite TTL (e.g. 1h, 24h, 7d)', '7d')
+    .option('--list', 'show live + dead invites for this pact instead of minting')
+    .option('--revoke <nonce>', 'revoke an invite by nonce instead of minting')
     .action(inviteCmd)
 
   program

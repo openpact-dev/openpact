@@ -96,4 +96,62 @@ export class ApiClient {
   async removeWriter(key: string): Promise<any> {
     return this.req(this.pactPath(`/admin/writers/${key}`), { method: 'DELETE' })
   }
+
+  async createInvite(opts: { ttl_ms?: number } = {}): Promise<{
+    token: string
+    share_url: string
+    nonce: string
+    expires_at: string
+  }> {
+    return this.req(this.pactPath('/invites'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: true, ...opts }),
+    })
+  }
+
+  async listInvites(): Promise<{
+    entries: Array<{
+      nonce: string
+      expires_at: string
+      created_at: string
+      pact_name: string | null
+      issuer_display: string | null
+      revoked: boolean
+      spent_at: string | null
+      spent_by: string | null
+      dead: boolean
+    }>
+  }> {
+    return this.req(this.pactPath('/invites'))
+  }
+
+  async revokeInvite(nonce: string): Promise<any> {
+    return this.req(this.pactPath(`/invites/${nonce}`), {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: nonce }),
+    })
+  }
+
+  async redeemInvite(token: string, writerKey: string): Promise<{ ok: true; nonce: string }> {
+    return this.req(this.pactPath('/invites/redeem'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, writer_key: writerKey, confirm: true }),
+    })
+  }
+
+  async joinPact(key: string, opts: { alias?: string; display_name?: string | null } = {}): Promise<{
+    ok: true
+    alias: string
+    pact_id: string
+    role: string
+  }> {
+    return this.req('/v1/pacts/join', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key, confirm: true, ...opts }),
+    })
+  }
 }

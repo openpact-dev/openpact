@@ -4,7 +4,6 @@ import os from 'os'
 import path from 'path'
 import { initCmd } from '../../src/commands/init'
 import { joinCmd } from '../../src/commands/join'
-import { inviteCmd } from '../../src/commands/invite'
 import { stopCmd } from '../../src/commands/stop'
 import { writePidFile } from '../../src/lib/pid'
 import { config as daemonConfig } from '@openpact/daemon'
@@ -57,62 +56,35 @@ test('initCmd: --force replaces the pact at the same alias', async (t) => {
   t.not(before, after, 'new pact key after --force')
 })
 
-test('joinCmd: rejects bad hex', async (t) => {
+test('joinCmd: rejects a non-base64url token', async (t) => {
   const dir = await tmpHome(t)
-  await t.exception(() => joinCmd('not-hex', { interactive: false }, ctx(dir)), /must be hex/)
-})
-
-test('joinCmd: writes a joined pact into the registry', async (t) => {
-  const a = await tmpHome(t)
-  const b = await tmpHome(t)
-  await initCmd({ interactive: false }, ctx(a))
-  const aKey = await currentPactKey(a)
-  t.ok(aKey, 'creator has a key')
-
-  await joinCmd(aKey!, { interactive: false }, ctx(b))
-  const bCfg = await daemonConfig.loadDaemonConfig(b)
-  t.is(bCfg.pacts.length, 1)
-  t.is(bCfg.pacts[0].pactId, aKey)
-  // Read the per-pact config to confirm the reader role.
-  const pactDir = bCfg.pacts[0].dataDir
-  const pactCfg = await daemonConfig.loadPactConfig(pactDir)
-  t.is(pactCfg.role, 'reader')
-})
-
-test('joinCmd: refuses second join at the same alias without --force', async (t) => {
-  const a = await tmpHome(t)
-  const b = await tmpHome(t)
-  await initCmd({ interactive: false }, ctx(a))
-  const aKey = await currentPactKey(a)
-  await joinCmd(aKey!, { interactive: false, alias: 'peer' }, ctx(b))
   await t.exception(
-    () => joinCmd(aKey!, { interactive: false, alias: 'peer' }, ctx(b)),
-    /already exists/,
+    () => joinCmd('not%%a%%valid%%token', { interactive: false }, ctx(dir)),
+    /invalid invite token/,
   )
 })
 
-test('inviteCmd: errors when no pacts', async (t) => {
+test('joinCmd: rejects an expired token before contacting the daemon', async (t) => {
   const dir = await tmpHome(t)
-  await t.exception(() => inviteCmd({}, ctx(dir)), /no pacts at/)
+  const expired = Buffer.from(
+    JSON.stringify({
+      v: 1,
+      pactId: 'a'.repeat(64),
+      nonce: 'b'.repeat(48),
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+    }),
+    'utf8',
+  ).toString('base64url')
+  await t.exception(
+    () => joinCmd(expired, { interactive: false }, ctx(dir)),
+    /expired/,
+  )
 })
 
-test('inviteCmd: writes current pact key to stdout', async (t) => {
-  const dir = await tmpHome(t)
-  await initCmd({ interactive: false }, ctx(dir))
-  const expected = await currentPactKey(dir)
-  let captured = ''
-  const orig = process.stdout.write.bind(process.stdout)
-  process.stdout.write = (chunk: any) => {
-    captured += chunk
-    return true
-  }
-  try {
-    await inviteCmd({}, ctx(dir))
-  } finally {
-    process.stdout.write = orig
-  }
-  t.is(captured.trim(), expected)
-})
+// Happy-path invite / join live in
+//   packages/daemon/test/integration/invite-redeem.test.ts
+// which runs two daemons over a hyperdht testnet. The CLI-only unit
+// suite keeps just the client-side validation cases above.
 
 test('stopCmd: no PID file → no-op', async (t) => {
   const dir = await tmpHome(t)
