@@ -1233,27 +1233,27 @@ matrix; one slot is enough for the v0.1 surface.
 
 ### 3.6 Phase 3 deliverables
 
-- [ ] **Precursor §2.2a shipped**: `@openpact/sdk` emits dual CJS + ESM with a `"exports"` map, verified by `publint` in CI.
-- [ ] Web dashboard served on localhost:7667, started automatically with `openpact start`
-- [ ] Vite + Preact frontend with 6 screens matching the brand
-- [ ] SSE real-time updates (no polling); first frame includes `retry: 1000`; keepalive every 25s
-- [ ] `--no-dashboard` flag for headless deployments
-- [ ] `openpact dashboard` command to open in browser
-- [ ] `vite build` output ships inside the package (pre-built, no user-side build step)
-- [ ] Three tsconfigs in `packages/dashboard/` (root references-only, server, browser); both halves typecheck under one `npm run typecheck`
-- [ ] Reverse-ref index live in `apply.ts`, with `apply.ts` per-file gate still ≥95/90 (`scripts/check-apply-coverage.js` green)
-- [ ] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install + installed-list, admin promote/remove)
-- [ ] New error envelope codes wired into `@openpact/sdk` (`NotIndexerError`, `BadSkillNameError`, `NotConfirmedError`) and into `@openpact/skill`'s `tools.json` errors block
-- [ ] Skill install path constraints enforced: install root pinned at `<dataDir>/skills/`, name regex `^[a-z0-9][a-z0-9._-]*$`, mode `0644`, checksum re-verified before write
-- [ ] `installed-skills.json` tracked per-pact in `<dataDir>/`, written atomically (write-tmp-then-rename)
-- [ ] Bundle budget enforced in CI via `size-limit`: `dist/assets/*.js` ≤ 100KB gzipped, `*.css` ≤ 20KB
+- [x] **Precursor §2.2a shipped**: `@openpact/sdk` emits dual CJS + ESM with a `"exports"` map, verified by `publint` in CI.
+- [x] Web dashboard served on localhost:7667, started automatically with `openpact start`
+- [ ] Vite + Preact frontend with 6 screens matching the brand (scaffold + boot stub shipped; screens land in slices C+D)
+- [x] SSE real-time updates (no polling); first frame includes `retry: 1000`; keepalive every 25s (daemon side; dashboard proxy passes through)
+- [x] `--no-dashboard` flag for headless deployments
+- [x] `openpact dashboard` command to open in browser
+- [ ] `vite build` output ships inside the package (pre-built, no user-side build step) — scaffold builds; full ship in slice F
+- [x] Three tsconfigs in `packages/dashboard/` (root references-only, server, browser); both halves typecheck under one `npm run typecheck`
+- [x] Reverse-ref index live in `apply.ts`, with `apply.ts` per-file gate still ≥95/90 (`scripts/check-apply-coverage.js` green; 100/91.49)
+- [x] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install + installed-list, admin promote/remove)
+- [x] New error envelope codes wired into `@openpact/sdk` (`NotIndexerError`, `BadSkillNameError`, `NotConfirmedError`) and into `@openpact/skill`'s `tools.json` errors block
+- [x] Skill install path constraints enforced: install root pinned at `<dataDir>/skills/`, name regex `^[a-z0-9][a-z0-9._-]*$`, mode `0644`, checksum re-verified before write
+- [x] `installed-skills.json` tracked per-pact in `<dataDir>/`, written atomically (write-tmp-then-rename)
+- [x] Bundle budget enforced via `size-limit` (`packages/dashboard/.size-limit.json`): JS ≤ 100KB gzipped, CSS ≤ 20KB; scaffold currently 5KB / 0.6KB. CI gate lands in slice F.
 - [ ] README updated with dashboard screenshots
 - [ ] **Doc sync committed alongside the code**: `OPENPACT_DESIGN.md` §6 (CLI surface) + `CLAUDE.md` (`## CLI surface` table + `## REST API contract` block) updated with the new verbs, flags, and endpoints
 - [ ] **Tests**:
   - [ ] 6+ Playwright UI tests covering all screens (single Ubuntu+Node 22 slot, `dashboard-ui` job; chromium only)
-  - [ ] 6+ unit tests for proxy, SSE, new endpoints, skill install constraints, ref index (brittle)
-  - [ ] Frontend hooks/lib tests via Vitest
-  - [ ] Dashboard server coverage at ≥80 lines / ≥75 branches; `apply.ts` per-file ≥95 / ≥90 still green
+  - [x] 6+ unit tests for proxy, SSE, new endpoints, skill install constraints, ref index (brittle) — slice A added 33 tests; slice B's `server.test.ts` adds 7 covering proxy + static + close
+  - [ ] Frontend hooks/lib tests via Vitest (lands with slice C hooks)
+  - [ ] Dashboard server coverage at ≥80 lines / ≥75 branches; `apply.ts` per-file ≥95 / ≥90 still green (apply.ts gate currently 100/91.49)
 
 ---
 

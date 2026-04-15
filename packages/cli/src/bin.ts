@@ -11,6 +11,7 @@ import { peersCmd } from './commands/peers'
 import { logCmd } from './commands/log'
 import { addWriterCmd } from './commands/add-writer'
 import { removeWriterCmd } from './commands/remove-writer'
+import { dashboardCmd } from './commands/dashboard'
 
 export function buildProgram(): Command {
   const program = new Command()
@@ -46,20 +47,30 @@ export function buildProgram(): Command {
 
   program
     .command('start')
-    .description('summon the daemon in the background (REST API on :7666)')
+    .description('summon the daemon in the background (REST API on :7666; dashboard on :7667)')
     .option('--foreground', 'run in the foreground (do not detach)')
     .option('--port <n>', 'REST API port', '7666')
     .option(
       '--bootstrap <list>',
       'comma-separated host:port DHT bootstrap (advanced; default: public DHT)',
     )
+    .option('--no-dashboard', 'skip the dashboard (headless / seed nodes / CI)')
+    .option('--dashboard-port <n>', 'dashboard port (default 7667; 0 = OS-chosen)')
     .action(startCmd)
 
   program
     .command('start-foreground', { hidden: true })
     .option('--port <n>', '', '7666')
     .option('--bootstrap <list>', '')
+    .option('--no-dashboard', '')
+    .option('--dashboard-port <n>', '')
     .action(startForegroundCmd)
+
+  program
+    .command('dashboard')
+    .description('open the OpenPact dashboard in the default browser')
+    .option('--port <n>', 'dashboard port', '7667')
+    .action(dashboardCmd)
 
   program
     .command('stop')

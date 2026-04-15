@@ -19,6 +19,18 @@
     "isolatedModules": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*", "packages/*/test/**/*", "scripts/**/*", "types/**/*"],
-  "exclude": ["**/node_modules", "**/dist", "**/coverage"]
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/server/**/*",
+    "packages/*/test/**/*",
+    "scripts/**/*",
+    "types/**/*"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/coverage",
+    "packages/dashboard/src/**/*",
+    "packages/dashboard/test/ui/**/*"
+  ]
 }

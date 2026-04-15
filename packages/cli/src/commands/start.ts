@@ -11,6 +11,8 @@ export interface StartOpts {
   foreground?: boolean
   port?: string | number
   bootstrap?: string
+  noDashboard?: boolean
+  dashboardPort?: string | number
 }
 
 export async function startCmd(
@@ -42,6 +44,8 @@ export async function startCmd(
     'start-foreground',
     ...(opts.port ? ['--port', String(opts.port)] : []),
     ...(opts.bootstrap ? ['--bootstrap', opts.bootstrap] : []),
+    ...(opts.noDashboard ? ['--no-dashboard'] : []),
+    ...(opts.dashboardPort !== undefined ? ['--dashboard-port', String(opts.dashboardPort)] : []),
   ]
 
   const child = spawn(process.execPath, childArgs, {

@@ -1,0 +1,82 @@
+/*
+ * OpenPact dashboard — brand tokens.
+ *
+ * Single source of truth for the palette across all 6 screens. Lifted
+ * verbatim from `docs/OPENPACT_BRAND.md` so designers and devs work
+ * from one vocabulary. Don't introduce new hex values in component
+ * styles; reach for these tokens.
+ */
+
+:root {
+  /* Reds */
+  --hellfire: #ef4444;
+  --ember: #dc2626;
+  --brimstone: #b91c1c;
+  --inferno: #991b1b;
+  --charred: #7f1d1d;
+
+  /* Backgrounds (dark theme is the only theme) */
+  --abyss: #0f0a0a;
+  --void: #1a1214;
+  --smoke: #2a1f22;
+  --ash: #3d2f32;
+
+  /* Light accents */
+  --blush: #fee2e2;
+  --glow: #fecaca;
+  --pale: #fca5a5;
+  --spark: #f87171;
+
+  /* Semantic */
+  --success: #22c55e;
+  --warning: #eab308;
+  --error: var(--hellfire);
+
+  /* Type scale */
+  --font-system:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--abyss);
+  color: var(--blush);
+  font-family: var(--font-system);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boot {
+  text-align: center;
+  color: var(--pale);
+}
+
+.boot h1 {
+  font-size: 28px;
+  margin: 0 0 8px;
+  color: var(--blush);
+  letter-spacing: -0.02em;
+}
+
+.boot p {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--ash);
+  font-size: 12px;
+}

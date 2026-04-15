@@ -11,7 +11,7 @@ test('start writes PID; stop removes it', async (t) => {
 
   await runWithDir(home, ['init'])
 
-  const start = await runWithDir(home, ['start', '--port', port])
+  const start = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
   t.is(start.exitCode, 0)
   t.ok(start.stdout.includes('PID'))
   t.ok(start.stdout.includes('daemon stirs') || start.stdout.includes('Listening'))

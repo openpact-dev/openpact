@@ -45,7 +45,16 @@ test(
 
     // A: init + start with the testnet bootstrap.
     await runCli(['--data-dir', homeA, 'init'])
-    await runCli(['--data-dir', homeA, 'start', '--port', String(portA), '--bootstrap', bootstrap])
+    await runCli([
+      '--data-dir',
+      homeA,
+      'start',
+      '--no-dashboard',
+      '--port',
+      String(portA),
+      '--bootstrap',
+      bootstrap,
+    ])
     const pidA = await readPidFile(homeA)
     t.teardown(() => ensureKilled(pidA))
     t.teardown(() => runCli(['--data-dir', homeA, 'stop']).catch(() => {}))
@@ -57,7 +66,16 @@ test(
 
     // B: join + start with the same bootstrap.
     await runCli(['--data-dir', homeB, 'join', key])
-    await runCli(['--data-dir', homeB, 'start', '--port', String(portB), '--bootstrap', bootstrap])
+    await runCli([
+      '--data-dir',
+      homeB,
+      'start',
+      '--no-dashboard',
+      '--port',
+      String(portB),
+      '--bootstrap',
+      bootstrap,
+    ])
     const pidB = await readPidFile(homeB)
     t.teardown(() => ensureKilled(pidB))
     t.teardown(() => runCli(['--data-dir', homeB, 'stop']).catch(() => {}))

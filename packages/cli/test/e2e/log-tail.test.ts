@@ -19,7 +19,7 @@ test('log prints entries posted via REST', async (t) => {
   const port = nextPort++
   await runWithDir(home, ['init'])
 
-  await runWithDir(home, ['start', '--port', String(port)])
+  await runWithDir(home, ['start', '--no-dashboard', '--port', String(port)])
   const pid = await readPidFile(home)
   t.teardown(() => ensureKilled(pid))
   t.teardown(() => runWithDir(home, ['stop']).catch(() => {}))

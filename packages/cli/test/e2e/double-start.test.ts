@@ -9,7 +9,7 @@ test('double start refuses with clear error', async (t) => {
   const port = String(nextPort++)
   await runWithDir(home, ['init'])
 
-  const first = await runWithDir(home, ['start', '--port', port])
+  const first = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
   t.is(first.exitCode, 0)
 
   const pid = await readPidFile(home)
@@ -26,7 +26,7 @@ test('double start refuses with clear error', async (t) => {
 
   await new Promise((r) => setTimeout(r, 500))
 
-  const second = await runWithDir(home, ['start', '--port', String(nextPort++)])
+  const second = await runWithDir(home, ['start', '--no-dashboard', '--port', String(nextPort++)])
   t.not(second.exitCode, 0)
   t.ok(second.stderr.includes('already') || second.stderr.includes('already appears'))
 })
