@@ -1,64 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    OpenPact mark — light theme variant.
+    Oxblood ink on paper. Same composition as the dark logo.
+  -->
   <defs>
-    <linearGradient id="lh" x1="0.5" y1="1" x2="0.3" y2="0">
-      <stop offset="0%" stop-color="#991B1B"/>
-      <stop offset="60%" stop-color="#DC2626"/>
-      <stop offset="100%" stop-color="#EF4444"/>
-    </linearGradient>
-    <linearGradient id="rh" x1="0.5" y1="1" x2="0.7" y2="0">
-      <stop offset="0%" stop-color="#991B1B"/>
-      <stop offset="60%" stop-color="#DC2626"/>
-      <stop offset="100%" stop-color="#EF4444"/>
-    </linearGradient>
-    <radialGradient id="eye" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="40%" stop-color="#FEE2E2"/>
-      <stop offset="70%" stop-color="#FCA5A5"/>
-      <stop offset="100%" stop-color="#DC2626"/>
+    <radialGradient id="ambient-light" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0%" stop-color="#B91C1C" stop-opacity="0.12"/>
+      <stop offset="60%" stop-color="#B91C1C" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#B91C1C" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+    <radialGradient id="iris-light" cx="0.5" cy="0.5" r="0.58">
+      <stop offset="0%" stop-color="#FEE2E2"/>
+      <stop offset="50%" stop-color="#F87171"/>
+      <stop offset="100%" stop-color="#7F1D1D"/>
     </radialGradient>
   </defs>
 
-  <rect width="512" height="512" rx="96" fill="#FFFFFF"/>
+  <rect width="512" height="512" rx="96" fill="#F7F7F5"/>
 
-  <g transform="translate(256, 260)">
+  <circle cx="256" cy="256" r="230" fill="url(#ambient-light)"/>
 
-    <circle cx="0" cy="0" r="100" fill="url(#glow)"/>
+  <g fill="none" stroke="#991B1B" stroke-linecap="round" stroke-linejoin="round">
 
-    <!-- Left horn -->
-    <path d="M -20,-10 C -30,-30 -55,-70 -80,-120 C -88,-136 -100,-155 -105,-168 C -98,-160 -82,-138 -72,-118 C -55,-85 -40,-55 -34,-30 C -30,-18 -26,-8 -18,0" 
-          fill="url(#lh)" stroke="none"/>
-    <path d="M -18,-15 C -28,-40 -50,-80 -72,-125 C -78,-138 -88,-155 -92,-164"
-          stroke="#EF4444" stroke-width="2" fill="none" opacity="0.2"/>
+    <path d="M 160 180 C 126 128, 108 76, 96 36" stroke-width="16"/>
+    <path d="M 352 180 C 386 128, 404 76, 416 36" stroke-width="16"/>
 
-    <!-- Right horn -->
-    <path d="M 20,-10 C 30,-30 55,-70 80,-120 C 88,-136 100,-155 105,-168 C 98,-160 82,-138 72,-118 C 55,-85 40,-55 34,-30 C 30,-18 26,-8 18,0" 
-          fill="url(#rh)" stroke="none"/>
-    <path d="M 18,-15 C 28,-40 50,-80 72,-125 C 78,-138 88,-155 92,-164"
-          stroke="#EF4444" stroke-width="2" fill="none" opacity="0.2"/>
+    <path d="M 48 260 C 112 180, 176 148, 256 148 C 336 148, 400 180, 464 260
+             C 400 340, 336 372, 256 372 C 176 372, 112 340, 48 260 Z"
+          stroke-width="16"/>
 
-    <!-- The eye -->
-    <circle cx="0" cy="8" r="36" fill="#DC2626"/>
-    <circle cx="0" cy="8" r="24" fill="url(#eye)"/>
-    <!-- Slit pupil -->
-    <ellipse cx="0" cy="8" rx="6" ry="18" fill="#7F1D1D"/>
-    <ellipse cx="0" cy="8" rx="3" ry="14" fill="#1A0505"/>
+    <circle cx="256" cy="260" r="72" stroke-width="14" fill="url(#iris-light)" fill-opacity="0.55"/>
 
-    <!-- Three agent dots -->
-    <circle cx="-50" cy="90" r="10" fill="#DC2626" opacity="0.8"/>
-    <circle cx="0" cy="105" r="10" fill="#DC2626" opacity="0.8"/>
-    <circle cx="50" cy="90" r="10" fill="#DC2626" opacity="0.8"/>
+    <circle cx="176" cy="432" r="20" fill="#991B1B" stroke="none"/>
+    <circle cx="256" cy="460" r="20" fill="#991B1B" stroke="none"/>
+    <circle cx="336" cy="432" r="20" fill="#991B1B" stroke="none"/>
 
-    <!-- Lines from eye to dots -->
-    <line x1="-10" y1="40" x2="-50" y2="80" stroke="#DC2626" stroke-width="2" opacity="0.25"/>
-    <line x1="0" y1="44" x2="0" y2="95" stroke="#DC2626" stroke-width="2" opacity="0.25"/>
-    <line x1="10" y1="40" x2="50" y2="80" stroke="#DC2626" stroke-width="2" opacity="0.25"/>
-
-    <!-- Lines between dots -->
-    <line x1="-50" y1="90" x2="0" y2="105" stroke="#DC2626" stroke-width="2" opacity="0.15"/>
-    <line x1="0" y1="105" x2="50" y2="90" stroke="#DC2626" stroke-width="2" opacity="0.15"/>
+    <path d="M 176 432 L 256 460 L 336 432 Z" stroke-width="6" stroke-opacity="0.45"/>
   </g>
+
+  <ellipse cx="256" cy="260" rx="12" ry="56" fill="#1A1A1A"/>
+  <circle cx="252" cy="224" r="4" fill="#FECACA" fill-opacity="0.9"/>
 </svg>

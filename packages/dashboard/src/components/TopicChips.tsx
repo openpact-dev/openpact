@@ -5,13 +5,13 @@ interface Props {
 }
 
 const BASE =
-  'cursor-pointer rounded-full border-[0.5px] border-line bg-paper px-3 py-[5px] text-[12px] font-normal text-ink2 hover:border-line-h hover:text-ink'
-const ACTIVE = 'border-purple bg-purple-soft text-purple-deep'
+  'cursor-pointer rounded-full border-[0.5px] border-[var(--color-line)] bg-transparent px-3 py-[5px] font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] transition-colors hover:border-[var(--color-line-h)] hover:text-[var(--color-ink)]'
+const ACTIVE = 'border-[var(--color-ember)] bg-[var(--color-ember-soft)] text-[var(--color-ember)]'
 
 export function TopicChips({ topics, selected, onSelect }: Props) {
   const cls = (active: boolean) => (active ? `${BASE} ${ACTIVE}` : BASE)
   return (
-    <div class="mb-[18px] flex flex-wrap gap-1.5" role="group" aria-label="Topic filters">
+    <div class="mb-5 flex flex-wrap gap-1.5" role="group" aria-label="Topic filters">
       <button class={cls(selected === null)} onClick={() => onSelect(null)} data-testid="chip-all">
         All
       </button>

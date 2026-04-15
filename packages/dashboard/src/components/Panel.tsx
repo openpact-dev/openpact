@@ -1,24 +1,50 @@
 import type { ComponentChildren } from 'preact'
+import { CornerBracket } from './Ornament'
 
 interface Props {
+  /** Italic eyebrow above the title (e.g. "II.") */
+  eyebrow?: string
   title: string
   link?: { label: string; href: string }
   children: ComponentChildren
+  /** Add the brass corner brackets to the panel. Defaults to true. */
+  ornaments?: boolean
 }
 
-/** White panel with a thin header bar — matches the mockup's .panel pattern. */
-export function Panel({ title, link, children }: Props) {
+/**
+ * Codex panel — corner brackets, eyebrow + title header, and a thin
+ * ember underline on the title. The body sits on the paper surface
+ * with a subtle inset shadow above to suggest a folded leaf.
+ */
+export function Panel({ eyebrow, title, link, children, ornaments = true }: Props) {
   return (
-    <div class="overflow-hidden rounded-[12px] border-[0.5px] border-line bg-paper">
-      <div class="flex items-center justify-between border-b-[0.5px] border-line px-[18px] py-[13px]">
-        <span class="text-[13px] font-medium text-ink">{title}</span>
+    <section class="relative">
+      {ornaments && <CornerBracket pos="tl" />}
+      {ornaments && <CornerBracket pos="tr" />}
+      {ornaments && <CornerBracket pos="bl" />}
+      {ornaments && <CornerBracket pos="br" />}
+
+      <header class="flex items-end justify-between gap-4 px-5 pb-2.5 pt-4">
+        <div>
+          {eyebrow ? <div class="eyebrow mb-0.5">{eyebrow}</div> : null}
+          <h2 class="font-display text-[17px] font-medium leading-none tracking-tight text-[var(--color-ink)]">
+            {title}
+          </h2>
+        </div>
         {link ? (
-          <a href={link.href} class="text-[12px] text-purple no-underline hover:text-purple-deep">
-            {link.label}
+          <a
+            href={link.href}
+            class="group font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink2)] hover:text-[var(--color-ember)]"
+          >
+            <span class="ember-underline">{link.label}</span>
+            <span class="ml-1.5">→</span>
           </a>
         ) : null}
-      </div>
-      {children}
-    </div>
+      </header>
+
+      <div class="mx-5 h-px bg-[var(--color-line)]" />
+
+      <div>{children}</div>
+    </section>
   )
 }

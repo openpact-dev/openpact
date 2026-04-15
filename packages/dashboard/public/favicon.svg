@@ -1,67 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    OpenPact mark — the watching daemon.
+
+    Composition (from dashboard's Ornament.tsx WatchingEye):
+      - two horns curving up and outward from the eye
+      - a wide almond eye with a glowing iris ring and slit pupil
+      - three agent nodes below, connected in a triangle
+  -->
   <defs>
-    <linearGradient id="lh" x1="0.5" y1="1" x2="0.3" y2="0">
-      <stop offset="0%" stop-color="#DC2626"/>
-      <stop offset="60%" stop-color="#EF4444"/>
-      <stop offset="100%" stop-color="#FCA5A5"/>
-    </linearGradient>
-    <linearGradient id="rh" x1="0.5" y1="1" x2="0.7" y2="0">
-      <stop offset="0%" stop-color="#DC2626"/>
-      <stop offset="60%" stop-color="#EF4444"/>
-      <stop offset="100%" stop-color="#FCA5A5"/>
-    </linearGradient>
-    <radialGradient id="eye" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="40%" stop-color="#FEE2E2"/>
-      <stop offset="70%" stop-color="#FCA5A5"/>
-      <stop offset="100%" stop-color="#EF4444"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.3"/>
+    <radialGradient id="ambient" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.32"/>
+      <stop offset="55%" stop-color="#EF4444" stop-opacity="0.08"/>
       <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="iris" cx="0.5" cy="0.5" r="0.58">
+      <stop offset="0%" stop-color="#FECACA"/>
+      <stop offset="45%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#991B1B"/>
     </radialGradient>
   </defs>
 
+  <!-- Abyss background -->
   <rect width="512" height="512" rx="96" fill="#0F0A0A"/>
 
-  <g transform="translate(256, 260)">
+  <!-- Ambient ember glow -->
+  <circle cx="256" cy="256" r="230" fill="url(#ambient)"/>
 
-    <!-- Ambient glow behind the eye -->
-    <circle cx="0" cy="0" r="100" fill="url(#glow)"/>
+  <g fill="none" stroke="#EF4444" stroke-linecap="round" stroke-linejoin="round">
 
-    <!-- Left horn - bold, curved -->
-    <path d="M -20,-10 C -30,-30 -55,-70 -80,-120 C -88,-136 -100,-155 -105,-168 C -98,-160 -82,-138 -72,-118 C -55,-85 -40,-55 -34,-30 C -30,-18 -26,-8 -18,0" 
-          fill="url(#lh)" stroke="none"/>
-    <!-- Left horn thickness -->
-    <path d="M -18,-15 C -28,-40 -50,-80 -72,-125 C -78,-138 -88,-155 -92,-164"
-          stroke="#FCA5A5" stroke-width="2" fill="none" opacity="0.3"/>
+    <!-- Left horn: sweeps up-and-leftward from the eye-brow to a point.
+         Single open curve; no loop. -->
+    <path d="M 160 180 C 126 128, 108 76, 96 36" stroke-width="16"/>
+    <!-- Right horn: mirror -->
+    <path d="M 352 180 C 386 128, 404 76, 416 36" stroke-width="16"/>
 
-    <!-- Right horn - bold, curved -->
-    <path d="M 20,-10 C 30,-30 55,-70 80,-120 C 88,-136 100,-155 105,-168 C 98,-160 82,-138 72,-118 C 55,-85 40,-55 34,-30 C 30,-18 26,-8 18,0" 
-          fill="url(#rh)" stroke="none"/>
-    <!-- Right horn thickness -->
-    <path d="M 18,-15 C 28,-40 50,-80 72,-125 C 78,-138 88,-155 92,-164"
-          stroke="#FCA5A5" stroke-width="2" fill="none" opacity="0.3"/>
+    <!-- Eye almond (vesica) -->
+    <path d="M 48 260 C 112 180, 176 148, 256 148 C 336 148, 400 180, 464 260
+             C 400 340, 336 372, 256 372 C 176 372, 112 340, 48 260 Z"
+          stroke-width="16"/>
 
-    <!-- The eye - central focal point -->
-    <circle cx="0" cy="8" r="36" fill="#DC2626"/>
-    <circle cx="0" cy="8" r="24" fill="url(#eye)"/>
-    <!-- Slit pupil -->
-    <ellipse cx="0" cy="8" rx="6" ry="18" fill="#7F1D1D"/>
-    <ellipse cx="0" cy="8" rx="3" ry="14" fill="#0F0A0A"/>
+    <!-- Iris ring with warm glowing fill -->
+    <circle cx="256" cy="260" r="72" stroke-width="14" fill="url(#iris)" fill-opacity="0.45"/>
 
-    <!-- Three small connection dots below - the agents -->
-    <circle cx="-50" cy="90" r="10" fill="#DC2626" opacity="0.7"/>
-    <circle cx="0" cy="105" r="10" fill="#DC2626" opacity="0.7"/>
-    <circle cx="50" cy="90" r="10" fill="#DC2626" opacity="0.7"/>
+    <!-- Three agent nodes below -->
+    <circle cx="176" cy="432" r="20" fill="#EF4444" stroke="none"/>
+    <circle cx="256" cy="460" r="20" fill="#EF4444" stroke="none"/>
+    <circle cx="336" cy="432" r="20" fill="#EF4444" stroke="none"/>
 
-    <!-- Lines from eye to dots -->
-    <line x1="-10" y1="40" x2="-50" y2="80" stroke="#EF4444" stroke-width="2" opacity="0.3"/>
-    <line x1="0" y1="44" x2="0" y2="95" stroke="#EF4444" stroke-width="2" opacity="0.3"/>
-    <line x1="10" y1="40" x2="50" y2="80" stroke="#EF4444" stroke-width="2" opacity="0.3"/>
-
-    <!-- Lines between dots -->
-    <line x1="-50" y1="90" x2="0" y2="105" stroke="#EF4444" stroke-width="2" opacity="0.2"/>
-    <line x1="0" y1="105" x2="50" y2="90" stroke="#EF4444" stroke-width="2" opacity="0.2"/>
+    <!-- Triangle connecting the nodes -->
+    <path d="M 176 432 L 256 460 L 336 432 Z" stroke-width="6" stroke-opacity="0.45"/>
   </g>
+
+  <!-- Slit pupil -->
+  <ellipse cx="256" cy="260" rx="12" ry="56" fill="#0F0A0A"/>
+  <!-- Ember highlight in the pupil -->
+  <circle cx="252" cy="224" r="4" fill="#FECACA" fill-opacity="0.75"/>
 </svg>

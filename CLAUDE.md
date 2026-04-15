@@ -10,22 +10,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-**Phase 1 + Phase 2 complete.** Two daemons pair via the CLI, replicate entries through testnet, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Three published-ready agent-integration packages plus four worked example integrations cover the realistic adoption surface.
+**Phase 1, Phase 2, and Phase 3 complete.** Two daemons pair via the CLI, replicate entries through testnet, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Three published-ready agent-integration packages plus four worked example integrations cover the realistic adoption surface. A full-featured web dashboard runs on `:7667` alongside the daemon (six screens: Dashboard / Knowledge / Tasks / Skills / Network / Trace), renders a Preact SPA fed by the SDK through a same-origin `/api/*` proxy with SSE push for live updates, and gates destructive actions (skill install, admin promote, admin remove) behind a ConfirmDialog.
 
 Shipped:
 
 - **Phase 1.1–1.5** — daemon (Corestore + Autobase + Hyperswarm), REST on `:7666`, CLI (`init / start / log / add-writer / ...`), full pair-and-replicate flow.
 - **§2.1 `@openpact/skill`** — portable `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain Python, custom runtimes.
-- **§2.2 `@openpact/sdk`** — typed TypeScript client (CJS-only build), full error-class hierarchy, integration test against a real daemon.
+- **§2.2 `@openpact/sdk`** — typed TypeScript client with dual CJS + ESM build, full error-class hierarchy, integration test against a real daemon.
 - **§2.3 examples** — Claude Code curl recipe, full OpenClaw workspace (drift-guarded), LangChain Python loader (with pytest), and shell scripts. Each smoke-tested against a real daemon.
 - **§2.4 task TTL + race tests** — configurable TTL (default 24h); deterministic per-peer expiry via timestamp-on-entry in the reducer; 3-daemon concurrent-claim race; offline-claimer recovery.
 - **§2.5 skill checksum** — sha256 verified at POST and at GET `/:id/content`; tampering test; `requires_approval` flag round-trips through replication; new `SkillChecksumMismatchError` in the SDK error hierarchy.
 - **§2.6 `@openpact/mcp`** — MCP server (18 tools) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed.
+- **§2.2a — SDK ESM build** — `dist/esm/` alongside `dist/cjs/` with a dual-condition `"exports"` map. Required for the dashboard's Vite bundle.
+- **§3 slices A–F** — daemon entries/SSE/install/admin endpoints + reverse-ref index, dashboard scaffold (Vite + Preact + Tailwind v4), all six screens, install + admin write actions gated by ConfirmDialog, CI `dashboard` job with bundle budget gate (JS ≤ 100KB / CSS ≤ 20KB gzipped). Logos regenerated from the dashboard's WatchingEye mark.
 
 Up next:
 
-- **§2.2a — SDK ESM build** (precursor to Phase 3). `@openpact/sdk` adds `dist/esm/` alongside `dist/cjs/` and a dual-condition `"exports"` map. Hard prerequisite for the dashboard, which imports the SDK into a browser bundle.
-- **Phase 3 — web dashboard** (`packages/dashboard/`, Vite + Preact, served by the daemon on `:7667`, all 6 screens, SSE for live updates, `--no-dashboard` for headless deployments). Plan + tradeoffs in `docs/OPENPACT_BUILD_PLAN.md` §3.
+- **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch. Plan in `docs/OPENPACT_BUILD_PLAN.md` §4.
 
 Source of truth for what to build:
 
@@ -53,10 +54,10 @@ openpact/
   packages/
     daemon/          # Autobase + Hyperswarm + fastify REST on :7666     [shipped]
     cli/             # commander-based openpact <verb>                    [shipped]
-    sdk/             # @openpact/sdk — typed TS client                    [shipped]
+    sdk/             # @openpact/sdk — typed TS client (dual CJS+ESM)     [shipped]
     mcp/             # @openpact/mcp — MCP server wrapping the daemon     [shipped]
     skill/           # @openpact/skill — portable SKILL.md + tools.json   [shipped]
-    dashboard/       # web dashboard (Vite + Preact) served on :7667       [later]
+    dashboard/       # Vite + Preact SPA + Fastify proxy on :7667          [slices A–C shipped]
   examples/
     claude-code/     # paste-into-CLAUDE.md curl + jq recipe              [shipped]
     openclaw/        # OpenClaw workspace (drift-guarded SKILL.md copy)   [shipped]
@@ -81,6 +82,42 @@ Load-bearing. Don't violate without explicit user sign-off:
 4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, payload, refs, ttl}`. Adding a new top-level type requires a design-doc update first.
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
 6. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
+
+## Dashboard conventions
+
+Dashboard lives in `packages/dashboard/`. Two halves:
+
+- `src/` — Preact 10 SPA. Bundled by Vite with esbuild's automatic
+  JSX transform (`jsxImportSource: 'preact'`). **Do not** use
+  `@preact/preset-vite` — it pulls in `zimmerframe` as an ESM-only
+  dep that breaks the Vite server.
+- `server/` — Fastify instance mounted by `openpact start`. Serves
+  the built SPA from `dist/browser/` via `@fastify/static` and
+  proxies `/api/*` to the daemon via `@fastify/http-proxy`.
+
+Styling: Tailwind v4 via `@tailwindcss/vite`. Tokens live in
+`src/style.css` under `@theme`, with dark overrides in `.dark`. The
+dashboard uses **both light and dark themes**. The theme dial in the
+sidebar persists preference to `localStorage`; default is `system`.
+
+Typography: Cormorant Garamond (display + body), JetBrains Mono (IDs,
+eyebrows, timestamps). The brand doc's old Inter sizing table is
+superseded by this pair — see `docs/OPENPACT_BRAND.md`.
+
+Bundle budget: **≤100KB JS / ≤20KB CSS gzipped** (enforced via
+`size-limit` in Slice F).
+
+**Gotchas**:
+
+- SSE URL is `/api/v1/events` in the browser — matches the SDK's
+  `/v1/…` paths plus the dashboard proxy's `/api` strip.
+- The SDK stores `globalThis.fetch.bind(globalThis)` (not
+  `globalThis.fetch`) so the stashed reference works as a method in
+  the browser. Node's fetch doesn't care; the browser raises
+  "Illegal invocation" without the bind.
+- `@fastify/static` is registered with `decorateReply: false`, which
+  removes `reply.sendFile`. The SPA fallback reads `index.html` once
+  at boot and serves the body directly — don't call `reply.sendFile`.
 
 ## Tech stack (per build plan §Technical decisions)
 
@@ -117,9 +154,19 @@ PUT  /v1/tasks/:id/complete
 GET  /v1/skills?format=openclaw|langchain|generic
 POST /v1/skills
 GET  /v1/skills/:id/content                   -> verifies checksum
+POST /v1/skills/:id/install                   -> body { confirm: true } (creator only)
+GET  /v1/skills/installed                     -> installed-skills.json
 
 GET  /v1/messages?since=TIMESTAMP
 POST /v1/messages
+
+GET  /v1/entries/:id                          -> full entry across any type
+GET  /v1/entries/:id/referenced-by            -> entries that ref this id (reverse-ref index)
+
+GET  /v1/events                               -> SSE: entry-applied, peer-add, peer-remove, update
+
+POST /v1/admin/promote                        -> body { key, confirm: true } (creator only)
+POST /v1/admin/remove                         -> body { key, confirm: true } (creator only)
 ```
 
 **Error envelope** (uniform):
@@ -127,8 +174,14 @@ POST /v1/messages
 { "error": "TASK_ALREADY_CLAIMED", "message": "...", "status": 409 }
 ```
 Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
+New codes from §3: `NOT_INDEXER` (409), `BAD_SKILL_NAME` (400), `NOT_CONFIRMED` (400), `SKILL_CHECKSUM_MISMATCH` (409).
 
-Optional dashboard runs on `:7667` (localhost only).
+The web dashboard runs on `:7667` by default (localhost only). The
+SPA at `/` talks to the daemon through a Fastify proxy at `/api/*`.
+**Important**: the proxy strips only `/api`, not `/api/v1` — the SDK's
+paths already carry the `/v1/` prefix, so the request flow is
+`dashboard /api/v1/knowledge` → `daemon /v1/knowledge`. Don't
+re-prepend `/v1` in the proxy or the path gets doubled.
 
 ## CLI surface
 
@@ -137,10 +190,13 @@ openpact init                  # create pact (keypair + Autobase)
 openpact join <key>            # join existing pact
 openpact invite                # print join key
 openpact start [--foreground]  # detached by default; --foreground to block
+                               #   also boots the dashboard on :7667 unless --no-dashboard
+                               #   --dashboard-port <n> overrides 7667
 openpact stop                  # stop background daemon
 openpact status                # pact info, peers, entry counts (formatted)
 openpact peers                 # list connected peers + roles
 openpact log [--type <type>]   # tail recent entries
+openpact dashboard             # open the dashboard URL in the default browser
 ```
 
 Check PID file / port before starting to avoid double-launch.

@@ -5,14 +5,18 @@ interface Props {
   empty?: string
 }
 
-export function ActivityFeed({ entries, empty = 'No activity yet.' }: Props) {
+export function ActivityFeed({ entries, empty = 'The pact is quiet.' }: Props) {
   if (entries.length === 0) {
-    return <div class="px-[18px] py-6 text-[13px] italic text-ink3">{empty}</div>
+    return (
+      <div class="px-5 py-8 text-center font-display italic text-[15px] text-[var(--color-ink3)]">
+        {empty}
+      </div>
+    )
   }
   return (
-    <div data-testid="activity-feed">
-      {entries.map((e) => (
-        <FeedRow key={e.id} entry={e} />
+    <div data-testid="activity-feed" class="divide-y-[0.5px] divide-[var(--color-line)]">
+      {entries.map((e, i) => (
+        <FeedRow key={e.id} entry={e} index={i} />
       ))}
     </div>
   )

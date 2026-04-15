@@ -23,7 +23,10 @@ export class OpenPactClient {
   constructor(opts: ClientOpts = {}) {
     this.baseUrl =
       opts.baseUrl ?? `http://${opts.host ?? DEFAULT_HOST}:${opts.port ?? DEFAULT_PORT}`
-    this.fetchImpl = opts.fetch ?? globalThis.fetch
+    // Browsers reject `fetch` when invoked as a method of anything but
+    // the global object ("Illegal invocation"). Binding to globalThis
+    // makes the stored reference callable from a class field.
+    this.fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis)
   }
 
   async req<T>(path: string, init?: FetchInit): Promise<T> {

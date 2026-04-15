@@ -1,110 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss';
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 /*
- * Design tokens.
+ * Codex of the Watching Daemon.
  *
- * Light theme matches the mockups in docs/mockups/ — paper-white
- * surfaces, polished palette (purple/teal/coral/amber/blue).
+ * Two themes, one composition language. Light is parchment/vellum:
+ * warm cream surface, oxblood accents, fine ink rules. Dark is the
+ * smith's forge: abyssal black, ember glow, hellfire pulses,
+ * scan grain. Both share the same skeleton; only the substrate
+ * changes.
  *
- * Dark theme uses the brand palette from docs/OPENPACT_BRAND.md —
- * Abyss/Void/Smoke surfaces, Blush text, Hellfire reds. Same token
- * names; values swap when html.dark is set.
- *
- * The CLI brand voice (devilish red, lowercase verbs) lives in the
- * terminal. The dashboard UI uses sentence-case copy and switches
- * theme via the user's preference (system / light / dark).
+ * Typography:
+ *   - Cormorant Garamond — display + body. Renaissance serif.
+ *   - JetBrains Mono — IDs, timestamps, ledger margins, code.
  */
 
 @theme {
-  /* Surfaces — light theme defaults */
-  --color-paper: #ffffff;
-  --color-canvas: #f7f7f5;
-  --color-mist: #eeede9;
+  /* === LIGHT THEME (parchment / vellum) === */
 
-  /* Borders */
-  --color-line: rgb(0 0 0 / 8%);
-  --color-line-h: rgb(0 0 0 / 14%);
+  /* Surfaces — warm cream paper, not bright white */
+  --color-paper: #fbf8f0;
+  --color-canvas: #f3eee2;
+  --color-mist: #e8e0cd;
+  --color-deckle: #d8ccab;
 
-  /* Text scale */
-  --color-ink: #1a1a1a;
-  --color-ink2: #6b6b6b;
-  --color-ink3: #9b9b9b;
+  /* Hairlines + rules — ink, not grey */
+  --color-line: rgb(38 28 12 / 14%);
+  --color-line-h: rgb(127 29 29 / 35%);
 
-  /* Accent palette (entry-type colour coding + UI primary) */
-  --color-purple: #534ab7;
-  --color-purple-soft: #eeedfe;
-  --color-purple-deep: #3c3489;
-  --color-teal: #0f6e56;
-  --color-teal-soft: #e1f5ee;
-  --color-teal-deep: #085041;
-  --color-coral: #993c1d;
-  --color-coral-soft: #faece7;
-  --color-coral-deep: #712b13;
-  --color-amber: #854f0b;
-  --color-amber-soft: #faeeda;
-  --color-amber-deep: #633806;
-  --color-blue: #185fa5;
-  --color-blue-soft: #e6f1fb;
-  --color-blue-deep: #0c447c;
+  /* Text scale — sepia ink, oxblood accent */
+  --color-ink: #1c1408;
+  --color-ink2: #5a4828;
+  --color-ink3: #8a7a5c;
+
+  /* Brand reds — earthy oxblood for light, blazing ember for dark */
+  --color-ember: #b3331a;
+  --color-ember-soft: #f1d6c8;
+  --color-ember-deep: #7f1d1d;
+  --color-ember-glow: rgb(179 51 26 / 22%);
+
+  /* Type-coded sigil hues (read on either theme) */
+  --color-sigil-knowledge: #4a6b3a;
+  --color-sigil-task: #ad7e1f;
+  --color-sigil-skill: #6c3aa1;
+  --color-sigil-message: #2a5577;
+
+  --color-sigil-knowledge-soft: #e3ead8;
+  --color-sigil-task-soft: #f4e6c8;
+  --color-sigil-skill-soft: #e6dcf2;
+  --color-sigil-message-soft: #d6e2ec;
+
+  /* Status hues */
+  --color-online: #4a7a3a;
+  --color-offline: #8a7a5c;
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-sans: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Radii match the mockup */
-  --radius-md: 0.5rem; /* 8px */
-  --radius-lg: 0.75rem; /* 12px */
+  /* Atmospherics — SVG fractal-noise grain, encoded inline */
+  --grain-paper: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.08  0 0 0 0 0.04  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-forge: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.95  0 0 0 0 0.92  0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+
+  /* Radii — subtle, not modern-rounded */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
 }
 
-/*
- * Dark theme overrides. Activated by `html.dark` (set by the
- * theme hook based on user preference + system pref).
- *
- * Tailwind v4 reads the same custom properties through `bg-paper`,
- * `text-ink`, etc. — so swapping the property values here is all
- * we need to do.
- */
+/* === DARK THEME (forge / ember chamber) === */
 .dark {
-  --color-paper: #1a1214; /* Void */
-  --color-canvas: #0f0a0a; /* Abyss */
-  --color-mist: #2a1f22; /* Smoke */
+  --color-paper: #14100f;
+  --color-canvas: #0e0a09;
+  --color-mist: #1f1815;
+  --color-deckle: #2a201c;
 
-  --color-line: rgb(239 68 68 / 12%);
-  --color-line-h: rgb(239 68 68 / 25%);
+  --color-line: rgb(254 226 226 / 8%);
+  --color-line-h: rgb(239 68 68 / 32%);
 
-  --color-ink: #fee2e2; /* Blush */
-  --color-ink2: #fca5a5; /* Pale */
-  --color-ink3: #6b5555; /* muted red-grey */
+  --color-ink: #f0e1d8;
+  --color-ink2: #c8a89c;
+  --color-ink3: #7a5e54;
 
-  /* Accents — keep type colours distinct, but reach for brand reds
-     for the primary (purple → hellfire) and brighten greens / yellows
-     so they read on the abyss. */
-  --color-purple: #ef4444; /* Hellfire */
-  --color-purple-soft: rgb(239 68 68 / 15%);
-  --color-purple-deep: #fca5a5;
-  --color-teal: #22c55e;
-  --color-teal-soft: rgb(34 197 94 / 12%);
-  --color-teal-deep: #4ade80;
-  --color-coral: #f87171; /* Spark */
-  --color-coral-soft: rgb(248 113 113 / 15%);
-  --color-coral-deep: #fca5a5;
-  --color-amber: #eab308;
-  --color-amber-soft: rgb(234 179 8 / 12%);
-  --color-amber-deep: #facc15;
-  --color-blue: #60a5fa;
-  --color-blue-soft: rgb(96 165 250 / 12%);
-  --color-blue-deep: #93c5fd;
-}
+  --color-ember: #ef4444;
+  --color-ember-soft: rgb(239 68 68 / 12%);
+  --color-ember-deep: #fca5a5;
+  --color-ember-glow: rgb(239 68 68 / 25%);
 
-/*
- * Pre-paint to avoid a flash of the wrong theme. The theme hook
- * also writes `html.dark` synchronously in the bootstrap script,
- * so this rule sets the body bg before any JS runs.
- */
-@media (prefers-color-scheme: dark) {
-  html:not(.light) {
-    color-scheme: dark;
-  }
+  --color-sigil-knowledge: #7eb368;
+  --color-sigil-task: #e8b04a;
+  --color-sigil-skill: #b48bdb;
+  --color-sigil-message: #6fa0c8;
+
+  --color-sigil-knowledge-soft: rgb(126 179 104 / 12%);
+  --color-sigil-task-soft: rgb(232 176 74 / 12%);
+  --color-sigil-skill-soft: rgb(180 139 219 / 12%);
+  --color-sigil-message-soft: rgb(111 160 200 / 12%);
+
+  --color-online: #6dd49a;
+  --color-offline: #7a5e54;
 }
 
 html,
@@ -114,15 +110,235 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.005em;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
   min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Paper grain overlay. Multiply on light, screen on dark. */
+#app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--grain-paper);
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+.dark #app::before {
+  background-image: var(--grain-forge);
+  mix-blend-mode: screen;
+  opacity: 0.4;
+}
+
+/* Ember radial — barely there in light, a glowing chamber in dark. */
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, var(--color-ember-glow) 0%, transparent 38%),
+    radial-gradient(circle at 88% 92%, var(--color-ember-glow) 0%, transparent 42%);
+  opacity: 0.55;
+}
+.dark #app::after {
+  opacity: 1;
+}
+
+::selection {
+  background: var(--color-ember);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-ember);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* === Typography utilities === */
+
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings:
+    'liga' 1,
+    'kern' 1;
+}
+
+.tabular {
+  font-feature-settings:
+    'tnum' 1,
+    'kern' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.smallcaps {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--color-ink3);
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--color-ember);
+  letter-spacing: 0.02em;
+}
+
+.hairline {
+  height: 1px;
+  background: var(--color-line);
+  width: 100%;
+}
+
+/* Vertical ledger rule with a tiny diamond medallion at mid-height.
+ * Used as the spine between the left margin (timestamps, folios)
+ * and the body text in feed rows. */
+.ledger-rule {
+  position: relative;
+  width: 1px;
+  background: var(--color-line);
+}
+.ledger-rule::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--color-paper);
+  border: 1px solid var(--color-ember);
+}
+
+/* === Animations === */
+
+@keyframes etch {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ember-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-ember-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@keyframes ember-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--color-ember-glow));
+  }
+  50% {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 8px var(--color-ember-glow));
+  }
+}
+
+@keyframes count-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    letter-spacing: 0.05em;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0;
+  }
+}
+
+.animate-etch {
+  animation: etch 0.45s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.animate-ember-pulse {
+  animation: ember-pulse 2.4s ease-in-out infinite;
+}
+.animate-flicker {
+  animation: ember-flicker 5.2s ease-in-out infinite;
+}
+.animate-count-in {
+  animation: count-in 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Ember-glow underline used on hover-eligible items. */
+.ember-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.3s ease;
+}
+.group:hover .ember-underline {
+  background-size: 100% 1px;
+}
+
+/* Subtle scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-deckle) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-deckle);
+  border-radius: 4px;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  color: inherit;
+}
+input::placeholder {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink3);
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-etch,
+  .animate-ember-pulse,
+  .animate-flicker,
+  .animate-count-in {
+    animation: none !important;
+  }
+  * {
+    transition: none !important;
+  }
 }

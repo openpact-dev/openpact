@@ -10,7 +10,7 @@ export interface SseEvent {
 }
 
 interface UseSseOpts {
-  /** Stream URL. Default '/api/events' (proxied to the daemon's /v1/events). */
+  /** Stream URL. Default '/api/v1/events' (proxied to the daemon's /v1/events). */
   url?: string
   /** When false, the hook does not open a connection. Useful in tests. */
   enabled?: boolean
@@ -27,7 +27,7 @@ export function useSse(opts: UseSseOpts = {}): {
   last: SseEvent | undefined
   byType: Record<string, SseEvent>
 } {
-  const url = opts.url ?? '/api/events'
+  const url = opts.url ?? '/api/v1/events'
   const enabled = opts.enabled ?? true
   const [last, setLast] = useState<SseEvent | undefined>(undefined)
   const [byType, setByType] = useState<Record<string, SseEvent>>({})

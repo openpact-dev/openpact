@@ -5,6 +5,7 @@ import { useSse } from '../hooks/useSse'
 import { MetricCard } from '../components/MetricCard'
 import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
+import { Sigil } from '../components/Sigil'
 import { shortHandle } from '../lib/format'
 import type { Entry } from '../components/EntryCard'
 
@@ -36,7 +37,7 @@ export function Dashboard() {
     return merged
       .filter((e) => e.timestamp)
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
-      .slice(0, 20)
+      .slice(0, 5)
   }, [knowledge.data, tasks.data, messages.data])
 
   const peerCount = peers.data?.length ?? 0
@@ -44,65 +45,99 @@ export function Dashboard() {
   const knowledgeCount = knowledge.data?.length ?? 0
   const taskCount = tasks.data?.length ?? 0
   const openTasks = (tasks.data ?? []).filter((t: any) => t.status === 'open')
+  const entryCount = status.data?.entries ?? 0
 
   const pactId = status.data?.pact_id ?? null
 
   return (
-    <section data-testid="page-dashboard">
-      <header class="mb-[22px] flex items-baseline justify-between">
-        <h1 class="text-xl font-semibold tracking-[-0.4px] text-ink">Dashboard</h1>
-        <span class="text-[12px] text-ink3">
-          {status.data?.peer_handle ? shortHandle(status.data.peer_handle) : ''}
-          {pactId ? <span class="text-ink3"> · Synced</span> : null}
-        </span>
+    <section data-testid="page-dashboard" class="mx-auto max-w-[1180px]">
+      <header class="mb-6 flex items-end justify-between gap-6 border-b-[0.5px] border-[var(--color-line)] pb-4">
+        <h1 class="font-display text-[28px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
+          Dashboard
+        </h1>
+        <div class="flex items-center gap-5 text-right">
+          <div class="flex flex-col items-end gap-0.5">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              This peer
+            </span>
+            <span class="font-mono text-[12px] text-[var(--color-ember)]">
+              {status.data?.peer_handle ? shortHandle(status.data.peer_handle) : '…'}
+            </span>
+          </div>
+          {pactId ? (
+            <div class="flex flex-col items-end gap-0.5">
+              <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+                Pact
+              </span>
+              <span class="font-mono text-[12px] text-[var(--color-online)]">
+                {pactId.slice(0, 8)} · synced
+              </span>
+            </div>
+          ) : null}
+        </div>
       </header>
 
-      <div class="mb-[22px] grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Peers"
-          value={peerCount}
-          hint={`${onlinePeers} online now`}
-          tone="text-purple"
-        />
-        <MetricCard
-          label="Knowledge"
-          value={knowledgeCount}
-          hint="Recent entries"
-          tone="text-teal"
-        />
-        <MetricCard
-          label="Tasks"
-          value={taskCount}
-          hint={`${openTasks.length} open`}
-          tone="text-amber"
-        />
-        <MetricCard
-          label="Entries"
-          value={status.data?.entries ?? 0}
-          hint="Full pact"
-          tone="text-coral"
-        />
+      {/* Four equal metrics in one strip — peers carries the ember tone
+          to give it a subtle hierarchy without a dedicated hero block. */}
+      <div class="mb-6 grid grid-cols-2 gap-0 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 sm:grid-cols-4">
+        <div class="border-[var(--color-line)] px-5 py-4 sm:border-r-[0.5px]">
+          <MetricCard
+            label="Peers"
+            value={peerCount}
+            hint={peerCount === 0 ? 'None connected' : `${onlinePeers} online`}
+            tone="ember"
+          />
+        </div>
+        <div class="border-[var(--color-line)] px-5 py-4 sm:border-r-[0.5px]">
+          <MetricCard label="Knowledge" value={knowledgeCount} hint="Entries" tone="knowledge" />
+        </div>
+        <div class="border-[var(--color-line)] px-5 py-4 sm:border-r-[0.5px]">
+          <MetricCard
+            label="Tasks"
+            value={taskCount}
+            hint={`${openTasks.length} open`}
+            tone="task"
+          />
+        </div>
+        <div class="px-5 py-4">
+          <MetricCard
+            label="Total entries"
+            value={entryCount}
+            hint="In the ledger"
+            tone="message"
+          />
+        </div>
       </div>
 
-      <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Panel title="Recent activity" link={{ label: 'View all', href: '/knowledge' }}>
-          <ActivityFeed entries={feed} empty="No activity yet. The pact is quiet." />
+      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+        <Panel title="Recent activity" link={{ label: 'All knowledge', href: '/knowledge' }}>
+          <ActivityFeed entries={feed} empty="No activity yet." />
         </Panel>
 
-        <Panel title="Connected peers" link={{ label: 'Manage', href: '/network' }}>
+        <Panel title="Connected peers" link={{ label: 'Network', href: '/network' }}>
           {(peers.data ?? []).length === 0 ? (
-            <div class="px-[18px] py-6 text-[13px] italic text-ink3">No peers connected.</div>
+            <div class="px-5 py-6 text-[13px] text-[var(--color-ink3)]">
+              No peers yet. Share an invite key to connect one.
+            </div>
           ) : (
-            (peers.data ?? []).map((p: any) => <PeerRow peer={p} key={p.id ?? p.remote_key} />)
+            <div class="divide-y-[0.5px] divide-[var(--color-line)]">
+              {(peers.data ?? []).map((p: any) => (
+                <PeerRow peer={p} key={p.id ?? p.remote_key} />
+              ))}
+            </div>
           )}
         </Panel>
       </div>
 
-      <Panel title="Open tasks" link={{ label: 'View task board', href: '/tasks' }}>
+      <Panel title="Open tasks" link={{ label: 'Task board', href: '/tasks' }}>
         {openTasks.length === 0 ? (
-          <div class="px-[18px] py-6 text-[13px] italic text-ink3">No open tasks.</div>
+          <div class="px-5 py-6 text-[13px] text-[var(--color-ink3)]">No open tasks.</div>
         ) : (
-          openTasks.map((t: any) => <TaskRow key={t.id} task={t} />)
+          <div class="divide-y-[0.5px] divide-[var(--color-line)]">
+            {openTasks.map((t: any, i: number) => (
+              <TaskRow key={t.id} task={t} index={i} />
+            ))}
+          </div>
         )}
       </Panel>
     </section>
@@ -110,22 +145,30 @@ export function Dashboard() {
 }
 
 function PeerRow({ peer }: { peer: any }) {
-  const initials = (peer.id || peer.remote_key || '?').slice(5, 7).toUpperCase()
+  const handle = peer.id || peer.remote_key || '?'
+  const short = shortHandle(handle)
   return (
-    <div class="flex items-center gap-2.5 border-b-[0.5px] border-line px-[18px] py-2.5 last:border-b-0">
-      <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-soft text-[10px] font-medium text-purple-deep">
-        {initials}
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="truncate text-[13px] font-medium text-ink">{peer.id}</div>
-        <div class="text-[11px] text-ink3">Remote {peer.remote_key?.slice(0, 12)}…</div>
-      </div>
+    <div class="flex items-center gap-3 px-5 py-2.5">
       <span
         class={
           peer.online
-            ? 'rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal'
-            : 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-medium text-ink3'
+            ? 'relative inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-online)]'
+            : 'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-offline)]'
         }
+        aria-hidden="true"
+      >
+        {peer.online ? <span class="absolute inset-0 animate-ember-pulse rounded-full" /> : null}
+      </span>
+      <div class="min-w-0 flex-1">
+        <div class="truncate font-mono text-[12px] text-[var(--color-ember)]">{short}</div>
+        <div class="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">
+          {peer.remote_key ? `${peer.remote_key.slice(0, 14)}…` : 'Local'}
+        </div>
+      </div>
+      <span
+        class={`font-mono text-[10px] uppercase tracking-[0.18em] ${
+          peer.online ? 'text-[var(--color-online)]' : 'text-[var(--color-ink3)]'
+        }`}
       >
         {peer.online ? 'Online' : 'Offline'}
       </span>
@@ -133,34 +176,27 @@ function PeerRow({ peer }: { peer: any }) {
   )
 }
 
-const TASK_BADGE: Record<string, { label: string; cls: string }> = {
-  open: {
-    label: 'Open',
-    cls: 'rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal',
-  },
-  claimed: {
-    label: 'Claimed',
-    cls: 'rounded-full bg-amber-soft px-2 py-0.5 text-[10px] font-medium text-amber',
-  },
-  complete: {
-    label: 'Complete',
-    cls: 'rounded-full bg-purple-soft px-2 py-0.5 text-[10px] font-medium text-purple-deep',
-  },
-}
-
-function TaskRow({ task }: { task: any }) {
-  const badge = TASK_BADGE[task.status as string] ?? {
-    label: task.status,
-    cls: 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-medium text-ink3',
-  }
+function TaskRow({ task, index }: { task: any; index: number }) {
   return (
-    <div class="border-b-[0.5px] border-line px-[18px] py-[11px] last:border-b-0">
-      <div class="text-[13px] font-medium text-ink">{task.title}</div>
-      <div class="mt-1 flex items-center gap-2">
-        <span class={badge.cls}>{badge.label}</span>
-        <span class="text-[11px] text-ink3">
-          {task.claimed_by ? `Claimed by ${shortHandle(task.claimed_by)}` : 'Unclaimed'}
-        </span>
+    <div
+      class="animate-etch flex items-start gap-3 px-5 py-2.5"
+      style={{ animationDelay: `${index * 30}ms` }}
+    >
+      <Sigil kind="task" size={14} bordered />
+      <div class="min-w-0 flex-1">
+        <div class="text-[14px] leading-[1.4] text-[var(--color-ink)]">{task.title}</div>
+        <div class="mt-0.5 text-[12px] text-[var(--color-ink3)]">
+          {task.claimed_by ? (
+            <>
+              Claimed by{' '}
+              <span class="font-mono text-[var(--color-ember)]">
+                {shortHandle(task.claimed_by)}
+              </span>
+            </>
+          ) : (
+            'Unclaimed'
+          )}
+        </div>
       </div>
     </div>
   )

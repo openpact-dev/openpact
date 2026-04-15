@@ -1,94 +1,31 @@
 /**
- * 220-px sidebar with the OpenPact logo, primary nav (Dashboard /
- * Knowledge / Tasks / Skills), Network section (Peers / Invite),
- * System section (Settings), and a "peers connected" footer.
+ * The codex spine.
  *
- * Visual matches docs/mockups/01-dashboard.html. Active state is
- * derived from window.location.pathname so navigation works without a
- * shared context (preact-router updates URL in place).
+ * Sidebar with the watching-eye logo at the top, ledger-style nav
+ * with Roman numerals as right-margin folios, and a small brass dial
+ * for the theme preference at the foot.
  */
 import { useEffect, useState } from 'preact/hooks'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { ThemeDial } from './ThemeDial'
+import { WatchingEye } from './Ornament'
 import { useTheme } from '../hooks/useTheme'
+import { usePact } from '../hooks/usePact'
+import { useQuery } from '../hooks/useQuery'
 
 interface NavLink {
   href: string
   label: string
-  icon: preact.JSX.Element
+  hint: string
 }
 
 const PRIMARY: NavLink[] = [
-  {
-    href: '/',
-    label: 'Dashboard',
-    icon: (
-      <svg viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2" />
-        <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2" />
-        <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2" />
-        <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/knowledge',
-    label: 'Knowledge',
-    icon: (
-      <svg viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2" />
-        <path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: '/tasks',
-    label: 'Tasks',
-    icon: (
-      <svg viewBox="0 0 16 16" fill="none">
-        <path
-          d="M2 4h12M2 8h8M2 12h10"
-          stroke="currentColor"
-          stroke-width="1.2"
-          stroke-linecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: '/skills',
-    label: 'Skills',
-    icon: (
-      <svg viewBox="0 0 16 16" fill="none">
-        <path
-          d="M4 2l8 6-8 6V2z"
-          stroke="currentColor"
-          stroke-width="1.2"
-          stroke-linejoin="round"
-        />
-      </svg>
-    ),
-  },
+  { href: '/', label: 'Dashboard', hint: 'I' },
+  { href: '/knowledge', label: 'Knowledge', hint: 'II' },
+  { href: '/tasks', label: 'Tasks', hint: 'III' },
+  { href: '/skills', label: 'Skills', hint: 'IV' },
 ]
 
-const NETWORK: NavLink[] = [
-  {
-    href: '/network',
-    label: 'Peers',
-    icon: (
-      <svg viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="4" r="2" stroke="currentColor" stroke-width="1.2" />
-        <circle cx="3" cy="12" r="2" stroke="currentColor" stroke-width="1.2" />
-        <circle cx="13" cy="12" r="2" stroke="currentColor" stroke-width="1.2" />
-        <path
-          d="M8 6v2M6.5 9.5L5 10.5M9.5 9.5L11 10.5"
-          stroke="currentColor"
-          stroke-width="1.2"
-          stroke-linecap="round"
-        />
-      </svg>
-    ),
-  },
-]
+const NETWORK: NavLink[] = [{ href: '/network', label: 'Peers', hint: 'V' }]
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === '/') return currentPath === '/'
@@ -97,30 +34,27 @@ function isActive(currentPath: string, href: string): boolean {
 
 function NavRow({ link, current }: { link: NavLink; current: string }) {
   const active = isActive(current, link.href)
-  const base =
-    'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] no-underline transition-colors'
-  const tone = active
-    ? 'bg-canvas font-medium text-ink'
-    : 'text-ink2 hover:bg-canvas hover:text-ink'
   return (
-    <a href={link.href} class={`${base} ${tone}`} data-testid={`nav-${link.label.toLowerCase()}`}>
-      <span
-        class={`inline-flex h-[15px] w-[15px] items-center justify-center ${active ? 'opacity-80' : 'opacity-50'}`}
-      >
-        {link.icon}
+    <a
+      href={link.href}
+      class={`group relative flex items-center justify-between border-l-2 px-3 py-1.5 transition-colors ${
+        active
+          ? 'border-l-[var(--color-ember)] text-[var(--color-ink)]'
+          : 'border-l-transparent text-[var(--color-ink2)] hover:text-[var(--color-ink)]'
+      }`}
+      data-testid={`nav-${link.label.toLowerCase()}`}
+    >
+      <span class="text-[14px] font-medium leading-none">
+        <span class="ember-underline">{link.label}</span>
       </span>
-      {link.label}
+      <span class="font-mono text-[10px] tracking-wider text-[var(--color-ink3)]">{link.hint}</span>
     </a>
   )
 }
 
 export function Sidebar() {
-  const { resolved: theme } = useTheme()
-  // Brand convention: openpact-logo.svg is designed for dark
-  // backgrounds (Abyss); openpact-logo-light.svg is designed for
-  // light backgrounds (Canvas). Pick the one whose intended surface
-  // matches the active theme.
-  const logoSrc = theme === 'dark' ? '/openpact-logo.svg' : '/openpact-logo-light.svg'
+  useTheme() // re-render when the resolved theme changes
+
   const [path, setPath] = useState<string>(
     typeof window !== 'undefined' ? window.location.pathname : '/',
   )
@@ -128,8 +62,6 @@ export function Sidebar() {
     if (typeof window === 'undefined') return
     const handler = () => setPath(window.location.pathname)
     window.addEventListener('popstate', handler)
-    // preact-router fires `pushState` events on Link/route navigations;
-    // listen on the window to catch them.
     const orig = window.history.pushState
     window.history.pushState = function (...args: Parameters<typeof orig>) {
       orig.apply(window.history, args)
@@ -141,30 +73,80 @@ export function Sidebar() {
     }
   }, [])
 
+  const pact = usePact()
+  const status = useQuery(() => pact.status(), { key: 'sidebar:status' })
+  const peerHandle = status.data?.peer_handle ?? null
+  const peerCount = status.data?.peers ?? 0
+
   return (
-    <nav class="flex w-[220px] shrink-0 flex-col gap-0.5 border-r-[0.5px] border-line bg-paper px-3 py-4">
-      <div class="mb-4 flex items-center gap-2.5 px-2.5 py-2">
-        <img src={logoSrc} alt="" class="h-8 w-8" />
-        <span class="text-[15px] font-semibold tracking-tight text-ink">OpenPact</span>
+    <nav class="relative z-10 flex h-full w-[228px] shrink-0 flex-col bg-[var(--color-paper)]/70 backdrop-blur-sm">
+      {/* Right-edge hairline with a tiny medallion at brand level */}
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute right-0 top-0 h-full w-px bg-[var(--color-line)]"
+      >
+        <span class="absolute left-1/2 top-[72px] block h-1.5 w-1.5 -translate-x-1/2 rotate-45 border border-[var(--color-ember)] bg-[var(--color-paper)]" />
       </div>
 
-      {PRIMARY.map((link) => (
-        <NavRow key={link.href} link={link} current={path} />
-      ))}
-
-      <div class="px-2.5 pb-1 pt-4 text-[10px] font-medium uppercase tracking-[0.08em] text-ink3">
-        Network
-      </div>
-      {NETWORK.map((link) => (
-        <NavRow key={link.href} link={link} current={path} />
-      ))}
-
-      <div class="mt-auto flex flex-col gap-3 border-t-[0.5px] border-line p-2.5">
-        <div class="flex items-center gap-1.5 text-xs text-ink2">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-teal" />
-          <span>Connected</span>
+      {/* Brand block */}
+      <div class="px-5 pb-4 pt-6">
+        <div class="flex items-center gap-2.5">
+          <WatchingEye size={24} />
+          <div class="font-display text-[19px] leading-none tracking-tight text-[var(--color-ink)]">
+            OpenPact
+          </div>
         </div>
-        <ThemeSwitcher />
+      </div>
+
+      <div class="hairline mx-5 mb-3 opacity-60" />
+
+      <div class="px-2.5">
+        {PRIMARY.map((link) => (
+          <NavRow key={link.href} link={link} current={path} />
+        ))}
+      </div>
+
+      <div class="mt-5 px-5">
+        <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+          Network
+        </span>
+      </div>
+      <div class="px-2.5">
+        {NETWORK.map((link) => (
+          <NavRow key={link.href} link={link} current={path} />
+        ))}
+      </div>
+
+      <div class="mt-auto px-5 py-4">
+        <div class="hairline mb-3 opacity-60" />
+        <div class="space-y-1.5">
+          <div class="flex items-baseline justify-between">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              This peer
+            </span>
+            <span class="font-mono text-[10px] text-[var(--color-ink2)]">
+              {peerHandle ? peerHandle.split('-').slice(1).join('-') : '…'}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="relative inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-online)]"
+              aria-hidden="true"
+            >
+              <span class="absolute inset-0 animate-ember-pulse rounded-full" />
+            </span>
+            <span class="text-[13px] text-[var(--color-ink2)]">
+              {peerCount === 0
+                ? 'No peers yet'
+                : peerCount === 1
+                  ? '1 peer connected'
+                  : `${peerCount} peers connected`}
+            </span>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <ThemeDial />
+        </div>
       </div>
     </nav>
   )

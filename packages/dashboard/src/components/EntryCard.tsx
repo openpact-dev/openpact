@@ -1,29 +1,23 @@
 import { route } from 'preact-router'
+import { Sigil, type SigilKind } from './Sigil'
 import { relTime, shortHandle } from '../lib/format'
 
 export interface Entry {
   id: string
-  type: 'knowledge' | 'task' | 'skill' | 'message'
+  type: SigilKind
   timestamp: string
   agent_id: string
   payload: Record<string, any>
 }
 
-const TYPE_DOT: Record<Entry['type'], string> = {
-  knowledge: 'bg-teal',
-  task: 'bg-amber',
-  skill: 'bg-purple',
-  message: 'bg-coral',
-}
-
-// Mid-sentence verbs after a peer handle: "anon-fox-1234 shared
-// knowledge about routing: …". The handle starts the sentence (a
-// literal value), so these verb fragments stay lowercase.
-const TYPE_VERB: Record<Entry['type'], string> = {
-  knowledge: 'shared knowledge',
-  task: 'updated task',
-  skill: 'published skill',
-  message: 'broadcast',
+// Mid-sentence verbs after a peer handle: "anon-fox-1234 shared a
+// note about routing: …". Handle starts the sentence (a literal
+// value), so these verb fragments stay lowercase.
+const TYPE_VERB: Record<SigilKind, string> = {
+  knowledge: 'shared a note',
+  task: 'opened a task',
+  skill: 'added a skill',
+  message: 'sent a message',
 }
 
 function summary(entry: Entry): string {
@@ -42,57 +36,84 @@ function summary(entry: Entry): string {
 }
 
 /**
- * Activity-feed row matching docs/mockups/01-dashboard.html .feed-item.
- * Click navigates to the entry's trace page.
+ * Ledger row — used in the activity feed.
+ *
+ * Layout: a left margin with the relative timestamp in mono, a
+ * hairline rule with a tiny medallion, then the type sigil and the
+ * prose. Reads top-to-bottom like a logbook page.
  */
-export function FeedRow({ entry }: { entry: Entry }) {
+export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) {
   return (
     <button
       type="button"
       onClick={() => route(`/trace/${entry.id}`)}
-      class="flex w-full items-start gap-2.5 border-b-[0.5px] border-line bg-paper px-[18px] py-[11px] text-left last:border-b-0 hover:bg-canvas"
+      class="group animate-etch grid w-full grid-cols-[78px_1px_1fr] items-stretch gap-0 px-5 py-2.5 text-left transition-colors hover:bg-[var(--color-mist)]/40"
+      style={{ animationDelay: `${index * 35}ms` }}
       data-testid="entry-card"
     >
-      <span
-        class={`mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_DOT[entry.type]}`}
-      />
-      <div class="min-w-0 flex-1">
-        <div class="text-[13px] leading-[1.5] text-ink">
-          <strong class="font-medium">{shortHandle(entry.agent_id)}</strong> {TYPE_VERB[entry.type]}
-          {entry.type === 'knowledge' && entry.payload.topic ? (
-            <span class="text-ink2"> about {entry.payload.topic}: </span>
-          ) : (
-            <span class="text-ink2">: </span>
-          )}
-          <span class="text-ink2">{summary(entry)}</span>
+      <div class="flex items-baseline justify-end pr-4">
+        <time class="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
+          {relTime(entry.timestamp)}
+        </time>
+      </div>
+      <div class="ledger-rule" />
+      <div class="flex items-start gap-3 pl-5">
+        <Sigil kind={entry.type} size={14} bordered />
+        <div class="min-w-0 flex-1 pt-px">
+          <div class="text-[13px] leading-[1.5] text-[var(--color-ink2)]">
+            <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ember)]">
+              {shortHandle(entry.agent_id)}
+            </span>{' '}
+            {TYPE_VERB[entry.type]}
+            {entry.type === 'knowledge' && entry.payload.topic ? (
+              <>
+                {' '}
+                about <span class="text-[var(--color-ink)]">{entry.payload.topic}</span>
+              </>
+            ) : null}
+            {'.'}
+          </div>
+          <div class="mt-0.5 line-clamp-2 text-[14px] leading-[1.5] text-[var(--color-ink)]">
+            {summary(entry)}
+          </div>
         </div>
-        <div class="mt-0.5 text-[11px] text-ink3">{relTime(entry.timestamp)}</div>
       </div>
     </button>
   )
 }
 
-/** Knowledge-browser card variant — bigger, with topic eyebrow. */
-export function EntryCard({ entry }: { entry: Entry }) {
+/**
+ * Knowledge-browser card — taller variant. Used in a 2-up grid on
+ * the Knowledge page; designed to read like an entry in a ledger
+ * with topic eyebrow + body + provenance line.
+ */
+export function EntryCard({ entry, index = 0 }: { entry: Entry; index?: number }) {
   return (
     <button
       type="button"
       onClick={() => route(`/trace/${entry.id}`)}
-      class="flex w-full items-start gap-3 rounded-[12px] border-[0.5px] border-line bg-paper px-[18px] py-4 text-left transition-colors hover:border-line-h"
+      class="group animate-etch relative flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--color-mist)]/30"
+      style={{ animationDelay: `${index * 30}ms` }}
       data-testid="entry-card"
     >
       <span
-        class={`mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_DOT[entry.type]}`}
+        aria-hidden="true"
+        class="absolute left-0 top-4 h-[calc(100%-32px)] w-px bg-[var(--color-line)] transition-colors group-hover:bg-[var(--color-ember)]"
       />
+      <Sigil kind={entry.type} size={14} bordered />
       <div class="min-w-0 flex-1">
         {entry.type === 'knowledge' && entry.payload.topic ? (
-          <div class="text-[10px] font-medium uppercase tracking-[0.06em] text-ink3">
+          <div class="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-ember)]">
             {entry.payload.topic}
           </div>
         ) : null}
-        <div class="mt-0.5 text-[13px] leading-[1.5] text-ink">{summary(entry)}</div>
-        <div class="mt-1 text-[11px] text-ink3">
-          {shortHandle(entry.agent_id)} · {relTime(entry.timestamp)}
+        <p class="mt-1.5 text-[14px] leading-[1.5] text-[var(--color-ink)]">{summary(entry)}</p>
+        <div class="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
+          <span class="text-[var(--color-ember)]">{shortHandle(entry.agent_id)}</span>
+          <span class="opacity-50">·</span>
+          <time>{relTime(entry.timestamp)}</time>
+          <span class="opacity-50">·</span>
+          <span class="opacity-70">{entry.id}</span>
         </div>
       </div>
     </button>

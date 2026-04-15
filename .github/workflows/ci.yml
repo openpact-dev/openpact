@@ -56,3 +56,24 @@ jobs:
         run: npm run test:e2e
       - name: Run example smoke tests
         run: npm run test:examples
+
+  dashboard:
+    name: dashboard (ubuntu, node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - name: Build SDK (dashboard depends on it)
+        run: npm run -w @openpact/sdk build
+      - name: Build dashboard
+        run: npm run -w @openpact/dashboard build
+      - name: Server tests
+        run: npm run -w @openpact/dashboard test
+      - name: Hook tests (vitest + jsdom)
+        run: npm run -w @openpact/dashboard test:hooks
+      - name: Bundle budget
+        run: npm run -w @openpact/dashboard size

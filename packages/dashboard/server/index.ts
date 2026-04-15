@@ -1,5 +1,6 @@
 import path from 'path'
 import { existsSync } from 'fs'
+import { readFile } from 'fs/promises'
 import Fastify, { type FastifyInstance } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import fastifyHttpProxy from '@fastify/http-proxy'
@@ -64,16 +65,16 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
 
   const app = Fastify({ logger: opts.silent === false ? true : false })
 
-  // Proxy /api/* to the daemon's /v1/*. Same-origin from the browser's
-  // perspective; no CORS in play. The default replyOptions stream
-  // upstream responses, which matters for /api/events SSE (the daemon
-  // writes frames; the proxy must pass them through unbuffered).
-  // proxyPayloads: false bypasses Fastify's body parser so request
-  // bodies stream too.
+  // Proxy /api/* straight through to the daemon. The SDK's resource
+  // paths already include the `/v1/` prefix, so the client's request
+  // URL looks like `/api/v1/knowledge`; the proxy strips only `/api`,
+  // sending `/v1/knowledge` upstream. SSE works because replyOptions
+  // streams the upstream response; proxyPayloads:false bypasses body
+  // parsing so POST/PUT bodies stream too.
   await app.register(fastifyHttpProxy, {
     upstream: `http://${daemonHost}:${daemonPort}`,
     prefix: '/api',
-    rewritePrefix: '/v1',
+    rewritePrefix: '',
     proxyPayloads: false,
     httpMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   })
@@ -92,7 +93,15 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
     // so client-side routes (`/knowledge`, `/trace/:id`, …) work on
     // direct navigation. The static handler already serves index.html
     // for `/`; this just extends it to any non-asset path.
-    app.setNotFoundHandler((req, reply) => {
+    // SPA fallback: GETs that miss the static mount fall back to
+    // index.html so client-side routes (`/knowledge`, `/trace/:id`,
+    // …) work on direct navigation. decorateReply: false on the
+    // static plugin leaves reply.sendFile undefined, so we read the
+    // file per request and send the body directly. Re-reading keeps
+    // the served HTML in sync with the current build without needing
+    // to restart the daemon after `npm run -w @openpact/dashboard build`.
+    const indexPath = path.join(staticDir, 'index.html')
+    app.setNotFoundHandler(async (req, reply) => {
       if (req.method !== 'GET' || req.url.startsWith('/api')) {
         reply
           .status(404)
@@ -104,7 +113,8 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
           })
         return
       }
-      reply.sendFile('index.html', staticDir)
+      const html = await readFile(indexPath, 'utf8')
+      reply.header('content-type', 'text/html; charset=utf-8').send(html)
     })
   }
 

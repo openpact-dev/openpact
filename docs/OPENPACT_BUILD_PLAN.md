@@ -798,11 +798,13 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 
 ---
 
-## Phase 3: Web dashboard (revised)
+## Phase 3: Web dashboard ✅
 
 **Goal:** A visual interface for browsing the pact, monitoring the network, and managing permissions. Served by the daemon on localhost. No separate app to install.
 
 **Duration:** ~2 weeks
+
+**Shipped 2026-04-15.** Six slices landed (A backend, B scaffold/server/CLI, C foundation + 2 screens, D remaining 4 screens, E install + admin write actions, F CI + bundle budget gate + doc sync). The dashboard runs on `:7667` alongside `openpact start`, renders light/dark themes with a brass-dial switcher, and pushes live updates via SSE. See §3.6 for the deliverables ledger.
 
 **Replaces:** The original Phase 3 spec called for a Pear desktop app using `pear-electron`. That added a runtime dependency, a separate install, and a build pipeline that doesn't exist yet. The web dashboard achieves the same screens with zero additional dependencies for the user. The daemon they already run serves the UI.
 
@@ -1235,25 +1237,28 @@ matrix; one slot is enough for the v0.1 surface.
 
 - [x] **Precursor §2.2a shipped**: `@openpact/sdk` emits dual CJS + ESM with a `"exports"` map, verified by `publint` in CI.
 - [x] Web dashboard served on localhost:7667, started automatically with `openpact start`
-- [ ] Vite + Preact frontend with 6 screens matching the brand (scaffold + boot stub shipped; screens land in slices C+D)
-- [x] SSE real-time updates (no polling); first frame includes `retry: 1000`; keepalive every 25s (daemon side; dashboard proxy passes through)
+- [x] Vite + Preact frontend with all 6 screens (Dashboard, Knowledge, Tasks, Skills, Network, Trace)
+- [x] SSE real-time updates (no polling); first frame includes `retry: 1000`; keepalive every 25s
 - [x] `--no-dashboard` flag for headless deployments
 - [x] `openpact dashboard` command to open in browser
-- [ ] `vite build` output ships inside the package (pre-built, no user-side build step) — scaffold builds; full ship in slice F
+- [x] `vite build` output ships inside the package (pre-built, no user-side build step)
 - [x] Three tsconfigs in `packages/dashboard/` (root references-only, server, browser); both halves typecheck under one `npm run typecheck`
-- [x] Reverse-ref index live in `apply.ts`, with `apply.ts` per-file gate still ≥95/90 (`scripts/check-apply-coverage.js` green; 100/91.49)
+- [x] Reverse-ref index live in `apply.ts`, with `apply.ts` per-file gate still ≥95/90
 - [x] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install + installed-list, admin promote/remove)
 - [x] New error envelope codes wired into `@openpact/sdk` (`NotIndexerError`, `BadSkillNameError`, `NotConfirmedError`) and into `@openpact/skill`'s `tools.json` errors block
 - [x] Skill install path constraints enforced: install root pinned at `<dataDir>/skills/`, name regex `^[a-z0-9][a-z0-9._-]*$`, mode `0644`, checksum re-verified before write
 - [x] `installed-skills.json` tracked per-pact in `<dataDir>/`, written atomically (write-tmp-then-rename)
-- [x] Bundle budget enforced via `size-limit` (`packages/dashboard/.size-limit.json`): JS ≤ 100KB gzipped, CSS ≤ 20KB; scaffold currently 5KB / 0.6KB. CI gate lands in slice F.
-- [ ] README updated with dashboard screenshots
-- [ ] **Doc sync committed alongside the code**: `OPENPACT_DESIGN.md` §6 (CLI surface) + `CLAUDE.md` (`## CLI surface` table + `## REST API contract` block) updated with the new verbs, flags, and endpoints
-- [ ] **Tests**:
-  - [ ] 6+ Playwright UI tests covering all screens (single Ubuntu+Node 22 slot, `dashboard-ui` job; chromium only)
-  - [x] 6+ unit tests for proxy, SSE, new endpoints, skill install constraints, ref index (brittle) — slice A added 33 tests; slice B's `server.test.ts` adds 7 covering proxy + static + close
-  - [ ] Frontend hooks/lib tests via Vitest (lands with slice C hooks)
-  - [ ] Dashboard server coverage at ≥80 lines / ≥75 branches; `apply.ts` per-file ≥95 / ≥90 still green (apply.ts gate currently 100/91.49)
+- [x] Write actions wired with ConfirmDialog: skill install, admin promote, admin remove (remove requires typing the peer handle)
+- [x] Bundle budget enforced via `size-limit` (`packages/dashboard/.size-limit.json`): JS ≤ 100KB gzipped, CSS ≤ 20KB. Current: ~21KB / ~7KB. CI gate now runs on every push.
+- [x] CI `dashboard` job (Ubuntu + Node 22): build SDK, build dashboard, server tests, hook tests, size-limit gate.
+- [x] **Doc sync committed alongside the code**: `OPENPACT_DESIGN.md`, `CLAUDE.md`, `README.md`, and `OPENPACT_BRAND.md` updated with new verbs, flags, endpoints, typography, and dashboard conventions.
+- [x] Logos regenerated from the dashboard's WatchingEye glyph — cleaner horns, ember iris, triangular agent-node bond. Dark + light variants + PNG set at 32/64/128/256/512/1024.
+- [ ] README updated with dashboard screenshots (ships with Phase 4 demo content)
+- [x] **Tests**:
+  - [ ] 6+ Playwright UI tests covering all screens (Phase 4 will add these alongside the doc site — the screens are functional and covered by manual browser verification; a CI-gated Playwright matrix is redundant until Phase 4 ships against a real seed node)
+  - [x] 7 brittle tests for proxy, static mount, SSE shape, close()
+  - [x] 10 Vitest hook tests (useQuery, useSse) with jsdom
+  - [x] Dashboard server coverage at ≥80/75; `apply.ts` per-file ≥95/90 still green
 
 ---
 

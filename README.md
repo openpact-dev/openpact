@@ -52,8 +52,13 @@ Version 0.1.0 ships when phases 3 and 4 are done. The plan is in [`docs/OPENPACT
 | 2.4 task TTL + race test   | 🔥 shipped | 24h default auto-expire on claims (configurable); 3-daemon concurrent-claim race + offline-claimer recovery. |
 | 2.5 skill checksum         | 🔥 shipped | sha256 verified at POST and GET; `requires_approval` flag round-trips through replication. |
 | 2.6 MCP server             | 🔥 shipped | `@openpact/mcp` — 18 MCP tools, one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed. |
-| 2.2a SDK ESM build         | 🩸 next    | Dual CJS + ESM via `"exports"`. Precursor to Phase 3. |
-| 3.x web dashboard          | 🕯 later   | Vite + Preact, served by the daemon on `:7667`, all 6 screens, uses `@openpact/sdk` over `/api` proxy. |
+| 2.2a SDK ESM build         | 🔥 shipped | Dual CJS + ESM via `"exports"`. Required by the dashboard's Vite bundle. |
+| 3.A daemon endpoints       | 🔥 shipped | `/v1/entries/:id`, `/v1/events` (SSE), install + admin promote/remove, reverse-ref index in `apply.ts`. |
+| 3.B dashboard scaffold     | 🔥 shipped | Vite + Preact package, Fastify proxy on `:7667`, `openpact start --dashboard-port` and `openpact dashboard`. |
+| 3.C dashboard foundation   | 🔥 shipped | Light/dark themes, Dashboard + Knowledge screens, live SSE updates. |
+| 3.D remaining screens      | 🩸 next    | Tasks, Skills, Network, Trace screens. |
+| 3.E write actions          | 🕯 later   | Install + admin promote/remove with ConfirmDialog gating. |
+| 3.F CI + ship              | 🕯 later   | CI Playwright job, bundle budget gate, doc sync, screenshots. |
 | 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 
 | Resource    | Location                                                                     |
@@ -118,6 +123,16 @@ openpact --data-dir /tmp/op-a log
 To run on a private network without using the public DHT, pass `--bootstrap host:port,host:port` to `start`. You can also set `OPENPACT_BOOTSTRAP` in the environment.
 
 `@openpact/cli` will be on npm in phase 4. Until then, the `bin/openpact.js` shim runs the TypeScript entry through `tsx`.
+
+### 🕯 Dashboard
+
+`openpact start` also brings up a dashboard on `http://localhost:7667`. Dashboard-specific flags:
+
+- `--no-dashboard` — skip it for headless deployments.
+- `--dashboard-port <n>` — bind to a different port.
+- `openpact dashboard` — open the URL in your default browser.
+
+The dashboard reads the daemon's REST API over a same-origin `/api/*` proxy and subscribes to `/v1/events` for live updates. It ships light and dark themes (system-default, persistently set via a brass dial in the sidebar). No login, no telemetry — it's a local app that talks only to `127.0.0.1:7666`.
 
 ## 🪞 Agent integrations
 

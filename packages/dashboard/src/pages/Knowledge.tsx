@@ -12,8 +12,11 @@ const RECENCY_OPTIONS = [
   { value: 'month', label: 'This month', ms: 30 * 24 * 3600 * 1000 },
 ] as const
 
-const INPUT_BASE =
-  'rounded-md border-[0.5px] border-line bg-paper px-3.5 py-[9px] text-[13px] text-ink outline-none focus:border-purple'
+const INPUT =
+  'w-full rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent px-1 py-2 text-[14px] text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-ink3)] focus:border-[var(--color-ember)]'
+
+const SELECT =
+  'rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]'
 
 export function Knowledge() {
   const pact = usePact()
@@ -65,26 +68,34 @@ export function Knowledge() {
   }, [knowledge.data, selectedTopic, confidence, recency, debounced])
 
   return (
-    <section data-testid="page-knowledge">
-      <header class="mb-5 flex items-baseline justify-between">
-        <h1 class="text-xl font-semibold tracking-[-0.4px] text-ink">Knowledge</h1>
-        <span class="text-[12px] text-ink3">
-          {filtered.length} of {knowledge.data?.length ?? 0} entries.
+    <section data-testid="page-knowledge" class="mx-auto max-w-[1180px]">
+      <header class="mb-6 flex items-end justify-between gap-6 border-b-[0.5px] border-[var(--color-line)] pb-4">
+        <h1 class="font-display text-[28px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
+          Knowledge
+        </h1>
+        <span class="font-mono text-[12px] text-[var(--color-ink3)]">
+          <span class="text-[var(--color-ember)]">{filtered.length}</span>
+          {' / '}
+          {knowledge.data?.length ?? 0} entries
         </span>
       </header>
 
-      <input
-        type="search"
-        placeholder="Search content…"
-        value={query}
-        onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
-        data-testid="knowledge-search"
-        class={`${INPUT_BASE} mb-3.5 w-full placeholder:text-ink3`}
-      />
+      <div class="mb-5">
+        <input
+          type="search"
+          placeholder="Search content…"
+          value={query}
+          onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+          data-testid="knowledge-search"
+          class={INPUT}
+        />
+      </div>
 
-      <div class="mb-[18px] flex flex-wrap items-center gap-3">
-        <label class="inline-flex items-center gap-2 text-[12px] text-ink2">
-          Confidence ≥ <span class="font-medium text-ink">{confidence.toFixed(1)}</span>
+      <div class="mb-5 flex flex-wrap items-end gap-6">
+        <label class="inline-flex flex-col gap-1.5">
+          <span class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+            Confidence ≥ <span class="text-[var(--color-ember)]">{confidence.toFixed(1)}</span>
+          </span>
           <input
             type="range"
             min="0"
@@ -92,36 +103,47 @@ export function Knowledge() {
             step="0.1"
             value={confidence}
             onInput={(e) => setConfidence(Number((e.target as HTMLInputElement).value))}
-            class="accent-purple"
+            class="w-48 accent-[var(--color-ember)]"
             data-testid="knowledge-confidence"
           />
         </label>
-        <select
-          value={recency}
-          onChange={(e) => setRecency((e.target as HTMLSelectElement).value as any)}
-          data-testid="knowledge-recency"
-          class={INPUT_BASE}
-        >
-          {RECENCY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <label class="inline-flex flex-col gap-1.5">
+          <span class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+            Recency
+          </span>
+          <select
+            value={recency}
+            onChange={(e) => setRecency((e.target as HTMLSelectElement).value as any)}
+            data-testid="knowledge-recency"
+            class={SELECT}
+          >
+            {RECENCY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <TopicChips topics={topics} selected={selectedTopic} onSelect={setSelectedTopic} />
 
       {knowledge.loading ? (
-        <p class="px-1 py-4 text-[13px] italic text-ink3">Loading…</p>
+        <p class="px-1 py-6 text-[13px] text-[var(--color-ink3)]">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p class="px-1 py-4 text-[13px] italic text-ink3" data-testid="knowledge-empty">
+        <p
+          class="px-1 py-8 text-center text-[13px] text-[var(--color-ink3)]"
+          data-testid="knowledge-empty"
+        >
           No entries match.
         </p>
       ) : (
-        <div class="grid grid-cols-1 gap-2.5" data-testid="entry-list">
-          {filtered.map((e) => (
-            <EntryCard key={e.id} entry={e} />
+        <div
+          class="grid grid-cols-1 gap-0 divide-y-[0.5px] divide-[var(--color-line)] border-y-[0.5px] border-[var(--color-line)] md:grid-cols-2 md:divide-y-0 md:[&>*:nth-child(odd)]:border-r-[0.5px] md:[&>*:nth-child(odd)]:border-[var(--color-line)] md:[&>*:nth-child(n+3)]:border-t-[0.5px] md:[&>*:nth-child(n+3)]:border-[var(--color-line)]"
+          data-testid="entry-list"
+        >
+          {filtered.map((e, i) => (
+            <EntryCard key={e.id} entry={e} index={i} />
           ))}
         </div>
       )}

@@ -100,32 +100,45 @@ The horns establish the devilish theme immediately. The slit pupil gives it an i
 
 ## Typography
 
-### Primary: Inter
+### Display + body: Cormorant Garamond
+
+A Renaissance serif. Used for headings, numbers in metrics, and body
+copy in the dashboard. Reads like a codex entry on parchment in the
+light theme and like an illuminated manuscript in the dark theme.
 
 | Style | Weight | Size | Tracking | Usage |
 |-------|--------|------|----------|-------|
-| H1 | 600 | 22px | -0.5px | Page titles |
-| H2 | 600 | 18px | -0.3px | Section headers |
-| H3 | 500 | 15px | -0.2px | Card titles, panel headers |
-| Body | 400 | 14px | 0 | Paragraphs, descriptions |
-| Small | 400 | 12px | 0 | Metadata, timestamps |
-| Tiny | 500 | 11px | 0.2px | Badges, labels, tags |
+| Page H1 | 300 (light) | 28px | -0.01em | Page titles |
+| Panel H2 | 500 | 17px | tight | Card / panel titles |
+| Metric | 400 | 32px | -0.02em | Hero numbers (tabular-nums) |
+| Body | 400 | 14–15px | 0 | Paragraphs, entry summaries |
+| Emphasis | italic 400 | inherit | 0 | Sparingly — eyebrows, one-off callouts |
 
-### Monospace: JetBrains Mono or SF Mono
+Avoid italic everywhere. It's a finishing touch, not a default voice.
+Plain English reads better for dense information.
 
-| Style | Weight | Size | Usage |
-|-------|--------|------|-------|
-| Code | 400 | 13px | Inline code, entry IDs, CLI output |
-| Code block | 400 | 13px | Multi-line code blocks |
+### Monospace: JetBrains Mono (SF Mono fallback)
+
+Handles anything that should *look* like a daemon output — IDs,
+timestamps, folio markers, peer handles, uppercase small-caps eyebrows.
+
+| Style | Weight | Size | Tracking | Usage |
+|-------|--------|------|----------|-------|
+| Eyebrow | 500 | 9–10px | 0.22em uppercase | Section labels, folio ticks |
+| Meta | 400 | 10–12px | 0.12–0.18em | Timestamps, entry IDs |
+| Inline code | 400 | 13px | 0 | Code in docs |
 
 ### Typography rules
 
-- Headings use negative letter-spacing for a tighter, more confident feel
-- Body text at line-height: 1.6
-- Primary text: Blush (#FEE2E2)
-- Secondary text: Pale (#FCA5A5)
-- Tertiary/muted text: a muted red-grey around #6B5555
-- Code and technical identifiers: Glow (#FECACA) on Void background
+- Headings use subtle negative letter-spacing for a tighter feel
+- Body text at line-height ~1.5 (tighter than Inter would ask for)
+- Primary text (light): Ink `#1C1408` — sepia, not black
+- Primary text (dark): Blush `#FEE2E2`
+- Eyebrows (both themes): Ink-3 tone via mono uppercase with wide tracking
+- Don't substitute another display serif (Playfair, EB Garamond, Libre
+  Caslon) even when they look similar — Cormorant's italics and
+  numerals are doing specific work
+- Tabular numerals for anything that changes live (`font-feature-settings: 'tnum'`)
 
 ---
 
@@ -261,6 +274,26 @@ Clear and direct, with personality in the right places. Don't force it into API 
 Good: "Run `openpact start` to wake the daemon."
 Bad: "Execute the `openpact start` command to initialise the background process."
 Too much: "UNLEASH THE DAEMON FROM ITS SLUMBER."
+
+### Dashboard UI copy
+
+The dashboard is the dense surface of the product. It's not the CLI.
+Keep page copy plain: "Dashboard", "Knowledge", "No entries match",
+"Open tasks". Save the brand voice for the CLI banner, the logo, the
+README, and error pages.
+
+Good: "No peers yet." / "Share an invite key to connect one."
+Bad:  "Alone in the void. Cast an invitation into the dark."
+
+The atmosphere carries the voice — Cormorant Garamond, the ember accent,
+the paper-grain background, the slit-pupil logo in the sidebar. Prose
+doesn't need to do that work twice.
+
+Sigils + type verbs for the activity feed:
+- knowledge → "shared a note"
+- task → "opened a task"
+- skill → "added a skill"
+- message → "sent a message"
 
 ---
 

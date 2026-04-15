@@ -48,34 +48,33 @@ test('startDashboard binds an OS-chosen port when port: 0', async (t) => {
   t.ok(dash.url.startsWith('http://127.0.0.1:'))
 })
 
-test('GET /api/ping proxies to the daemon and returns { ok: true }', async (t) => {
+test('GET /api/v1/ping proxies to the daemon and returns { ok: true }', async (t) => {
   const { daemonPort } = await bootDaemon(t)
   const dash = await startDashboard({ daemonPort, port: 0 })
   t.teardown(() => dash.close())
 
-  const res = await fetch(`${dash.url}/api/ping`)
+  // The SDK sends paths that already include /v1/; the proxy strips
+  // only /api, so /api/v1/ping reaches the daemon at /v1/ping.
+  const res = await fetch(`${dash.url}/api/v1/ping`)
   t.is(res.status, 200)
   t.alike(await res.json(), { ok: true })
 })
 
-test('GET /api/knowledge proxies query strings through to the daemon', async (t) => {
+test('GET /api/v1/knowledge proxies query strings through to the daemon', async (t) => {
   const { daemonPort } = await bootDaemon(t)
   const dash = await startDashboard({ daemonPort, port: 0 })
   t.teardown(() => dash.close())
 
-  // Seed a knowledge entry through the proxy itself — proves POST + body
-  // round-trip.
-  const post = await fetch(`${dash.url}/api/knowledge`, {
+  const post = await fetch(`${dash.url}/api/v1/knowledge`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ topic: 'wiring', content: 'proxy works' }),
   })
   t.is(post.status, 200)
 
-  // Wait briefly for the apply to land in the view.
   let arr: any[] = []
   for (let i = 0; i < 60; i++) {
-    const res = await fetch(`${dash.url}/api/knowledge?topic=wiring`)
+    const res = await fetch(`${dash.url}/api/v1/knowledge?topic=wiring`)
     arr = (await res.json()) as any[]
     if (arr.length >= 1) break
     await new Promise((r) => setTimeout(r, 50))
@@ -121,7 +120,7 @@ test('close() unbinds the port', async (t) => {
 
   let threw = false
   try {
-    await fetch(dash.url + '/api/ping')
+    await fetch(dash.url + '/api/v1/ping')
   } catch {
     threw = true
   }
