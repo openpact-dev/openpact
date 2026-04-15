@@ -110,7 +110,6 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
         class="pointer-events-none absolute right-0 top-0 h-full w-px bg-[var(--color-line)]"
       />
 
-
       {/* Brand block — product name, plus the current pact's name
           (italic, secondary) when status has loaded. */}
       <div class="px-5 pb-4 pt-6">

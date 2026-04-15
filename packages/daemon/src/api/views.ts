@@ -118,9 +118,7 @@ async function peekHasMore(
 ): Promise<boolean> {
   if (lastKey === null) return false
   const peekRange =
-    order === 'desc'
-      ? { gte: range.gte, lt: lastKey }
-      : { gt: lastKey, lt: range.lt }
+    order === 'desc' ? { gte: range.gte, lt: lastKey } : { gt: lastKey, lt: range.lt }
   if (typeof view.peek === 'function') {
     const hit = await view.peek(peekRange, { reverse: order === 'desc' })
     return hit != null

@@ -53,12 +53,7 @@ export function App() {
             <Messages path="/messages" />
             <Skills path="/skills" />
             <Network path="/network" />
-            <Pacts
-              path="/pacts"
-              current={current}
-              pacts={pacts}
-              onChange={() => void refresh()}
-            />
+            <Pacts path="/pacts" current={current} pacts={pacts} onChange={() => void refresh()} />
             <Trace path="/trace/:id" />
             <NotFound default />
           </Router>

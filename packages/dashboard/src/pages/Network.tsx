@@ -167,6 +167,7 @@ export function Network() {
         <InviteDialog
           pactId={pactId}
           pactName={pactName}
+          fromDisplayName={selfDisplay}
           onClose={() => setShowInvite(false)}
         />
       ) : null}
@@ -550,21 +551,43 @@ function RenameAgentDialog({
 
 /* ------------------------------ invite --------------------------------- */
 
+/**
+ * Build a friendly invite URL pointing at the site's /join page. The
+ * recipient lands on a step-by-step install + `openpact join` guide
+ * with the key pre-filled. Pact name and inviter display name are
+ * optional enrichments; the page degrades gracefully without them.
+ */
+function buildInviteUrl(
+  pactId: string,
+  pactName: string | null,
+  fromDisplayName: string | null,
+): string {
+  const params = new URLSearchParams({ key: pactId })
+  if (pactName) params.set('pact', pactName)
+  if (fromDisplayName) params.set('from', fromDisplayName)
+  return `https://openpact.dev/join?${params.toString()}`
+}
+
 function InviteDialog({
   pactId,
   pactName,
+  fromDisplayName,
   onClose,
 }: {
   pactId: string
   pactName: string | null
+  fromDisplayName: string | null
   onClose: () => void
 }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
+  const [copiedWhat, setCopiedWhat] = useState<null | 'key' | 'link'>(null)
+  const inviteUrl = pactId ? buildInviteUrl(pactId, pactName, fromDisplayName) : ''
+
+  const copy = async (value: string, which: 'key' | 'link') => {
+    if (!value) return
     try {
-      await navigator.clipboard.writeText(pactId)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await navigator.clipboard.writeText(value)
+      setCopiedWhat(which)
+      setTimeout(() => setCopiedWhat(null), 1500)
     } catch {
       // noop
     }
@@ -586,12 +609,32 @@ function InviteDialog({
           Share invite
         </h3>
         <p class="mb-5 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
-          Send the pact key below to another agent. They run{' '}
-          <code class="font-mono text-[12px] text-[var(--color-ember)]">
-            openpact join &lt;key&gt;
-          </code>{' '}
-          to enter{pactName ? ` ${pactName}` : ' the pact'}.
+          Send the invite link to anyone. The page walks them through install and{' '}
+          <code class="font-mono text-[12px] text-[var(--color-ember)]">openpact join</code> with
+          the key pre-filled. If they already have OpenPact, the bare key works too.
         </p>
+
+        <div class="mb-5">
+          <div class="mb-2 flex items-baseline justify-between">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              Invite link
+            </span>
+            <button
+              type="button"
+              onClick={() => copy(inviteUrl, 'link')}
+              data-testid="invite-copy-link"
+              class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ember)]"
+            >
+              {copiedWhat === 'link' ? 'Copied ✓' : 'Copy link'}
+            </button>
+          </div>
+          <div
+            class="select-all break-all border-[0.5px] border-[var(--color-ember)]/40 bg-[var(--color-ember)]/5 px-3 py-2 font-mono text-[12px] text-[var(--color-ink)]"
+            title={inviteUrl}
+          >
+            {inviteUrl || '—'}
+          </div>
+        </div>
 
         <div class="mb-5">
           <div class="mb-2 flex items-baseline justify-between">
@@ -600,11 +643,11 @@ function InviteDialog({
             </span>
             <button
               type="button"
-              onClick={copy}
+              onClick={() => copy(pactId, 'key')}
               data-testid="invite-copy"
               class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ember)]"
             >
-              {copied ? 'Copied ✓' : 'Copy'}
+              {copiedWhat === 'key' ? 'Copied ✓' : 'Copy key'}
             </button>
           </div>
           <div

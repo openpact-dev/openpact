@@ -15,7 +15,7 @@ test('invite prints pact key; join registers the pact', async (t) => {
 
   const join = await runWithDir(b, ['join', key])
   t.is(join.exitCode, 0)
-  t.ok(join.stdout.includes('entered the pact'))
+  t.ok(join.stdout.includes('Agent bound to the pact'))
 
   const daemonCfg = JSON.parse(await fs.readFile(path.join(b, 'daemon.json'), 'utf8'))
   t.is(daemonCfg.pacts.length, 1)

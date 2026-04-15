@@ -1,11 +1,5 @@
 import { buildQuery, type OpenPactClient } from '../client'
-import type {
-  AppendResult,
-  KnowledgeEntry,
-  KnowledgePayload,
-  ListOpts,
-  ListPage,
-} from '../types'
+import type { AppendResult, KnowledgeEntry, KnowledgePayload, ListOpts, ListPage } from '../types'
 import { paginate } from './paginate'
 
 export interface KnowledgeListOpts extends ListOpts {

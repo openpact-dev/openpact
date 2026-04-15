@@ -72,14 +72,11 @@ export function Pacts({ current, pacts, onChange }: Props) {
       {pacts.length === 0 ? (
         <div class="px-1 py-12 text-center text-[14px] text-[var(--color-ink3)]">
           No pacts yet. Use{' '}
-          <code class="font-mono text-[13px] text-[var(--color-ember)]">openpact init</code> in
-          a terminal, or click <strong>New pact</strong> above.
+          <code class="font-mono text-[13px] text-[var(--color-ember)]">openpact init</code> in a
+          terminal, or click <strong>New pact</strong> above.
         </div>
       ) : (
-        <div
-          class="grid grid-cols-1 gap-3 md:grid-cols-2"
-          data-testid="pacts-grid"
-        >
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="pacts-grid">
           {pacts.map((p) => (
             <PactCard
               key={p.alias}
@@ -388,13 +385,7 @@ function JoinPactDialog({
 
   return (
     <Modal title="Join an existing pact" onClose={onClose}>
-      <Field
-        label="Pact key (64 hex)"
-        value={key}
-        onInput={setKey}
-        placeholder="0000…"
-        mono
-      />
+      <Field label="Pact key (64 hex)" value={key} onInput={setKey} placeholder="0000…" mono />
       <Field
         label="Local alias (optional)"
         value={alias}

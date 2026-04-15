@@ -78,7 +78,7 @@ test('tasks.sh: create → list → claim → complete', async (t) => {
   const id = created.id
 
   await waitFor(
-    async () => JSON.parse(await sh(base, 'tasks.sh', 'list', 'open')),
+    async () => JSON.parse(await sh(base, 'tasks.sh', 'list', 'open')).entries ?? [],
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
 

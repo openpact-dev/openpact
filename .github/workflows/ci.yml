@@ -12,25 +12,19 @@ concurrency:
 
 jobs:
   test:
-    name: test (${{ matrix.os }}, node ${{ matrix.node }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [blacksmith-4vcpu-ubuntu-2404, macos-latest]
-        node: ['20.x', '22.x']
+    name: test (ubuntu, node 22)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: '22.x'
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.x'
         uses: codecov/codecov-action@v4
         with:
           files: coverage/lcov.info
@@ -39,7 +33,7 @@ jobs:
 
   e2e:
     name: e2e (ubuntu, node 22)
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,7 +53,7 @@ jobs:
 
   dashboard:
     name: dashboard (ubuntu, node 22)
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -77,3 +71,18 @@ jobs:
         run: npm run -w @openpact/dashboard test:hooks
       - name: Bundle budget
         run: npm run -w @openpact/dashboard size
+
+  site:
+    name: site (ubuntu, node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - name: Build site
+        run: npm run -w @openpact/site build
+      - name: Verify public assets made it into dist
+        run: test -f packages/site/dist/robots.txt && test -f packages/site/dist/sitemap.xml && test -f packages/site/dist/llms.txt && test -f packages/site/dist/favicon.svg

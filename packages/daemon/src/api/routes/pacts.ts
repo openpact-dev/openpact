@@ -1,12 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { HttpError } from '../errors'
-import {
-  DISPLAY_NAME_MAX,
-  PACT_NAME_MAX,
-  PACT_PURPOSE_MAX,
-  loadPactConfig,
-} from '../../config'
+import { DISPLAY_NAME_MAX, PACT_NAME_MAX, PACT_PURPOSE_MAX, loadPactConfig } from '../../config'
 
 const createSchema = {
   type: 'object',

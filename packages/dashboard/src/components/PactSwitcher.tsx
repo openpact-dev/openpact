@@ -69,9 +69,7 @@ export function PactSwitcher({ current, pacts, onSelect }: Props) {
           role="listbox"
         >
           {pacts.length === 0 ? (
-            <div class="px-3 py-2 text-[13px] italic text-[var(--color-ink3)]">
-              No pacts yet.
-            </div>
+            <div class="px-3 py-2 text-[13px] italic text-[var(--color-ink3)]">No pacts yet.</div>
           ) : (
             pacts.map((p) => (
               <button

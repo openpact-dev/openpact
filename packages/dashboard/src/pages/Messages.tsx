@@ -406,10 +406,9 @@ function DispatchRow({
 }) {
   const isBroadcast = msg.payload?.to === '*'
   const author = preferredName({ agent_id: msg.agent_id, display_name: msg.display_name })
-  const recipientLabel =
-    isBroadcast
-      ? 'Broadcast'
-      : `→ ${msg.payload.to === selfDisplay ? 'Self' : shortHandle(msg.payload.to)}`
+  const recipientLabel = isBroadcast
+    ? 'Broadcast'
+    : `→ ${msg.payload.to === selfDisplay ? 'Self' : shortHandle(msg.payload.to)}`
 
   return (
     <>
@@ -507,11 +506,7 @@ function SectionLabel({ children }: { children: any }) {
 
 function EmptyState({ filter }: { filter: Filter }) {
   const label =
-    filter === 'broadcast'
-      ? 'broadcasts'
-      : filter === 'direct'
-        ? 'direct dispatches'
-        : 'dispatches'
+    filter === 'broadcast' ? 'broadcasts' : filter === 'direct' ? 'direct dispatches' : 'dispatches'
   return (
     <div
       class="mx-auto my-16 max-w-md border-[0.5px] border-dashed border-[var(--color-line)] px-6 py-12 text-center"

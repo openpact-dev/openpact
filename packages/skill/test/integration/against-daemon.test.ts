@@ -116,7 +116,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
 
   await waitFor(
     async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
-    (arr) => Array.isArray(arr) && arr.some((tt: any) => tt.id === taskId),
+    (page) => Array.isArray(page?.entries) && page.entries.some((tt: any) => tt.id === taskId),
   )
 
   // Walk every tool. For tools with `:id` params, substitute the
@@ -174,7 +174,7 @@ test('lost claim race surfaces the documented TASK_NOT_OPEN 409', async (t) => {
   const id = created.body.id
   await waitFor(
     async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
-    (arr) => Array.isArray(arr) && arr.some((tt: any) => tt.id === id),
+    (page) => Array.isArray(page?.entries) && page.entries.some((tt: any) => tt.id === id),
   )
   await call(base, 'PUT', `/v1/pacts/default/tasks/${id}/claim`)
   const second = await call(base, 'PUT', `/v1/pacts/default/tasks/${id}/claim`)

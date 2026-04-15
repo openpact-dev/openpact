@@ -26,9 +26,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
       },
     },
     async ({ status, order, limit, cursor }) =>
-      safeHandler(async () =>
-        jsonContent(await pact.tasks.list({ status, order, limit, cursor })),
-      ),
+      safeHandler(async () => jsonContent(await pact.tasks.list({ status, order, limit, cursor }))),
   )
 
   registerTool(

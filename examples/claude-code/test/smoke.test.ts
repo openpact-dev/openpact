@@ -105,7 +105,8 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   // list filtered by topic — wait for view
   const list = await waitFor(
     async () =>
-      JSON.parse(await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`)),
+      JSON.parse(await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`))
+        .entries,
     (arr: any[]) => Array.isArray(arr) && arr.length >= 1,
   )
   t.is(list[0].payload.topic, 'routing')
@@ -131,7 +132,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
 
   // list open tasks
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)),
+    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)).entries,
     (arr: any[]) => arr.some((tt) => tt.id === taskId),
   )
 
@@ -174,14 +175,14 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
     async () =>
       JSON.parse(
         await curl('-sf', `${base}/v1/pacts/default/messages?since=${encodeURIComponent(cutoff)}`),
-      ),
+      ).entries,
     (arr: any[]) => arr.length >= 1,
   )
 
   // jq pipeline used in the doc must parse the response shape we emit
   const jqOut = await curlPipeJq(
     ['-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`],
-    ['-c', '.[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'],
+    ['-c', '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'],
   )
   const parsed = JSON.parse(jqOut.trim().split('\n')[0])
   t.is(parsed.topic, 'routing')
@@ -203,7 +204,7 @@ test('claiming a task someone else already owns returns the documented 409', asy
     ),
   )
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)),
+    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)).entries,
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
   await curl('-sf', '-X', 'PUT', `${base}/v1/pacts/default/tasks/${id}/claim`)

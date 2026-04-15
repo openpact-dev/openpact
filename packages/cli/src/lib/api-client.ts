@@ -81,7 +81,8 @@ export class ApiClient {
     const params = new URLSearchParams()
     if (opts.limit) params.set('limit', String(opts.limit))
     const qs = params.toString()
-    return this.req(this.pactPath(`/${path}${qs ? `?${qs}` : ''}`))
+    const res = await this.req(this.pactPath(`/${path}${qs ? `?${qs}` : ''}`))
+    return res.entries ?? []
   }
 
   async addWriter(key: string, indexer = false): Promise<any> {

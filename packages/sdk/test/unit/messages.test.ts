@@ -17,9 +17,7 @@ test('messages.list: returns envelope', async (t) => {
   const m = mockFetch({
     status: 200,
     body: {
-      entries: [
-        { id: 'a', type: 'message', payload: { to: '*', content: 'hi' } },
-      ],
+      entries: [{ id: 'a', type: 'message', payload: { to: '*', content: 'hi' } }],
       cursor: 'message/2026/a',
       has_more: false,
     },

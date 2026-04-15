@@ -123,7 +123,7 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
 
   await waitFor(
     async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
-    (arr) => Array.isArray(arr) && arr.some((tt: any) => tt.id === taskId),
+    (page) => Array.isArray(page?.entries) && page.entries.some((tt: any) => tt.id === taskId),
   )
 
   // Skip destructive admin tools (need an indexer cap that a fresh

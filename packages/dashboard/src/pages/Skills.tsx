@@ -251,7 +251,9 @@ function InstalledRow({ skill, index }: { skill: InstalledSkill; index: number }
 
 function InspectModal({ skillId, onClose }: { skillId: string; onClose: () => void }) {
   const pact = usePact()
-  const content = useQuery(() => pact.skills.getContent(skillId), { key: `content:${pact.pactId}:${skillId}` })
+  const content = useQuery(() => pact.skills.getContent(skillId), {
+    key: `content:${pact.pactId}:${skillId}`,
+  })
 
   return (
     <div
