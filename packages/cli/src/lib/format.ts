@@ -48,9 +48,16 @@ const TYPE_COLOUR: Record<string, (s: string) => string> = {
   message: pc.cyan,
 }
 
+// Translate the is_writer / is_indexer booleans into one plain-English line.
+// `writer` means the peer can post entries into the pact; `indexer` means
+// the peer also votes on the Autobase ordering that everyone shares.
+function describeRights(isWriter: boolean, isIndexer: boolean): string {
+  if (isWriter && isIndexer) return 'can post entries · votes on ordering'
+  if (isWriter) return 'can post entries · does not vote on ordering'
+  return c.ash('read-only (cannot post entries)')
+}
+
 export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
-  const yes = c.brand('●')
-  const no = c.ash('○')
   const unknown = c.ash('—')
   const synced = s.synced ? c.brand('synced') : c.ember('not synced')
 
@@ -78,12 +85,7 @@ export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
   const handle = s.peer_handle ?? unknown
   const you = displayName ? `${c.bone(displayName)}  ${c.ash(`(${handle})`)}` : handle
   lines.push(row('You', `${you}  ${c.ash(`· ${s.role ?? '?'}`)}`))
-  lines.push(
-    row(
-      'Writer',
-      `${s.is_writer ? yes : no}    ${c.brandBold('Indexer')} ${s.is_indexer ? yes : no}`,
-    ),
-  )
+  lines.push(row('Rights', describeRights(s.is_writer, s.is_indexer)))
   lines.push('')
 
   lines.push(row('Peers', String(s.peers)))
