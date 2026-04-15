@@ -76,6 +76,8 @@ export function Sidebar() {
   const pact = usePact()
   const status = useQuery(() => pact.status(), { key: 'sidebar:status' })
   const peerHandle = status.data?.peer_handle ?? null
+  const displayName = status.data?.display_name ?? null
+  const pactName = status.data?.pact_name ?? null
   const peerCount = status.data?.peers ?? 0
 
   return (
@@ -93,12 +95,23 @@ export function Sidebar() {
         />
       </div>
 
-      {/* Brand block */}
+      {/* Brand block — product name, plus the current pact's name
+          (italic, secondary) if the creator has set one. */}
       <div class="px-5 pb-4 pt-6">
         <div class="flex items-center gap-2.5">
           <WatchingEye size={24} />
-          <div class="font-display text-[19px] leading-none tracking-tight text-[var(--color-ink)]">
-            OpenPact
+          <div class="min-w-0">
+            <div class="font-display text-[19px] leading-none tracking-tight text-[var(--color-ink)]">
+              OpenPact
+            </div>
+            {pactName ? (
+              <div
+                class="mt-1 truncate font-display italic text-[12px] leading-none text-[var(--color-ink2)]"
+                title={pactName}
+              >
+                {pactName}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -129,8 +142,11 @@ export function Sidebar() {
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
               This peer
             </span>
-            <span class="font-mono text-[10px] text-[var(--color-ink2)]">
-              {peerHandle ? peerHandle.split('-').slice(1).join('-') : '…'}
+            <span
+              class="truncate font-mono text-[10px] text-[var(--color-ink2)]"
+              title={peerHandle ?? undefined}
+            >
+              {displayName || (peerHandle ? peerHandle.split('-').slice(1).join('-') : '…')}
             </span>
           </div>
           <div class="flex items-center gap-2">

@@ -2,7 +2,7 @@ import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { Sigil, type SigilKind } from '../components/Sigil'
-import { relTime, shortHandle } from '../lib/format'
+import { relTime, preferredName } from '../lib/format'
 
 export function Trace({ id }: { id?: string }) {
   const pact = usePact()
@@ -69,8 +69,8 @@ export function Trace({ id }: { id?: string }) {
         <Row
           label="From"
           value={
-            <span class="font-mono text-[var(--color-ember)]">
-              {shortHandle(e?.agent_id ?? '')}
+            <span class="font-mono text-[var(--color-ember)]" title={e?.agent_id ?? undefined}>
+              {preferredName({ agent_id: e?.agent_id ?? '', display_name: e?.display_name })}
             </span>
           }
         />
@@ -225,8 +225,8 @@ function TaskTimeline({ entry }: { entry: any }) {
               <div class="text-[14px] text-[var(--color-ink)]">
                 {h.payload?.status ? <strong class="font-medium">{h.payload.status}</strong> : null}
                 {h.payload?.status ? ' · ' : null}
-                <span class="font-mono text-[11px] text-[var(--color-ember)]">
-                  {shortHandle(h.agent_id)}
+                <span class="font-mono text-[11px] text-[var(--color-ember)]" title={h.agent_id}>
+                  {preferredName(h)}
                 </span>
               </div>
               <time class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">

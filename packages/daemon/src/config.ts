@@ -6,14 +6,31 @@ export const DEFAULT_PORT = 7666
 export const ROLES = ['creator', 'indexer', 'writer', 'reader'] as const
 export type Role = (typeof ROLES)[number]
 
+export const DISPLAY_NAME_MAX = 64
+export const PACT_NAME_MAX = 64
+export const PACT_PURPOSE_MAX = 200
+
 export interface Config {
   pactKey: string | null
+  /** Human-readable name for this pact, chosen at init. Null if unset. */
+  pactName: string | null
+  /** One-line statement of what this pact is for. Null if unset. */
+  pactPurpose: string | null
+  /** Author's chosen display name for entries. Null means use peerHandle. */
+  displayName: string | null
   role: Role | null
   port: number
 }
 
 export function defaults(): Config {
-  return { pactKey: null, role: null, port: DEFAULT_PORT }
+  return {
+    pactKey: null,
+    pactName: null,
+    pactPurpose: null,
+    displayName: null,
+    role: null,
+    port: DEFAULT_PORT,
+  }
 }
 
 export async function loadConfig(dataDir: string): Promise<Config> {
@@ -60,5 +77,18 @@ export function validate(config: Config): void {
   }
   if (typeof config.port !== 'number' || config.port < 1 || config.port > 65535) {
     throw new Error('port must be an integer in [1, 65535]')
+  }
+  validateOptionalString(config.pactName, 'pactName', PACT_NAME_MAX)
+  validateOptionalString(config.pactPurpose, 'pactPurpose', PACT_PURPOSE_MAX)
+  validateOptionalString(config.displayName, 'displayName', DISPLAY_NAME_MAX)
+}
+
+function validateOptionalString(value: unknown, field: string, max: number): void {
+  if (value === null || value === undefined) return
+  if (typeof value !== 'string') {
+    throw new Error(`${field} must be a string or null`)
+  }
+  if (value.length > max) {
+    throw new Error(`${field} must be ≤${max} chars`)
   }
 }

@@ -4,12 +4,13 @@ import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { Sigil } from '../components/Sigil'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { shortHandle } from '../lib/format'
+import { preferredName } from '../lib/format'
 
 interface SkillRow {
   id: string
   timestamp: string
   agent_id: string
+  display_name?: string | null
   payload: {
     name: string
     version: string
@@ -192,7 +193,9 @@ function SkillCard({
             </p>
           ) : null}
           <div class="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
-            <span class="text-[var(--color-ember)]">{shortHandle(skill.agent_id)}</span>
+            <span class="text-[var(--color-ember)]" title={skill.agent_id}>
+              {preferredName(skill)}
+            </span>
             <span class="opacity-50">·</span>
             <span class="opacity-70">{skill.id}</span>
           </div>

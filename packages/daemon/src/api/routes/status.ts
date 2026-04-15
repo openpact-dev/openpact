@@ -7,7 +7,10 @@ export default async function statusRoute(
 ): Promise<void> {
   app.get('/v1/status', async () => ({
     pact_id: daemon.pactKey,
+    pact_name: daemon.pactName,
+    pact_purpose: daemon.pactPurpose,
     peer_handle: daemon.peerHandle,
+    display_name: daemon.displayName,
     role: daemon.role,
     public_key: daemon.publicKey,
     peers: daemon.connections,

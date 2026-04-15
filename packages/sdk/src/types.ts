@@ -90,7 +90,13 @@ export interface TaskState {
 
 export interface StatusPayload {
   pact_id: string | null
+  /** Human-readable pact name chosen by the creator. Null if unset. */
+  pact_name: string | null
+  /** One-line purpose statement for this pact. Null if unset. */
+  pact_purpose: string | null
   peer_handle: string | null
+  /** This peer's chosen display name. Null falls back to peer_handle. */
+  display_name: string | null
   role: string | null
   public_key: string | null
   peers: number

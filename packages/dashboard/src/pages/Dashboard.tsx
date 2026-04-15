@@ -60,8 +60,12 @@ export function Dashboard() {
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
               This peer
             </span>
-            <span class="font-mono text-[12px] text-[var(--color-ember)]">
-              {status.data?.peer_handle ? shortHandle(status.data.peer_handle) : '…'}
+            <span
+              class="font-mono text-[12px] text-[var(--color-ember)]"
+              title={status.data?.peer_handle ?? undefined}
+            >
+              {status.data?.display_name ??
+                (status.data?.peer_handle ? shortHandle(status.data.peer_handle) : '…')}
             </span>
           </div>
           {pactId ? (
@@ -69,8 +73,8 @@ export function Dashboard() {
               <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
                 Pact
               </span>
-              <span class="font-mono text-[12px] text-[var(--color-online)]">
-                {pactId.slice(0, 8)} · synced
+              <span class="font-mono text-[12px] text-[var(--color-online)]" title={pactId}>
+                {status.data?.pact_name ?? `${pactId.slice(0, 8)} · synced`}
               </span>
             </div>
           ) : null}

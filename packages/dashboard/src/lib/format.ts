@@ -22,3 +22,17 @@ export function shortHandle(handle: string | null | undefined): string {
   if (handle.length <= 20) return handle
   return handle.slice(0, 12) + '…'
 }
+
+/**
+ * Preferred name for an author. Returns `display_name` when set,
+ * otherwise falls back to the shortened canonical `agent_id`. Use this
+ * anywhere an author is rendered — handle remains retrievable via
+ * hover/title for audit or debugging.
+ */
+export function preferredName(entry: {
+  agent_id: string | null | undefined
+  display_name?: string | null
+}): string {
+  if (entry.display_name && entry.display_name.trim() !== '') return entry.display_name
+  return shortHandle(entry.agent_id)
+}

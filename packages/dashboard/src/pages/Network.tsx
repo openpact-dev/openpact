@@ -29,6 +29,9 @@ export function Network() {
 
   const publicKey = status.data?.public_key ?? ''
   const pactId = status.data?.pact_id ?? ''
+  const pactName = status.data?.pact_name ?? null
+  const pactPurpose = status.data?.pact_purpose ?? null
+  const displayName = status.data?.display_name ?? null
   const role = status.data?.role ?? ''
   const isCreator = role === 'creator'
 
@@ -42,6 +45,26 @@ export function Network() {
           {(peers.data ?? []).length} peer{(peers.data ?? []).length === 1 ? '' : 's'}
         </span>
       </header>
+
+      <section class="mb-8">
+        <div class="mb-3 flex items-baseline justify-between">
+          <h2 class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink)]">
+            This pact
+          </h2>
+          {isCreator ? (
+            <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ember)]">
+              You're the creator
+            </span>
+          ) : null}
+        </div>
+        <PactInfoCard
+          pactName={pactName}
+          pactPurpose={pactPurpose}
+          displayName={displayName}
+          isCreator={isCreator}
+          onRenamed={() => status.refetch()}
+        />
+      </section>
 
       <div class="mb-8 grid grid-cols-1 gap-3 md:grid-cols-2">
         <KeyCard label="This peer" value={publicKey} mono />
@@ -241,6 +264,205 @@ function PeerRowView({
           <span class="font-mono text-[10px] text-[var(--color-ink3)]">—</span>
         )}
       </div>
+    </div>
+  )
+}
+
+function PactInfoCard({
+  pactName,
+  pactPurpose,
+  displayName,
+  isCreator,
+  onRenamed,
+}: {
+  pactName: string | null
+  pactPurpose: string | null
+  displayName: string | null
+  isCreator: boolean
+  onRenamed: () => void
+}) {
+  const pact = usePact()
+  const [editing, setEditing] = useState<null | 'pact' | 'me'>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [purposeDraft, setPurposeDraft] = useState('')
+  const [displayDraft, setDisplayDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const startPactEdit = () => {
+    setNameDraft(pactName ?? '')
+    setPurposeDraft(pactPurpose ?? '')
+    setError(null)
+    setEditing('pact')
+  }
+  const startMeEdit = () => {
+    setDisplayDraft(displayName ?? '')
+    setError(null)
+    setEditing('me')
+  }
+
+  const savePact = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await pact.admin.setPactInfo({
+        name: nameDraft.trim() || null,
+        purpose: purposeDraft.trim() || null,
+      })
+      setEditing(null)
+      onRenamed()
+    } catch (e: any) {
+      setError(e?.message ?? String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveMe = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await pact.admin.setDisplayName(displayDraft.trim() || null)
+      setEditing(null)
+      onRenamed()
+    } catch (e: any) {
+      setError(e?.message ?? String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const INPUT =
+    'w-full rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent px-1 py-1.5 text-[14px] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]'
+
+  return (
+    <div
+      class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 px-5 py-4"
+      data-testid="pact-info"
+    >
+      {editing === 'pact' ? (
+        <div class="space-y-3">
+          <label class="block">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              Pact name
+            </span>
+            <input
+              class={`${INPUT} mt-1`}
+              value={nameDraft}
+              maxLength={64}
+              onInput={(e) => setNameDraft((e.target as HTMLInputElement).value)}
+              data-testid="pact-name-input"
+            />
+          </label>
+          <label class="block">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              Purpose
+            </span>
+            <input
+              class={`${INPUT} mt-1`}
+              value={purposeDraft}
+              maxLength={200}
+              onInput={(e) => setPurposeDraft((e.target as HTMLInputElement).value)}
+              data-testid="pact-purpose-input"
+            />
+          </label>
+          {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
+          <div class="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              disabled={saving}
+              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={savePact}
+              disabled={saving}
+              data-testid="pact-save"
+              class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : editing === 'me' ? (
+        <div class="space-y-3">
+          <label class="block">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              Your display name
+            </span>
+            <input
+              class={`${INPUT} mt-1`}
+              value={displayDraft}
+              maxLength={64}
+              onInput={(e) => setDisplayDraft((e.target as HTMLInputElement).value)}
+              data-testid="display-name-input"
+            />
+            <span class="mt-1 block text-[11px] text-[var(--color-ink3)]">
+              Advisory only — your canonical peer handle stays the same.
+            </span>
+          </label>
+          {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
+          <div class="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              disabled={saving}
+              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveMe}
+              disabled={saving}
+              data-testid="me-save"
+              class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+          <div class="min-w-0">
+            <div class="font-display text-[18px] leading-tight text-[var(--color-ink)]">
+              {pactName ?? <span class="italic text-[var(--color-ink3)]">Unnamed pact</span>}
+            </div>
+            <div class="mt-1 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
+              {pactPurpose ?? <span class="italic text-[var(--color-ink3)]">No purpose set.</span>}
+            </div>
+            <div class="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
+              Your mark:{' '}
+              <span class="text-[var(--color-ember)]">
+                {displayName ?? <span class="italic">(handle)</span>}
+              </span>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            {isCreator ? (
+              <button
+                type="button"
+                onClick={startPactEdit}
+                data-testid="pact-edit"
+                class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
+              >
+                Rename pact
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={startMeEdit}
+              data-testid="me-edit"
+              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
+            >
+              Rename me
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

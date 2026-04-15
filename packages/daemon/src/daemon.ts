@@ -15,6 +15,12 @@ export interface DaemonOpts {
   dataDir?: string
   port?: number
   swarm?: Record<string, unknown>
+  /** Pact name stamped into config on create/join. Opt-in; null keeps previous/unset. */
+  pactName?: string | null
+  /** Pact purpose stamped into config on create/join. */
+  pactPurpose?: string | null
+  /** Author's display name stamped into config. */
+  displayName?: string | null
   /**
    * How long a `claimed` task remains effectively claimed before
    * peers treat it as open again. All peers in a pact MUST agree on
@@ -51,11 +57,17 @@ export class Daemon extends EventEmitter {
   private _swarm: any = null
   private _started = false
   private _role: Role | null = null
+  private _pactName: string | null = null
+  private _pactPurpose: string | null = null
+  private _displayName: string | null = null
 
   constructor({
     dataDir,
     port = DEFAULT_PORT,
     swarm = {},
+    pactName = null,
+    pactPurpose = null,
+    displayName = null,
     claimTtlMs = DEFAULT_CLAIM_TTL_MS,
     clockMs = Date.now,
   }: DaemonOpts = {}) {
@@ -63,6 +75,9 @@ export class Daemon extends EventEmitter {
     this.dataDir = dataDir || defaultDataDir()
     this.port = port
     this._swarmOpts = swarm
+    this._pactName = pactName
+    this._pactPurpose = pactPurpose
+    this._displayName = displayName
     this.claimTtlMs = claimTtlMs
     this.clockMs = clockMs
   }
@@ -100,6 +115,19 @@ export class Daemon extends EventEmitter {
     d._base = new Autobase(d._store, bootstrap, d._autobaseOpts())
     await d._base.ready()
     d._role = cfg.role
+    // Opts override config on load (lets the CLI pass --display-name
+    // at boot time); otherwise inherit whatever the config holds.
+    d._pactName = opts.pactName ?? cfg.pactName ?? null
+    d._pactPurpose = opts.pactPurpose ?? cfg.pactPurpose ?? null
+    d._displayName = opts.displayName ?? cfg.displayName ?? null
+    // If load-time opts changed any field, round-trip to disk.
+    if (
+      d._pactName !== cfg.pactName ||
+      d._pactPurpose !== cfg.pactPurpose ||
+      d._displayName !== cfg.displayName
+    ) {
+      await d._persistConfig()
+    }
     return d
   }
 
@@ -127,6 +155,12 @@ export class Daemon extends EventEmitter {
     cfg.pactKey = b4a.toString(this._base.key, 'hex')
     if (this._role) cfg.role = this._role
     cfg.port = this.port
+    // The Daemon instance is the source of truth for these three
+    // after load/mutate. A null here means "unset"; an empty string
+    // would have been coerced to null upstream.
+    cfg.pactName = this._pactName
+    cfg.pactPurpose = this._pactPurpose
+    cfg.displayName = this._displayName
     await saveConfig(this.dataDir, cfg as Config)
   }
 
@@ -219,14 +253,43 @@ export class Daemon extends EventEmitter {
     return peerHandle.derive(this._base.local.key)
   }
 
-  /**
-   * Author's chosen display name. Null means "no preference — render
-   * the deterministic peerHandle." Slice 4a-2 will thread this from
-   * config.json; Slice 4a-1 stamps null to lock in the wire format
-   * without waiting for the config surface.
-   */
+  /** Author's chosen display name. Null means "no preference — render peerHandle." */
   get displayName(): string | null {
-    return null
+    return this._displayName
+  }
+
+  /** Human-readable pact name chosen by the creator. Null if unset. */
+  get pactName(): string | null {
+    return this._pactName
+  }
+
+  /** One-line purpose statement chosen by the creator. Null if unset. */
+  get pactPurpose(): string | null {
+    return this._pactPurpose
+  }
+
+  /**
+   * Update pact metadata (name / purpose) on disk and in memory.
+   * Caller is responsible for role-gating (creator-only). Passing
+   * undefined for a field leaves it unchanged; passing an empty string
+   * clears it.
+   */
+  async setPactInfo({
+    name,
+    purpose,
+  }: {
+    name?: string | null
+    purpose?: string | null
+  }): Promise<void> {
+    if (name !== undefined) this._pactName = name || null
+    if (purpose !== undefined) this._pactPurpose = purpose || null
+    await this._persistConfig()
+  }
+
+  /** Update this peer's display name on disk + in memory. Empty string clears. */
+  async setDisplayName(name: string | null): Promise<void> {
+    this._displayName = name || null
+    await this._persistConfig()
   }
 
   get role(): Role | null {

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { HttpError } from '../errors'
+import { DISPLAY_NAME_MAX, PACT_NAME_MAX, PACT_PURPOSE_MAX } from '../../config'
 
 const HEX64 = /^[0-9a-f]{64}$/i
 
@@ -119,6 +120,49 @@ export default async function adminRoute(
       }
       await daemon.removeWriter(req.body.key)
       return { ok: true, key: req.body.key }
+    },
+  )
+
+  // Pact metadata — creator-only. Passing null clears a field; omitting
+  // it leaves the field untouched.
+  const pactInfoSchema = {
+    type: 'object',
+    properties: {
+      name: { type: ['string', 'null'], maxLength: PACT_NAME_MAX },
+      purpose: { type: ['string', 'null'], maxLength: PACT_PURPOSE_MAX },
+    },
+    additionalProperties: false,
+  }
+  app.put<{ Body: { name?: string | null; purpose?: string | null } }>(
+    '/v1/pact',
+    { schema: { body: pactInfoSchema } },
+    async (req) => {
+      if (daemon.role !== 'creator') {
+        throw new HttpError(
+          409,
+          'NOT_INDEXER',
+          `daemon.role is ${daemon.role}; only the creator may rename the pact`,
+        )
+      }
+      await daemon.setPactInfo({ name: req.body.name, purpose: req.body.purpose })
+      return { ok: true, pact_name: daemon.pactName, pact_purpose: daemon.pactPurpose }
+    },
+  )
+
+  // This peer's display name. Any peer can edit their own.
+  const meSchema = {
+    type: 'object',
+    properties: {
+      display_name: { type: ['string', 'null'], maxLength: DISPLAY_NAME_MAX },
+    },
+    additionalProperties: false,
+  }
+  app.put<{ Body: { display_name?: string | null } }>(
+    '/v1/me',
+    { schema: { body: meSchema } },
+    async (req) => {
+      await daemon.setDisplayName(req.body.display_name ?? null)
+      return { ok: true, display_name: daemon.displayName }
     },
   )
 }

@@ -1,12 +1,13 @@
 import { route } from 'preact-router'
 import { Sigil, type SigilKind } from './Sigil'
-import { relTime, shortHandle } from '../lib/format'
+import { relTime, preferredName } from '../lib/format'
 
 export interface Entry {
   id: string
   type: SigilKind
   timestamp: string
   agent_id: string
+  display_name?: string | null
   payload: Record<string, any>
 }
 
@@ -61,8 +62,11 @@ export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) 
         <Sigil kind={entry.type} size={14} bordered />
         <div class="min-w-0 flex-1 pt-px">
           <div class="text-[13px] leading-[1.5] text-[var(--color-ink2)]">
-            <span class="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ember)]">
-              {shortHandle(entry.agent_id)}
+            <span
+              class="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ember)]"
+              title={entry.agent_id}
+            >
+              {preferredName(entry)}
             </span>{' '}
             {TYPE_VERB[entry.type]}
             {entry.type === 'knowledge' && entry.payload.topic ? (
@@ -109,7 +113,9 @@ export function EntryCard({ entry, index = 0 }: { entry: Entry; index?: number }
         ) : null}
         <p class="mt-1.5 text-[14px] leading-[1.5] text-[var(--color-ink)]">{summary(entry)}</p>
         <div class="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
-          <span class="text-[var(--color-ember)]">{shortHandle(entry.agent_id)}</span>
+          <span class="text-[var(--color-ember)]" title={entry.agent_id}>
+            {preferredName(entry)}
+          </span>
           <span class="opacity-50">·</span>
           <time>{relTime(entry.timestamp)}</time>
           <span class="opacity-50">·</span>

@@ -44,5 +44,22 @@ export function adminResource(client: OpenPactClient) {
         confirm: true,
       })
     },
+    /**
+     * PUT /v1/pact — update this pact's name and/or purpose. Creator
+     * only. Omitting a field leaves it unchanged; passing null clears.
+     */
+    setPactInfo(opts: {
+      name?: string | null
+      purpose?: string | null
+    }): Promise<{ ok: true; pact_name: string | null; pact_purpose: string | null }> {
+      return client.json('/v1/pact', 'PUT', opts)
+    },
+    /**
+     * PUT /v1/me — update this peer's display name. Any peer may edit
+     * their own. Null or empty clears back to the deterministic handle.
+     */
+    setDisplayName(name: string | null): Promise<{ ok: true; display_name: string | null }> {
+      return client.json('/v1/me', 'PUT', { display_name: name })
+    },
   }
 }

@@ -3,6 +3,14 @@ import { reduceTaskHistory, type TaskEntry } from '../../../src/api/tasks-state'
 
 const TS = '2026-04-14T10:00:00.000Z'
 
+/**
+ * All tests here use timestamps near TS. The reducer's wall-clock TTL
+ * check would expire those claims the moment real time drifts past
+ * TS + 24h, turning fresh tests red purely because of the calendar.
+ * Pin `clockMs` to TS so the check is deterministic.
+ */
+const fixedClock = { clockMs: () => Date.parse(TS) + 1_000 }
+
 function task(
   id: string,
   status: 'open' | 'claimed' | 'complete',
@@ -34,24 +42,30 @@ test('reduce: single open task → open state', (t) => {
 })
 
 test('reduce: claim transitions open → claimed', (t) => {
-  const state = reduceTaskHistory([
-    task('aaaa-1', 'open'),
-    task('bbbb-2', 'claimed', {
-      refs: ['aaaa-1'],
-      agent: 'anon-cobra-3e91',
-      claimed_by: 'anon-cobra-3e91',
-    }),
-  ])!
+  const state = reduceTaskHistory(
+    [
+      task('aaaa-1', 'open'),
+      task('bbbb-2', 'claimed', {
+        refs: ['aaaa-1'],
+        agent: 'anon-cobra-3e91',
+        claimed_by: 'anon-cobra-3e91',
+      }),
+    ],
+    fixedClock,
+  )!
   t.is(state.status, 'claimed')
   t.is(state.claimed_by, 'anon-cobra-3e91')
 })
 
 test('reduce: two concurrent claims → first by entry-id wins', (t) => {
-  const state = reduceTaskHistory([
-    task('aaaa-1', 'open'),
-    task('cccc-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-c', claimed_by: 'anon-c' }),
-    task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
-  ])!
+  const state = reduceTaskHistory(
+    [
+      task('aaaa-1', 'open'),
+      task('cccc-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-c', claimed_by: 'anon-c' }),
+      task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
+    ],
+    fixedClock,
+  )!
   // bbbb-2 < cccc-2 lexicographically, so anon-b wins
   t.is(state.status, 'claimed')
   t.is(state.claimed_by, 'anon-b')
@@ -68,11 +82,14 @@ test('reduce: complete from claimer transitions claimed → complete', (t) => {
 })
 
 test('reduce: complete from non-claimer is ignored', (t) => {
-  const state = reduceTaskHistory([
-    task('aaaa-1', 'open'),
-    task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
-    task('cccc-3', 'complete', { refs: ['aaaa-1'], agent: 'anon-c', result: 'sneaky' }),
-  ])!
+  const state = reduceTaskHistory(
+    [
+      task('aaaa-1', 'open'),
+      task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
+      task('cccc-3', 'complete', { refs: ['aaaa-1'], agent: 'anon-c', result: 'sneaky' }),
+    ],
+    fixedClock,
+  )!
   t.is(state.status, 'claimed')
   t.is(state.result, null)
 })
@@ -88,11 +105,14 @@ test('reduce: release by claimer reverts to open', (t) => {
 })
 
 test('reduce: release by non-claimer ignored', (t) => {
-  const state = reduceTaskHistory([
-    task('aaaa-1', 'open'),
-    task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
-    task('cccc-3', 'open', { refs: ['aaaa-1'], agent: 'anon-c' }),
-  ])!
+  const state = reduceTaskHistory(
+    [
+      task('aaaa-1', 'open'),
+      task('bbbb-2', 'claimed', { refs: ['aaaa-1'], agent: 'anon-b', claimed_by: 'anon-b' }),
+      task('cccc-3', 'open', { refs: ['aaaa-1'], agent: 'anon-c' }),
+    ],
+    fixedClock,
+  )!
   t.is(state.status, 'claimed')
   t.is(state.claimed_by, 'anon-b')
 })
