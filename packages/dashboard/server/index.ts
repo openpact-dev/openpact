@@ -81,6 +81,24 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
       // Don't decorate; we may register multiple static layers in tests.
       decorateReply: false,
     })
+    // SPA fallback: any unknown GET that isn't /api/* serves index.html
+    // so client-side routes (`/knowledge`, `/trace/:id`, …) work on
+    // direct navigation. The static handler already serves index.html
+    // for `/`; this just extends it to any non-asset path.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method !== 'GET' || req.url.startsWith('/api')) {
+        reply
+          .status(404)
+          .header('content-type', 'application/json')
+          .send({
+            error: 'NOT_FOUND',
+            message: `route ${req.method} ${req.url} not found`,
+            status: 404,
+          })
+        return
+      }
+      reply.sendFile('index.html', staticDir)
+    })
   }
 
   const boundUrl = await app.listen({ port, host })

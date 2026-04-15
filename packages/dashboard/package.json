@@ -34,6 +34,7 @@
     "size": "size-limit",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'",
     "test:unit": "NODE_OPTIONS='--import tsx' brittle 'test/unit/**/*.test.ts'",
+    "test:hooks": "vitest run",
     "test:ui": "playwright test"
   },
   "dependencies": {
@@ -49,6 +50,7 @@
     "@playwright/test": "^1.59.1",
     "@preact/preset-vite": "^2.10.5",
     "@size-limit/preset-app": "^12.1.0",
+    "@testing-library/preact": "^3.2.4",
     "jsdom": "^29.0.2",
     "size-limit": "^12.1.0",
     "vite": "^8.0.8",

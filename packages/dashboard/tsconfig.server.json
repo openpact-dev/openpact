@@ -10,7 +10,6 @@
     "declaration": true,
     "noEmit": false,
     "sourceMap": true,
-    "composite": true,
     "types": ["node"]
   },
   "include": ["server/**/*"],

@@ -9,7 +9,6 @@
     "jsxImportSource": "preact",
     "rootDir": "src",
     "noEmit": true,
-    "composite": true,
     "types": []
   },
   "include": ["src/**/*"],

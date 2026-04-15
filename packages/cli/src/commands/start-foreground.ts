@@ -8,8 +8,12 @@ import { c, emoji, banner } from '../lib/theme'
 export interface StartForegroundOpts {
   port?: string | number
   bootstrap?: string
-  /** When true, skip starting the dashboard server (for headless / seed nodes / CI). */
-  noDashboard?: boolean
+  /**
+   * Commander maps `--no-dashboard` to `opts.dashboard === false`
+   * (and `opts.dashboard === true` by default). When false, skip
+   * starting the dashboard server (headless / seed nodes / CI).
+   */
+  dashboard?: boolean
   /** Override the dashboard port (default 7667; pass 0 for an OS-chosen free port in tests). */
   dashboardPort?: string | number
 }
@@ -40,7 +44,9 @@ export async function startForegroundCmd(
   const url = await bind(app, { port })
 
   let dashboard: StartDashboardResult | null = null
-  if (!opts.noDashboard) {
+  // Commander gives us `dashboard: false` when --no-dashboard is set,
+  // `dashboard: true` (default) otherwise. Treat undefined as true.
+  if (opts.dashboard !== false) {
     const dashboardPort = Number(opts.dashboardPort ?? 7667)
     try {
       dashboard = await startDashboard({ daemonPort: port, port: dashboardPort })

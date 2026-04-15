@@ -1,13 +1,6 @@
 import { render } from 'preact'
-
-function Boot() {
-  return (
-    <div class="boot">
-      <h1>OpenPact</h1>
-      <p>scaffold ready · slice C wires the screens</p>
-    </div>
-  )
-}
+import { App } from './app'
+import './style.css'
 
 const root = document.getElementById('app')
-if (root) render(<Boot />, root)
+if (root) render(<App />, root)
