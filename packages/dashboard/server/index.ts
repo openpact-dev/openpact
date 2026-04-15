@@ -32,10 +32,17 @@ export interface StartDashboardResult {
 const ALLOWED_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
 
 function defaultStaticDir(): string {
-  // The compiled server entry lives in dist/server/index.js; the browser
-  // build sits at dist/browser/. In dev/tests, run `vite build` first
-  // so this path exists; otherwise pass `staticDir` explicitly.
-  return path.resolve(__dirname, '..', 'browser')
+  // The Vite build always lands at <package-root>/dist/browser. Two
+  // runtime layouts to support:
+  //   - source via tsx: __dirname = <pkg>/server  → ../dist/browser
+  //   - built CJS:      __dirname = <pkg>/dist/server → ../browser
+  // Try both; return whichever exists. Falls back to the source layout
+  // (which is the canonical answer) when neither does.
+  const candidates = [
+    path.resolve(__dirname, '..', 'dist', 'browser'),
+    path.resolve(__dirname, '..', 'browser'),
+  ]
+  return candidates.find((p) => existsSync(p)) ?? candidates[0]
 }
 
 /**
