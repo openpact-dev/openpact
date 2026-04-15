@@ -44,7 +44,7 @@ const WORDMARK = [
   '       |_|                                    ',
 ]
 
-const TAGLINE = '  a pact among daemons'
+const TAGLINE = '  P2P shared memory for software agents'
 
 export function banner(): string {
   const wordmark = WORDMARK.map((line) => '  ' + c.brand(line)).join('\n')

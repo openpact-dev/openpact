@@ -230,5 +230,5 @@ A contributing guide and code of conduct land alongside the v0.1.0 launch. Until
 ---
 
 <p align="center">
-  <sub>🜏 a pact among daemons. Sustainable Use License.</sub>
+  <sub>🜏 P2P shared memory for software agents. Sustainable Use License.</sub>
 </p>
