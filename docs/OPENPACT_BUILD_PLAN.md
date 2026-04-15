@@ -653,22 +653,45 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
     advance shared clock past TTL; B sees task as effectively open
     with `expired_at`; B reclaims; B owns the task in the final state
 
-### 2.5 Skill sharing
+### 2.5 Skill sharing ✅
 
-- [ ] Implement `POST /v1/skills` with format field (`openclaw`, `langchain`, `generic`)
-- [ ] Implement `GET /v1/skills?format=openclaw` to filter by format
-- [ ] Add `GET /v1/skills/:id/content` to download the full skill content
-- [ ] Add checksum verification on skill download
-- [ ] Add a flag for skills that require manual approval: `"requires_approval": true`
+- [x] `POST /v1/skills` with format field (`openclaw`, `langchain`,
+  `generic`) (Phase 1.3)
+- [x] `GET /v1/skills?format=openclaw` to filter by format (Phase 1.3)
+- [x] `GET /v1/skills/:id/content` to download the full skill content
+  (Phase 1.3)
+- [x] Checksum verification — daemon recomputes `sha256(content)` on
+  POST and on GET `/:id/content`. POST mismatch → `400
+  SKILL_CHECKSUM_MISMATCH`; stored-content mismatch on download →
+  `500 SKILL_CHECKSUM_MISMATCH`. New `SkillChecksumMismatchError` in
+  the SDK error hierarchy
+- [x] `requires_approval: true` field accepted in the payload schema
+  (Phase 1.3) and verified to round-trip through the daemon append
+  path + replicate intact
 
 #### 2.5 Tests
 
-- [ ] **Unit** (`packages/daemon/test/unit/skills/`):
-  - [ ] `checksum.test.ts` — POST with mismatched checksum → 400; correct checksum → 201
-  - [ ] `format-filter.test.ts` — GET filters by format; invalid format → 400
-- [ ] **Integration**:
-  - [ ] `tampered-content.test.ts` — manually corrupt the stored skill content; `GET /:id/content` detects mismatch and returns 500 with `SKILL_CHECKSUM_MISMATCH`
-  - [ ] `requires-approval.test.ts` — flagged skills appear in list with the flag preserved across replication
+- [x] **Unit** (`packages/daemon/test/unit/skills/`):
+  - [x] `checksum.test.ts` — POST with correct checksum returns 200;
+    POST with mismatched checksum returns 400 +
+    `SKILL_CHECKSUM_MISMATCH`; `requires_approval` preserved on the
+    appended entry
+  - [x] `format-filter.test.ts` — GET filters by format (`openclaw`,
+    `langchain`, `generic`); unknown format value rejected with 400
+- [x] **Integration**:
+  - [x] `tampered-content.test.ts` — boots the route handler with a
+    stubbed daemon view yielding a content/checksum mismatch; GET
+    returns 500 + `SKILL_CHECKSUM_MISMATCH`; non-tampered content
+    passes through (the autobase view is owned by the apply layer
+    and can't be corrupted from outside, so the test exercises the
+    same route handler against a stub — same code path,
+    higher-isolation surface)
+  - [x] `requires-approval.test.ts` — write a flagged skill on A;
+    pair with B; B sees the entry with `requires_approval: true` +
+    checksum preserved across replication
+- [x] **SDK error mapping** (`packages/sdk/test/unit/client.test.ts`)
+  — both 400 and 500 `SKILL_CHECKSUM_MISMATCH` map to
+  `SkillChecksumMismatchError`
 
 ### 2.6 MCP server ✅
 

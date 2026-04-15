@@ -1,0 +1,74 @@
+/**
+ * POST /v1/skills checksum verification + requires_approval round-trip.
+ * Boots the api against a single tmp daemon — no swarm needed.
+ */
+import test from 'brittle'
+import { createHash } from 'crypto'
+import { createApi, bind } from '../../../src/api'
+import { tmpDaemon } from '../../helpers/tmp-daemon'
+import { listByType } from '../../../src/api/views'
+
+function sha(content: string): string {
+  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+}
+
+async function bootApi(t: any) {
+  const { daemon } = await tmpDaemon(t)
+  const app = createApi(daemon)
+  const url = await bind(app, { host: '127.0.0.1', port: 0 })
+  t.teardown(() => app.close())
+  return { url, daemon }
+}
+
+async function postJson(url: string, body: unknown): Promise<{ status: number; body: any }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return { status: res.status, body: await res.json() }
+}
+
+test('POST /v1/skills: correct checksum is accepted', async (t) => {
+  const { url } = await bootApi(t)
+  const content = 'hello'
+  const res = await postJson(`${url}/v1/skills`, {
+    name: 's',
+    version: '1.0.0',
+    format: 'generic',
+    content,
+    checksum: sha(content),
+  })
+  t.is(res.status, 200)
+  t.ok(/^[0-9a-f]{4}-\d+$/.test(res.body.id))
+})
+
+test('POST /v1/skills: mismatched checksum returns 400 SKILL_CHECKSUM_MISMATCH', async (t) => {
+  const { url } = await bootApi(t)
+  const res = await postJson(`${url}/v1/skills`, {
+    name: 's',
+    version: '1.0.0',
+    format: 'generic',
+    content: 'hello',
+    checksum: 'sha256:' + 'a'.repeat(64),
+  })
+  t.is(res.status, 400)
+  t.is(res.body.error, 'SKILL_CHECKSUM_MISMATCH')
+})
+
+test('POST /v1/skills: requires_approval is preserved on the appended entry', async (t) => {
+  const { url, daemon } = await bootApi(t)
+  const content = 'careful with this one'
+  const res = await postJson(`${url}/v1/skills`, {
+    name: 'dangerous',
+    version: '1.0.0',
+    format: 'generic',
+    content,
+    checksum: sha(content),
+    requires_approval: true,
+  })
+  t.is(res.status, 200)
+  const entries = await listByType(daemon.view, 'skill', { limit: 10 })
+  t.is(entries.length, 1)
+  t.is(entries[0].payload.requires_approval, true, 'requires_approval round-trips')
+})

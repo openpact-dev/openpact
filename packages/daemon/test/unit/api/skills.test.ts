@@ -1,16 +1,20 @@
 import test from 'brittle'
+import { createHash } from 'crypto'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
 
-const SHA = 'sha256:' + 'a'.repeat(64)
+function sha(content: string): string {
+  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+}
 
 function skillBody(over: Record<string, unknown> = {}) {
+  const content = (over.content as string) ?? 'hello world'
   return {
     name: 'scraper',
     version: '1.0.0',
     format: 'openclaw',
-    content: 'hello world',
-    checksum: SHA,
+    content,
+    checksum: sha(content),
     ...over,
   }
 }
@@ -105,7 +109,7 @@ test('GET /v1/skills/:id/content: returns content', async (t) => {
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
   t.is(body.content, 'real content')
-  t.is(body.checksum, SHA)
+  t.is(body.checksum, sha('real content'))
 })
 
 test('GET /v1/skills/:id/content: 404 when unknown', async (t) => {

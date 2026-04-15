@@ -5,6 +5,7 @@ import {
   DaemonError,
   DaemonNotRunningError,
   NotFoundError,
+  SkillChecksumMismatchError,
   TaskNotOpenError,
 } from '../../src/errors'
 import { mockFetch } from '../helpers/mock-fetch'
@@ -52,6 +53,27 @@ test('client: maps 409 TASK_NOT_OPEN → TaskNotOpenError', async (t) => {
   })
   const c = new OpenPactClient({ fetch: m.fetch })
   await t.exception(() => c.req('/v1/tasks/x/claim'), TaskNotOpenError)
+})
+
+test('client: maps 400 SKILL_CHECKSUM_MISMATCH → SkillChecksumMismatchError', async (t) => {
+  const m = mockFetch({
+    status: 400,
+    body: { error: 'SKILL_CHECKSUM_MISMATCH', message: 'checksum sha256:... does not match' },
+  })
+  const c = new OpenPactClient({ fetch: m.fetch })
+  await t.exception(() => c.req('/v1/skills'), SkillChecksumMismatchError)
+})
+
+test('client: maps 500 SKILL_CHECKSUM_MISMATCH → SkillChecksumMismatchError', async (t) => {
+  const m = mockFetch({
+    status: 500,
+    body: {
+      error: 'SKILL_CHECKSUM_MISMATCH',
+      message: 'stored content does not match recorded checksum',
+    },
+  })
+  const c = new OpenPactClient({ fetch: m.fetch })
+  await t.exception(() => c.req('/v1/skills/x/content'), SkillChecksumMismatchError)
 })
 
 test('client: unknown error code → DaemonError', async (t) => {

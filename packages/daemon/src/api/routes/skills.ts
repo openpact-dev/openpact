@@ -1,9 +1,14 @@
+import { createHash } from 'crypto'
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { listByType, getById } from '../views'
 import { HttpError } from '../errors'
 
 const SKILL_FORMATS = ['openclaw', 'langchain', 'generic'] as const
+
+function expectedChecksum(content: string): string {
+  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+}
 
 const skillPayloadSchema = {
   type: 'object',
@@ -57,6 +62,16 @@ export default async function skillsRoute(
 
   app.post('/v1/skills', { schema: { body: skillPayloadSchema } }, async (req) => {
     const payload = req.body as Record<string, unknown>
+    const content = payload.content as string
+    const claimed = payload.checksum as string
+    const actual = expectedChecksum(content)
+    if (claimed !== actual) {
+      throw new HttpError(
+        400,
+        'SKILL_CHECKSUM_MISMATCH',
+        `checksum ${claimed} does not match sha256(content) ${actual}`,
+      )
+    }
     const timestamp = new Date().toISOString()
     const result = await daemon.append({
       type: 'skill',
@@ -71,6 +86,16 @@ export default async function skillsRoute(
     const entry = await getById(daemon.view, 'skill', req.params.id)
     if (!entry) {
       throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
+    }
+    const stored = entry.payload.content as string
+    const claimed = entry.payload.checksum as string
+    const actual = expectedChecksum(stored)
+    if (claimed !== actual) {
+      throw new HttpError(
+        500,
+        'SKILL_CHECKSUM_MISMATCH',
+        `stored content for skill ${req.params.id} does not match its recorded checksum`,
+      )
     }
     return {
       id: entry.id,

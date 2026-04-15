@@ -79,6 +79,13 @@ export class NotAWriterError extends OpenPactError {
   }
 }
 
+export class SkillChecksumMismatchError extends OpenPactError {
+  constructor(message: string, status = 400) {
+    super(message, { status, code: 'SKILL_CHECKSUM_MISMATCH' })
+    this.name = 'SkillChecksumMismatchError'
+  }
+}
+
 export class DaemonError extends OpenPactError {
   constructor(message: string, status: number, code = 'INTERNAL') {
     super(message, { status, code })
@@ -112,6 +119,8 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new NotClaimedError(message)
     case 'NOT_A_WRITER':
       return new NotAWriterError(message)
+    case 'SKILL_CHECKSUM_MISMATCH':
+      return new SkillChecksumMismatchError(message, status)
     case 'INTERNAL':
       return new DaemonError(message, status, code)
     default:

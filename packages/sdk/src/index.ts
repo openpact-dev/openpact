@@ -80,5 +80,6 @@ export {
   NotClaimerError,
   NotClaimedError,
   NotAWriterError,
+  SkillChecksumMismatchError,
   DaemonError,
 } from './errors'
