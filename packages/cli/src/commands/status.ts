@@ -1,10 +1,13 @@
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
+import { resolveCurrentPact } from '../lib/pact-select'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { formatStatus } from '../lib/format'
 import { c, emoji } from '../lib/theme'
 
 export interface StatusOpts {
   port?: string | number
+  /** Pact alias to query. Defaults to the host's currentAlias. */
+  pact?: string
 }
 
 export async function statusCmd(
@@ -12,7 +15,8 @@ export async function statusCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
-  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
+  const pactId = await resolveCurrentPact(dir, opts.pact)
+  const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
   try {
     const status = await api.status()
     console.log(formatStatus(status))

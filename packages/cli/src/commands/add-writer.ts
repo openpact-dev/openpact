@@ -1,23 +1,32 @@
+import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
+import { resolveCurrentPact } from '../lib/pact-select'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 
 export interface AddWriterOpts {
   indexer?: boolean
   port?: string | number
+  pact?: string
 }
 
-export async function addWriterCmd(key: string, opts: AddWriterOpts): Promise<void> {
+export async function addWriterCmd(
+  key: string,
+  opts: AddWriterOpts,
+  cmd: { optsWithGlobals(): GlobalCliOpts },
+): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(key)) {
     throw new Error(`writer key must be 64 hex chars (got ${key.length})`)
   }
-  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
+  const dir = resolveDataDir(cmd.optsWithGlobals())
+  const pactId = await resolveCurrentPact(dir, opts.pact)
+  const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
   try {
     await api.addWriter(key, !!opts.indexer)
     const role = opts.indexer ? 'indexer' : 'writer'
     console.log(
       `${emoji.bind} ${c.brandBold('A new pact-bearer is bound.')}  ${c.ash(`(${role})`)}`,
     )
-    console.log(`  ${c.ash(`key ${key.slice(0, 12)}…`)}`)
+    console.log(`  ${c.ash(`key ${key.slice(0, 12)}… on pact ${pactId}`)}`)
     console.log(c.ash('  the binding is broadcast to all peers as an admin entry'))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {

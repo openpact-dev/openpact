@@ -1,13 +1,21 @@
+import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
+import { resolveCurrentPact } from '../lib/pact-select'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { formatPeers } from '../lib/format'
 import { c, emoji } from '../lib/theme'
 
 export interface PeersOpts {
   port?: string | number
+  pact?: string
 }
 
-export async function peersCmd(opts: PeersOpts): Promise<void> {
-  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
+export async function peersCmd(
+  opts: PeersOpts,
+  cmd: { optsWithGlobals(): GlobalCliOpts },
+): Promise<void> {
+  const dir = resolveDataDir(cmd.optsWithGlobals())
+  const pactId = await resolveCurrentPact(dir, opts.pact)
+  const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
   try {
     const peers = await api.peers()
     console.log(formatPeers(peers))

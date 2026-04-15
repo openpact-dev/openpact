@@ -12,6 +12,10 @@ import { logCmd } from './commands/log'
 import { addWriterCmd } from './commands/add-writer'
 import { removeWriterCmd } from './commands/remove-writer'
 import { dashboardCmd } from './commands/dashboard'
+import { listCmd } from './commands/list'
+import { switchCmd } from './commands/switch'
+import { removeCmd } from './commands/remove'
+import { renameCmd } from './commands/rename'
 
 export function buildProgram(): Command {
   const program = new Command()
@@ -92,14 +96,16 @@ export function buildProgram(): Command {
 
   program
     .command('status')
-    .description('show pact status')
+    .description('show status of the current pact')
     .option('--port <n>', '', '7666')
+    .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .action(statusCmd)
 
   program
     .command('peers')
     .description('list peers bound to the pact')
     .option('--port <n>', '', '7666')
+    .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .action(peersCmd)
 
   program
@@ -107,12 +113,14 @@ export function buildProgram(): Command {
     .description('bind a peer (by hex public key) as a writer or indexer')
     .option('--indexer', 'bind as indexer (participates in consensus)')
     .option('--port <n>', '', '7666')
+    .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .action(addWriterCmd)
 
   program
     .command('remove-writer <key>')
     .description('sever a peer from the writer set')
     .option('--port <n>', '', '7666')
+    .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .action(removeWriterCmd)
 
   program
@@ -121,7 +129,32 @@ export function buildProgram(): Command {
     .option('--type <t>', 'filter by entry type (knowledge|task|skill|message)')
     .option('--limit <n>', 'maximum entries to print', '20')
     .option('--port <n>', '', '7666')
+    .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .action(logCmd)
+
+  // Multi-pact registry commands.
+  program
+    .command('list')
+    .description('list every pact on this host')
+    .option('--json', 'emit machine-readable JSON')
+    .action(listCmd)
+
+  program
+    .command('switch <alias>')
+    .description('set the current pact (commands without --pact will default to it)')
+    .action(switchCmd)
+
+  program
+    .command('remove <alias>')
+    .description('leave a pact and delete its local data (destructive)')
+    .option('--yes', 'skip the type-to-confirm prompt (required in CI/pipes)')
+    .option('--no-interactive', 'skip prompts')
+    .action(removeCmd)
+
+  program
+    .command('rename <oldAlias> <newAlias>')
+    .description("change a pact's local alias (pact_id unchanged)")
+    .action(renameCmd)
 
   return program
 }
