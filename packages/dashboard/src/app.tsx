@@ -1,70 +1,31 @@
 import { Router } from 'preact-router'
+import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './pages/Dashboard'
 import { Knowledge } from './pages/Knowledge'
 
 function Stub({ name }: { name: string }) {
   return (
-    <section class="page page-stub">
-      <h1 class="page-title">{name}</h1>
-      <p class="empty-state">this screen lands in slice D.</p>
+    <section class="p-6">
+      <h1 class="text-xl font-semibold tracking-tight text-ink">{name}</h1>
+      <p class="mt-4 text-sm italic text-ink3">this screen lands in slice D.</p>
     </section>
   )
 }
 
 function NotFound() {
   return (
-    <section class="page">
-      <h1 class="page-title">not found</h1>
-      <p class="empty-state">the route you asked for doesn't exist (yet).</p>
+    <section class="p-6">
+      <h1 class="text-xl font-semibold tracking-tight text-ink">not found</h1>
+      <p class="mt-4 text-sm italic text-ink3">the route you asked for doesn't exist (yet).</p>
     </section>
-  )
-}
-
-function Sidebar() {
-  return (
-    <nav class="sidebar" aria-label="Primary">
-      <div class="sidebar-brand">
-        <span class="brand-mark" aria-hidden="true">
-          🜏
-        </span>
-        <span class="brand-name">OpenPact</span>
-      </div>
-      <ul class="nav-list">
-        <li>
-          <a href="/" data-testid="nav-dashboard">
-            Dashboard
-          </a>
-        </li>
-        <li>
-          <a href="/knowledge" data-testid="nav-knowledge">
-            Knowledge
-          </a>
-        </li>
-        <li>
-          <a href="/tasks" data-testid="nav-tasks">
-            Tasks
-          </a>
-        </li>
-        <li>
-          <a href="/skills" data-testid="nav-skills">
-            Skills
-          </a>
-        </li>
-        <li>
-          <a href="/network" data-testid="nav-network">
-            Network
-          </a>
-        </li>
-      </ul>
-    </nav>
   )
 }
 
 export function App() {
   return (
-    <div class="layout">
+    <div class="flex min-h-screen">
       <Sidebar />
-      <main class="content">
+      <main class="flex-1 overflow-y-auto px-7 py-6">
         <Router>
           <Dashboard path="/" />
           <Knowledge path="/knowledge" />

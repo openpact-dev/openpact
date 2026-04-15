@@ -1,4 +1,4 @@
-import { EntryCard, type Entry } from './EntryCard'
+import { FeedRow, type Entry } from './EntryCard'
 
 interface Props {
   entries: Entry[]
@@ -7,15 +7,13 @@ interface Props {
 
 export function ActivityFeed({ entries, empty = 'no activity yet' }: Props) {
   if (entries.length === 0) {
-    return <p class="empty-state">{empty}</p>
+    return <div class="px-[18px] py-6 text-[13px] italic text-ink3">{empty}</div>
   }
   return (
-    <ul class="activity-feed" data-testid="activity-feed">
+    <div data-testid="activity-feed">
       {entries.map((e) => (
-        <li key={e.id}>
-          <EntryCard entry={e} />
-        </li>
+        <FeedRow key={e.id} entry={e} />
       ))}
-    </ul>
+    </div>
   )
 }

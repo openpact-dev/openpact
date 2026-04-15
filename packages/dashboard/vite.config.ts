@@ -1,17 +1,20 @@
 import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 
 /**
  * Vite config for the dashboard frontend.
  *
- * We deliberately don't load `@preact/preset-vite`. Its
- * transform-hook-names plugin requires `zimmerframe`, which only
- * ships an "import" condition in its exports map; under Vite's CJS
- * loader the require() blows up. Esbuild's automatic JSX transform
- * with `jsxImportSource: 'preact'` covers what we actually need:
- * JSX → preact.h, no Fast Refresh (we live without HMR for slice C/D).
+ * Tailwind v4 via the official Vite plugin (CSS-first config in
+ * src/style.css, no postcss config needed). JSX → preact via
+ * esbuild's automatic transform; we deliberately don't load
+ * @preact/preset-vite (its hook-names plugin pulls in zimmerframe,
+ * which only ships an "import" condition and breaks Vite's loader).
+ * Cost: no Fast Refresh in dev — we live without HMR for v0.1.
  */
 export default defineConfig({
   root: 'src',
+  publicDir: '../public',
+  plugins: [tailwindcss()],
   esbuild: {
     jsx: 'automatic',
     jsxImportSource: 'preact',

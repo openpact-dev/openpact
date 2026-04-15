@@ -3,13 +3,14 @@ import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { MetricCard } from '../components/MetricCard'
+import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
+import { shortHandle } from '../lib/format'
 import type { Entry } from '../components/EntryCard'
 
 export function Dashboard() {
   const pact = usePact()
   const sse = useSse()
-  // Use the SSE event count as a refetch trigger so anything live-updates.
   const trigger = sse.last?.seq ?? 0
 
   const status = useQuery(() => pact.status(), { key: 'status', trigger })
@@ -22,13 +23,12 @@ export function Dashboard() {
     const merged: Entry[] = []
     for (const e of knowledge.data ?? []) merged.push(e as Entry)
     for (const t of tasks.data ?? []) {
-      // Tasks come back as reduced state; project to an entry-shaped object
-      // so the feed renders one card per task with the latest status.
+      const last = (t as any).history?.[(t as any).history.length - 1]
       merged.push({
         id: (t as any).id,
         type: 'task',
-        timestamp: (t as any).history?.[(t as any).history.length - 1]?.timestamp ?? '',
-        agent_id: (t as any).history?.[(t as any).history.length - 1]?.agent_id ?? '',
+        timestamp: last?.timestamp ?? '',
+        agent_id: last?.agent_id ?? '',
         payload: { title: (t as any).title, status: (t as any).status },
       })
     }
@@ -41,20 +41,110 @@ export function Dashboard() {
 
   const peerCount = peers.data?.length ?? 0
   const onlinePeers = (peers.data ?? []).filter((p: any) => p.online).length
+  const knowledgeCount = knowledge.data?.length ?? 0
+  const taskCount = tasks.data?.length ?? 0
+  const openTasks = (tasks.data ?? []).filter((t: any) => t.status === 'open')
+
+  const pactId = status.data?.pact_id ?? null
 
   return (
-    <section class="page page-dashboard" data-testid="page-dashboard">
-      <h1 class="page-title">Dashboard</h1>
+    <section data-testid="page-dashboard">
+      <header class="mb-[22px] flex items-baseline justify-between">
+        <h1 class="text-xl font-semibold tracking-[-0.4px] text-ink">Dashboard</h1>
+        <span class="text-[12px] text-ink3">
+          {status.data?.peer_handle ? shortHandle(status.data.peer_handle) : ''}
+          {pactId ? <span class="text-ink3"> · synced</span> : null}
+        </span>
+      </header>
 
-      <div class="metric-grid">
-        <MetricCard label="Peers" value={`${onlinePeers} / ${peerCount}`} hint="online / known" />
-        <MetricCard label="Knowledge" value={knowledge.data?.length ?? 0} hint="recent entries" />
-        <MetricCard label="Tasks" value={tasks.data?.length ?? 0} hint="all states" />
-        <MetricCard label="Entries" value={status.data?.entries ?? 0} hint="full pact" />
+      <div class="mb-[22px] grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Peers"
+          value={peerCount}
+          hint={`${onlinePeers} online now`}
+          tone="text-purple"
+        />
+        <MetricCard
+          label="Knowledge"
+          value={knowledgeCount}
+          hint="recent entries"
+          tone="text-teal"
+        />
+        <MetricCard
+          label="Tasks"
+          value={taskCount}
+          hint={`${openTasks.length} open`}
+          tone="text-amber"
+        />
+        <MetricCard
+          label="Entries"
+          value={status.data?.entries ?? 0}
+          hint="full pact"
+          tone="text-coral"
+        />
       </div>
 
-      <h2 class="section-title">Recent activity</h2>
-      <ActivityFeed entries={feed} empty="no activity yet — the pact is quiet" />
+      <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Panel title="Recent activity" link={{ label: 'View all', href: '/knowledge' }}>
+          <ActivityFeed entries={feed} empty="no activity yet — the pact is quiet" />
+        </Panel>
+
+        <Panel title="Connected peers" link={{ label: 'Manage', href: '/network' }}>
+          {(peers.data ?? []).length === 0 ? (
+            <div class="px-[18px] py-6 text-[13px] italic text-ink3">no peers connected</div>
+          ) : (
+            (peers.data ?? []).map((p: any) => <PeerRow peer={p} key={p.id ?? p.remote_key} />)
+          )}
+        </Panel>
+      </div>
+
+      <Panel title="Open tasks" link={{ label: 'View task board', href: '/tasks' }}>
+        {openTasks.length === 0 ? (
+          <div class="px-[18px] py-6 text-[13px] italic text-ink3">no open tasks</div>
+        ) : (
+          openTasks.map((t: any) => <TaskRow key={t.id} task={t} />)
+        )}
+      </Panel>
     </section>
+  )
+}
+
+function PeerRow({ peer }: { peer: any }) {
+  const initials = (peer.id || peer.remote_key || '?').slice(5, 7).toUpperCase()
+  return (
+    <div class="flex items-center gap-2.5 border-b-[0.5px] border-line px-[18px] py-2.5 last:border-b-0">
+      <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-soft text-[10px] font-medium text-purple-deep">
+        {initials}
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-[13px] font-medium text-ink">{peer.id}</div>
+        <div class="text-[11px] text-ink3">remote {peer.remote_key?.slice(0, 12)}…</div>
+      </div>
+      <span
+        class={
+          peer.online
+            ? 'rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal'
+            : 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-medium text-ink3'
+        }
+      >
+        {peer.online ? 'online' : 'offline'}
+      </span>
+    </div>
+  )
+}
+
+function TaskRow({ task }: { task: any }) {
+  return (
+    <div class="border-b-[0.5px] border-line px-[18px] py-[11px] last:border-b-0">
+      <div class="text-[13px] font-medium text-ink">{task.title}</div>
+      <div class="mt-1 flex items-center gap-2">
+        <span class="rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal">
+          {task.status}
+        </span>
+        <span class="text-[11px] text-ink3">
+          {task.claimed_by ? `claimed by ${shortHandle(task.claimed_by)}` : 'unclaimed'}
+        </span>
+      </div>
+    </div>
   )
 }

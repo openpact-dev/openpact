@@ -1,312 +1,70 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
 /*
- * OpenPact dashboard — brand tokens.
+ * Design tokens lifted directly from the mockups in docs/mockups/.
+ * Light theme, paper-white background, subtle borders, and the
+ * polished palette (purple/teal/coral/amber/blue) used across all
+ * three reference pages.
  *
- * Single source of truth for the palette across all 6 screens. Lifted
- * verbatim from `docs/OPENPACT_BRAND.md` so designers and devs work
- * from one vocabulary. Don't introduce new hex values in component
- * styles; reach for these tokens.
+ * The CLI brand voice (dark/devilish red) is intentionally separate
+ * from the dashboard UI: CLI is the operator's voice, dashboard is
+ * the agent's workspace.
  */
 
-:root {
-  /* Reds */
-  --hellfire: #ef4444;
-  --ember: #dc2626;
-  --brimstone: #b91c1c;
-  --inferno: #991b1b;
-  --charred: #7f1d1d;
+@theme {
+  /* Surfaces */
+  --color-paper: #ffffff;
+  --color-canvas: #f7f7f5;
+  --color-mist: #eeede9;
 
-  /* Backgrounds (dark theme is the only theme) */
-  --abyss: #0f0a0a;
-  --void: #1a1214;
-  --smoke: #2a1f22;
-  --ash: #3d2f32;
+  /* Borders */
+  --color-line: rgb(0 0 0 / 8%);
+  --color-line-h: rgb(0 0 0 / 14%);
 
-  /* Light accents */
-  --blush: #fee2e2;
-  --glow: #fecaca;
-  --pale: #fca5a5;
-  --spark: #f87171;
+  /* Text scale */
+  --color-ink: #1a1a1a;
+  --color-ink2: #6b6b6b;
+  --color-ink3: #9b9b9b;
 
-  /* Semantic */
-  --success: #22c55e;
-  --warning: #eab308;
-  --error: var(--hellfire);
+  /* Accent palette (entry-type colour coding + UI primary) */
+  --color-purple: #534ab7;
+  --color-purple-soft: #eeedfe;
+  --color-purple-deep: #3c3489;
+  --color-teal: #0f6e56;
+  --color-teal-soft: #e1f5ee;
+  --color-teal-deep: #085041;
+  --color-coral: #993c1d;
+  --color-coral-soft: #faece7;
+  --color-coral-deep: #712b13;
+  --color-amber: #854f0b;
+  --color-amber-soft: #faeeda;
+  --color-amber-deep: #633806;
+  --color-blue: #185fa5;
+  --color-blue-soft: #e6f1fb;
+  --color-blue-deep: #0c447c;
 
-  /* Type scale */
-  --font-system:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-}
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-* {
-  box-sizing: border-box;
+  /* Radii match the mockup */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.75rem; /* 12px */
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  background: var(--abyss);
-  color: var(--blush);
-  font-family: var(--font-system);
-  font-size: 14px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
 }
 
 #app {
   min-height: 100vh;
-}
-
-a {
-  color: var(--hellfire);
-  text-decoration: none;
-}
-a:hover {
-  color: var(--spark);
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-input[type='search'],
-input[type='text'],
-select {
-  background: var(--smoke);
-  color: var(--blush);
-  border: 1px solid var(--ash);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font: inherit;
-}
-
-/* ---------- Layout ---------- */
-
-.layout {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  min-height: 100vh;
-}
-
-.sidebar {
-  background: var(--void);
-  border-right: 1px solid var(--ash);
-  padding: 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.brand-mark {
-  color: var(--hellfire);
-  font-size: 18px;
-}
-.brand-name {
-  color: var(--blush);
-}
-
-.nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.nav-list a {
-  display: block;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: var(--pale);
-  font-weight: 500;
-}
-.nav-list a:hover {
-  background: var(--smoke);
-  color: var(--blush);
-}
-
-.content {
-  padding: 32px 40px;
-  max-width: 1100px;
-  width: 100%;
-}
-
-/* ---------- Pages ---------- */
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 0 0 24px;
-  color: var(--blush);
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--pale);
-  margin: 32px 0 12px;
-}
-
-.empty-state {
-  color: var(--ash);
-  font-style: italic;
-  padding: 16px 0;
-}
-
-/* ---------- Metric cards ---------- */
-
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-}
-
-.metric-card {
-  background: var(--void);
-  border: 1px solid var(--ash);
-  border-radius: 8px;
-  padding: 16px;
-}
-.metric-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--pale);
-}
-.metric-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--blush);
-  margin-top: 6px;
-  font-feature-settings: 'tnum';
-}
-.metric-hint {
-  font-size: 12px;
-  color: var(--ash);
-  margin-top: 4px;
-}
-
-/* ---------- Entry cards / activity feed ---------- */
-
-.activity-feed,
-.entry-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.entry-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  background: var(--void);
-  border: 1px solid var(--ash);
-  border-radius: 8px;
-  text-align: left;
-  transition: border-color 0.12s;
-}
-.entry-card:hover {
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.type-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-
-.entry-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.entry-topic {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--pale);
-}
-.entry-summary {
-  color: var(--blush);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.entry-meta {
-  font-size: 11px;
-  color: var(--ash);
-  font-family: var(--font-mono);
-}
-
-/* ---------- Filters / chips ---------- */
-
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.filters input[type='search'] {
-  flex: 1 1 240px;
-  min-width: 200px;
-}
-.confidence-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--pale);
-}
-.confidence-filter input[type='range'] {
-  accent-color: var(--hellfire);
-}
-
-.topic-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-.chip {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--pale);
-  border: 1px solid var(--ash);
-}
-.chip:hover {
-  border-color: var(--brimstone);
-  color: var(--blush);
-}
-.chip-active {
-  background: var(--brimstone);
-  border-color: var(--brimstone);
-  color: var(--blush);
 }

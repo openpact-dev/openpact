@@ -1,4 +1,4 @@
 {
   "files": [],
-  "include": []
+  "references": [{ "path": "./tsconfig.browser.json" }, { "path": "./tsconfig.server.json" }]
 }
