@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-**Phase 1, Phase 2, and Phase 3 complete.** Two daemons pair via the CLI, replicate entries through testnet, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Three published-ready agent-integration packages plus four worked example integrations cover the realistic adoption surface. A full-featured web dashboard runs on `:7667` alongside the daemon (six screens: Dashboard / Knowledge / Tasks / Skills / Network / Trace), renders a Preact SPA fed by the SDK through a same-origin `/api/*` proxy with SSE push for live updates, and gates destructive actions (skill install, admin promote, admin remove) behind a ConfirmDialog.
+**Phases 1, 2, 3, 4a, and 4b complete.** Two daemons pair via the CLI, replicate entries through testnet, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Three published-ready agent-integration packages plus four worked example integrations cover the realistic adoption surface. A full-featured web dashboard runs on `:7667` alongside the daemon (seven screens: Dashboard / Knowledge / Tasks / Skills / Network / Trace / Pacts), renders a Preact SPA fed by the SDK through a same-origin `/api/*` proxy with SSE push for live updates, and gates destructive actions (skill install, admin promote, admin remove) behind a ConfirmDialog. A single daemon process can hold many pacts; the CLI, REST surface (`/v1/pacts/:pactId/*`), SDK, and dashboard all address pacts by alias.
 
 Shipped:
 
@@ -23,10 +23,12 @@ Shipped:
 - **§2.6 `@openpact/mcp`** — MCP server (18 tools) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed.
 - **§2.2a — SDK ESM build** — `dist/esm/` alongside `dist/cjs/` with a dual-condition `"exports"` map. Required for the dashboard's Vite bundle.
 - **§3 slices A–F** — daemon entries/SSE/install/admin endpoints + reverse-ref index, dashboard scaffold (Vite + Preact + Tailwind v4), all six screens, install + admin write actions gated by ConfirmDialog, CI `dashboard` job with bundle budget gate (JS ≤ 100KB / CSS ≤ 20KB gzipped). Logos regenerated from the dashboard's WatchingEye mark.
+- **§4a identity** — `display_name` on every entry (advisory; `agent_id` stays canonical), pact name + purpose, interactive `openpact init` + `join` with themed word-list defaults. `@inquirer/prompts` respects `--no-interactive` for CI.
+- **§4b multi-pact** — one daemon holds many pacts. Data layout is `~/.openpact/{daemon.json, pacts/<alias>/{config.json, data/}}`. REST moved under `/v1/pacts/:pactId/*`; host-level surface adds `/v1/pacts` (list/create/join/switch) and `/v1/pacts/:pactId` (rename/remove). SDK takes an optional `pactId`. CLI adds `openpact list / switch / rename / remove` and a `--pact <alias>` flag on every per-pact verb. Dashboard gets a sidebar PactSwitcher and a `/pacts` management page.
 
 Up next:
 
-- **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch. Plan in `docs/OPENPACT_BUILD_PLAN.md` §4.
+- **Phase 4 launch polish** — docs site on `openpact.dev`, seed-node Docker image, security review, demo video, v0.1.0 tag. Plan in `docs/OPENPACT_BUILD_PLAN.md` §4.
 
 Source of truth for what to build:
 
@@ -135,38 +137,56 @@ Don't substitute these without raising it — they're chosen for fit with the Pe
 
 ## REST API contract
 
-Stable surface (build plan §1.3, §2):
+Stable surface (build plan §1.3, §2). Per-pact resources live under
+`/v1/pacts/:pactId/*`. The `:pactId` path segment accepts either the
+local alias or the 64-hex canonical pact ID.
+
+**Host-level (not pact-scoped):**
 
 ```
-GET  /v1/ping                                 -> { ok: true }
-GET  /v1/status                               -> { pact_id, peers, entries, synced }
-GET  /v1/peers                                -> [{ id, role, entries, online }]
+GET    /v1/ping                               -> { ok: true }
+GET    /v1/events                             -> SSE multiplexed across all pacts
+                                                 envelope includes { pact_id, alias }
 
-GET  /v1/knowledge?topic=&limit=
-POST /v1/knowledge
+GET    /v1/pacts                              -> [{ alias, pact_id, pact_name, is_current, ... }]
+POST   /v1/pacts                              -> body { name, purpose?, display_name?, alias?, confirm }
+POST   /v1/pacts/join                         -> body { key, display_name?, alias?, confirm }
+POST   /v1/pacts/switch                       -> body { alias }   # set currentAlias
+PUT    /v1/pacts/:pactId/alias                -> body { alias }   # rename
+DELETE /v1/pacts/:pactId                      -> body { confirm: alias } (destructive)
+```
 
-GET  /v1/tasks?status=open|claimed|complete
-POST /v1/tasks
-GET  /v1/tasks/:id                            -> includes claim history
-PUT  /v1/tasks/:id/claim
-PUT  /v1/tasks/:id/complete
+**Per-pact (prefix `/v1/pacts/:pactId`):**
 
-GET  /v1/skills?format=openclaw|langchain|generic
-POST /v1/skills
-GET  /v1/skills/:id/content                   -> verifies checksum
-POST /v1/skills/:id/install                   -> body { confirm: true } (creator only)
-GET  /v1/skills/installed                     -> installed-skills.json
+```
+GET  /status                                  -> { pact_id, pact_name, pact_purpose, display_name, peers, entries, synced }
+GET  /peers                                   -> [{ id, role, display_name, entries, online }]
 
-GET  /v1/messages?since=TIMESTAMP
-POST /v1/messages
+GET  /knowledge?topic=&limit=
+POST /knowledge
 
-GET  /v1/entries/:id                          -> full entry across any type
-GET  /v1/entries/:id/referenced-by            -> entries that ref this id (reverse-ref index)
+GET  /tasks?status=open|claimed|complete
+POST /tasks
+GET  /tasks/:id                               -> includes claim history
+PUT  /tasks/:id/claim
+PUT  /tasks/:id/complete
 
-GET  /v1/events                               -> SSE: entry-applied, peer-add, peer-remove, update
+GET  /skills?format=openclaw|langchain|generic
+POST /skills
+GET  /skills/:id/content                      -> verifies checksum
+POST /skills/:id/install                      -> body { confirm: true } (creator only)
+GET  /skills/installed                        -> installed-skills.json (per-pact)
 
-POST /v1/admin/promote                        -> body { key, confirm: true } (creator only)
-POST /v1/admin/remove                         -> body { key, confirm: true } (creator only)
+GET  /messages?since=TIMESTAMP
+POST /messages
+
+GET  /entries/:id                             -> full entry across any type
+GET  /entries/:id/referenced-by               -> entries that ref this id
+
+PUT  /pact                                    -> body { name?, purpose? } (creator only)
+PUT  /me                                      -> body { display_name? }
+POST /admin/promote                           -> body { key, confirm: true } (creator only)
+POST /admin/remove                            -> body { key, confirm: true } (creator only)
 ```
 
 **Error envelope** (uniform):
@@ -175,6 +195,7 @@ POST /v1/admin/remove                         -> body { key, confirm: true } (cr
 ```
 Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
 New codes from §3: `NOT_INDEXER` (409), `BAD_SKILL_NAME` (400), `NOT_CONFIRMED` (400), `SKILL_CHECKSUM_MISMATCH` (409).
+New codes from §4b: `UNKNOWN_PACT` (404), `PACT_ALIAS_TAKEN` (409), `NO_CURRENT_PACT` (409).
 
 The web dashboard runs on `:7667` by default (localhost only). The
 SPA at `/` talks to the daemon through a Fastify proxy at `/api/*`.
@@ -186,20 +207,38 @@ re-prepend `/v1` in the proxy or the path gets doubled.
 ## CLI surface
 
 ```
-openpact init                  # create pact (keypair + Autobase)
-openpact join <key>            # join existing pact
-openpact invite                # print join key
-openpact start [--foreground]  # detached by default; --foreground to block
-                               #   also boots the dashboard on :7667 unless --no-dashboard
-                               #   --dashboard-port <n> overrides 7667
-openpact stop                  # stop background daemon
-openpact status                # pact info, peers, entry counts (formatted)
-openpact peers                 # list connected peers + roles
-openpact log [--type <type>]   # tail recent entries
-openpact dashboard             # open the dashboard URL in the default browser
+openpact init                    # create pact (interactive prompts for name / purpose / display-name)
+openpact join <key>              # join existing pact (prompts for display-name + alias)
+openpact invite [--pact <alias>] # print join key for current or named pact
+openpact start [--foreground]    # detached by default; --foreground to block
+                                 #   also boots the dashboard on :7667 unless --no-dashboard
+                                 #   --dashboard-port <n> overrides 7667
+openpact stop                    # stop background daemon
+
+openpact list                    # all pacts this daemon holds (current marked *)
+openpact switch <alias>          # set currentAlias (default pact for other verbs)
+openpact rename <alias> <new>    # rename alias locally; pact_id unchanged
+openpact remove <alias> --yes    # destructive: tear down a pact + its data
+
+openpact status [--pact <alias>] # pact info, peers, entry counts (formatted)
+openpact peers  [--pact <alias>] # connected peers + roles
+openpact log    [--pact <alias>] [--type <type>]   # tail recent entries
+openpact dashboard               # open the dashboard URL in the default browser
 ```
 
-Check PID file / port before starting to avoid double-launch.
+Per-pact verbs (`status / peers / log / invite / add-writer / remove-writer`)
+default to `currentAlias` from `daemon.json`. Override with `--pact <alias>`
+or `OPENPACT_PACT=<alias>`. If the env var and the flag disagree, the flag
+wins. If neither is set and `currentAlias` is missing, commands fall back
+to `default` — the alias `openpact init` assigns when no name is given.
+
+Interactive prompts auto-skip when `!process.stdin.isTTY` or when
+`--no-interactive` is passed. Every prompt has a matching CLI flag, so
+scripted setup stays deterministic.
+
+Check PID file / port before starting to avoid double-launch. The
+registry-aware check reads `daemon.json.currentAlias` so a running daemon
+holding a different pact doesn't masquerade as the target pact.
 
 ## Writing style for user-facing copy
 
@@ -216,7 +255,7 @@ The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`)
 
 ## Conventions
 
-- **Data dir**: `~/.openpact/` containing `config.json` (pact key, keypair, role, port), `data/` (Corestore), `pid`.
+- **Data dir**: `~/.openpact/` containing `daemon.json` (host-level: `{ port, pacts: [{ alias, pactId, dataDir }], currentAlias }`), `pid`, and one subdir per pact at `pacts/<alias>/` containing `config.json` (pact key, keypair, role, name, purpose, display_name) + `data/` (Corestore) + `installed-skills.json`.
 - **Entry IDs**: `<core_short_id>-<sequence_number>` (e.g. `a7f2-412`).
 - **Peer handles**: `anon-<word>-<4hex>` derived from public key (e.g. `anon-krait-7f2d`).
 - **Task state machine**: `open → claimed → complete`. Claimer-only `release` returns to `open`. `open → complete` is allowed (skip-claim). Claims auto-expire after 24h (configurable).
@@ -229,7 +268,9 @@ Don't pull later-phase work forward until the current phase's test checkpoints p
 
 - **Phase 1** ✅ — daemon, REST, CLI; two daemons sync entries P2P. Test checkpoint: post via curl on machine A, see it via `openpact log` on machine B.
 - **Phase 2** ✅ — `@openpact/skill`, `@openpact/sdk`, `@openpact/mcp`, four worked examples (Claude Code, OpenClaw, LangChain, shell), task TTL + 3-daemon race tests, skill checksum verification + `requires_approval` round-trip.
-- **Phase 3** — web dashboard (Vite + Preact) served by the daemon on `:7667`, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), SSE for live updates. The dashboard uses `@openpact/sdk` against `baseUrl: '/api'`; both Vite (dev) and Fastify (prod) proxy `/api/*` to the daemon on `:7666`. No parallel `api.ts` in the dashboard package. **Precursor §2.2a**: SDK must ship dual CJS + ESM before Phase 3 starts.
+- **Phase 3** ✅ — web dashboard (Vite + Preact) served by the daemon on `:7667`, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), SSE for live updates. The dashboard uses `@openpact/sdk` against `baseUrl: '/api'`; both Vite (dev) and Fastify (prod) proxy `/api/*` to the daemon on `:7666`. No parallel `api.ts` in the dashboard package. **Precursor §2.2a**: SDK ships dual CJS + ESM.
+- **Phase 4a** ✅ — entries carry `display_name` (advisory; `agent_id` stays canonical), pact name + purpose, interactive init + join with themed defaults, themed word lists in `packages/cli/src/lib/themes.ts`.
+- **Phase 4b** ✅ — one daemon holds many pacts: new `Pact` + `PactHost` classes in `packages/daemon/src/`, data layout under `~/.openpact/pacts/<alias>/`, REST moved to `/v1/pacts/:pactId/*`, SDK + CLI + dashboard updated, SSE event envelope carries `{pact_id, alias}`.
 - **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch.
 
 ## Definition of done for v0.1.0

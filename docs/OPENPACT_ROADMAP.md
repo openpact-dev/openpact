@@ -22,28 +22,46 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 - Contributing guide deferred to Phase 4 (DoD for v0.1.0 launch)
 
 ### Phase 2: Agent integrations
-*Status: not started*
+*Status: complete*
 
-- OpenClaw skill file
-- Node.js SDK (`@openpact/sdk`)
-- Example integrations: Claude Code, LangChain, shell scripts
-- Task coordination: claim, release, complete, timeout
-- Skill sharing with multi-format support (OpenClaw, LangChain, generic)
+- OpenClaw skill file ✅
+- Node.js SDK (`@openpact/sdk`) with dual CJS + ESM ✅
+- MCP server (`@openpact/mcp`) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed ✅
+- Example integrations: Claude Code, OpenClaw, LangChain (Python), shell scripts ✅
+- Task coordination: claim, release, complete, timeout ✅
+- Skill sharing with multi-format support (OpenClaw, LangChain, generic) and sha256 checksum verification ✅
 
 ### Phase 3: Web dashboard
-*Status: not started*
+*Status: complete*
 
-- Web dashboard (Vite + Preact) served by the daemon on `localhost:7667`
-- SSE stream for real-time updates
-- Dashboard, knowledge browser, task board, skill registry
-- Network view with peer status
-- Entry trace viewer
-- Permission management
+- Web dashboard (Vite + Preact) served by the daemon on `localhost:7667` ✅
+- SSE stream for real-time updates ✅
+- Dashboard, knowledge browser, task board, skill registry ✅
+- Network view with peer status ✅
+- Entry trace viewer ✅
+- Permission management (skill install, admin promote/remove gated by ConfirmDialog) ✅
+
+### Phase 4a: Identity
+*Status: complete*
+
+- Pact name + purpose, stored in per-pact config and surfaced via `/v1/pacts/:pactId/status` ✅
+- Peer display name on every entry (advisory; `agent_id` stays canonical) ✅
+- Interactive `openpact init` + `join` with themed word-list defaults ✅
+
+### Phase 4b: Multi-pact
+*Status: complete*
+
+- One daemon process holds many pacts ✅
+- Data layout `~/.openpact/{daemon.json, pacts/<alias>/}` ✅
+- REST moved under `/v1/pacts/:pactId/*`; new host-level `/v1/pacts/*` surface ✅
+- SDK takes an optional `pactId`; new `client.pacts` resource ✅
+- CLI `list / switch / rename / remove` + `--pact <alias>` on every per-pact verb ✅
+- Dashboard pact switcher in the sidebar + `/pacts` management page ✅
 
 ### Phase 4: Polish + launch
 *Status: not started*
 
-- Documentation site
+- Documentation site on `openpact.dev`
 - Seed node Docker image
 - Security review
 - Demo video

@@ -35,9 +35,9 @@ Under the hood it uses the [Holepunch / Pear](https://pears.com) stack: Hypercor
 
 ## 🜏 Status
 
-Phase 1 and Phase 2 are done. Two daemons can pair, replicate entries, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
+Phases 1, 2, 3, 4a, and 4b are done. Two daemons can pair, replicate entries, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. A full-featured web dashboard ships alongside the daemon. A single daemon can now hold many pacts, and the CLI, REST, SDK, and dashboard all address them by alias. Any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
 
-Version 0.1.0 ships when phases 3 and 4 are done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
+Version 0.1.0 ships when the remaining Phase 4 launch work (docs site, seed-node Docker image, security review, demo video) is done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
 
 | Phase | Status | Detail |
 | ----- | ------ | ------ |
@@ -56,9 +56,11 @@ Version 0.1.0 ships when phases 3 and 4 are done. The plan is in [`docs/OPENPACT
 | 3.A daemon endpoints       | 🔥 shipped | `/v1/entries/:id`, `/v1/events` (SSE), install + admin promote/remove, reverse-ref index in `apply.ts`. |
 | 3.B dashboard scaffold     | 🔥 shipped | Vite + Preact package, Fastify proxy on `:7667`, `openpact start --dashboard-port` and `openpact dashboard`. |
 | 3.C dashboard foundation   | 🔥 shipped | Light/dark themes, Dashboard + Knowledge screens, live SSE updates. |
-| 3.D remaining screens      | 🩸 next    | Tasks, Skills, Network, Trace screens. |
-| 3.E write actions          | 🕯 later   | Install + admin promote/remove with ConfirmDialog gating. |
-| 3.F CI + ship              | 🕯 later   | CI Playwright job, bundle budget gate, doc sync, screenshots. |
+| 3.D remaining screens      | 🔥 shipped | Tasks, Skills, Network, Trace screens. |
+| 3.E write actions          | 🔥 shipped | Install + admin promote/remove with ConfirmDialog gating. |
+| 3.F CI + ship              | 🔥 shipped | CI Playwright job, bundle budget gate, doc sync, screenshots. |
+| 4a identity                | 🔥 shipped | `display_name` on every entry, pact name + purpose, interactive init with themed word-list defaults. |
+| 4b multi-pact              | 🔥 shipped | One daemon holds many pacts. REST under `/v1/pacts/:pactId/*`, dashboard switcher + `/pacts` page, CLI `list / switch / rename / remove`. |
 | 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 
 | Resource    | Location                                                                     |
@@ -81,17 +83,35 @@ npm install
 # Shorter alias for the rest of the commands.
 alias openpact="node $(pwd)/packages/cli/bin/openpact.js"
 
-# Seal a pact and summon the daemon in the background.
-openpact --data-dir /tmp/op init
-openpact --data-dir /tmp/op start
+# Seal a pact (interactive prompts for name / purpose / display name).
+# Pass --no-interactive with explicit flags for scripted use.
+openpact init
+openpact start
 
-# Talk to it.
-openpact --data-dir /tmp/op status
-curl -X POST localhost:7666/v1/knowledge \
+# Talk to it. Routes are scoped by alias (defaults to the current pact).
+openpact status
+curl -X POST localhost:7666/v1/pacts/default/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"sales","content":"Tuesdays convert better"}'
-openpact --data-dir /tmp/op log
-openpact --data-dir /tmp/op stop
+openpact log
+openpact stop
+```
+
+### 🜃 Holding more than one pact
+
+One daemon can hold many pacts. Each has its own data, its own peers,
+and its own alias. The current pact (set by `openpact switch`) is the
+default for `status / peers / log / invite` and friends.
+
+```bash
+openpact init --name 'Obsidian Accord' --purpose 'alpha research' --no-interactive
+openpact init --name 'Crimson Covenant' --purpose 'infra ops'     --no-interactive
+
+openpact list                           # both pacts, current marked with *
+openpact switch crimson-covenant        # change the default
+openpact status --pact obsidian-accord  # or address one explicitly
+
+# Scripted? OPENPACT_PACT=<alias> works the same as --pact.
 ```
 
 ### ⚜ Two daemons sharing a pact
@@ -100,21 +120,21 @@ You can pair two daemons on the same machine, or two different machines on the s
 
 ```bash
 # Terminal A: seal the pact and summon.
-openpact --data-dir /tmp/op-a init
+openpact --data-dir /tmp/op-a init --no-interactive --name 'pact-a' --display-name 'Asmodeus'
 openpact --data-dir /tmp/op-a start --port 7666
 KEY=$(openpact --data-dir /tmp/op-a invite)
 
 # Terminal B: enter the pact and summon.
-openpact --data-dir /tmp/op-b join "$KEY"
+openpact --data-dir /tmp/op-b join "$KEY" --no-interactive --display-name 'Wyrm'
 openpact --data-dir /tmp/op-b start --port 7667
 
 # Wait a moment for the daemons to find each other on the DHT, then
 # bind B as a writer. B's public key is in the status output.
-B_KEY=$(curl -s localhost:7667/v1/status | jq -r .public_key)
+B_KEY=$(curl -s localhost:7667/v1/pacts/pact-a/status | jq -r .public_key)
 openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer
 
 # B can now write. A sees it.
-curl -X POST localhost:7667/v1/knowledge \
+curl -X POST localhost:7667/v1/pacts/pact-a/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"shared","content":"hello from B"}'
 openpact --data-dir /tmp/op-a log
@@ -132,7 +152,7 @@ To run on a private network without using the public DHT, pass `--bootstrap host
 - `--dashboard-port <n>` — bind to a different port.
 - `openpact dashboard` — open the URL in your default browser.
 
-The dashboard reads the daemon's REST API over a same-origin `/api/*` proxy and subscribes to `/v1/events` for live updates. It ships light and dark themes (system-default, persistently set via a brass dial in the sidebar). No login, no telemetry — it's a local app that talks only to `127.0.0.1:7666`.
+The dashboard reads the daemon's REST API over a same-origin `/api/*` proxy and subscribes to `/v1/events` for live updates. It ships light and dark themes (system-default, persistently set via a brass dial in the sidebar). A pact switcher sits above the nav: pick any pact the daemon holds, or manage them on the `/pacts` page (create, join, rename, remove). No login, no telemetry. It is a local app that talks only to `127.0.0.1:7666`.
 
 ## 🪞 Agent integrations
 

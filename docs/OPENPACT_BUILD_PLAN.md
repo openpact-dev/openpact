@@ -298,6 +298,13 @@ This is the heart of the project. Get this right before touching anything else.
 
 ### 1.3 REST API ✅ (commit `8455243`)
 
+> **Post-Phase 4b note:** every per-pact route listed below now lives
+> under `/v1/pacts/:pactId/*`. Host-level endpoints (`/v1/ping`,
+> `/v1/events`, `/v1/pacts/*`) keep the bare `/v1/` prefix. The route
+> list in this section reflects the Phase 1 shape; see §4b.2 or
+> `CLAUDE.md` §REST API contract for the current surface.
+
+
 - [x] Add `fastify` ^5.8.5 as the HTTP server
 - [x] Bind to `127.0.0.1:7666` only (`bind()` helper accepts `127.0.0.1` /
   `::1` / `localhost`; refuses everything else)
@@ -372,6 +379,12 @@ This is the heart of the project. Get this right before touching anything else.
    tsx + commonjs setup.
 
 ### 1.4 CLI ✅ (commit `9b66c9d`)
+
+> **Post-Phase 4b note:** the CLI surface has grown to include
+> `list / switch / rename / remove` and a `--pact <alias>` flag on
+> every per-pact verb. See §4b.4 or `CLAUDE.md` §CLI surface for the
+> current shape.
+
 
 - [x] Add `commander` ^14 + `picocolors` for the CLI
 - [x] Implement commands:
@@ -1262,6 +1275,74 @@ matrix; one slot is enough for the v0.1 surface.
 
 ---
 
+## Phase 4a: Identity ✅
+
+**Goal:** pacts get names, peers get display names, interactive setup gets themed defaults.
+
+**Status:** shipped. Commits `c0a01ae` (display_name on entries), `c173de9` (port-held-by-different-pact fix), `2f827d0` (auto-start + browser open).
+
+- [x] Entry schema grows an optional `display_name: string | null` field. `agent_id` stays canonical. Apply accepts `null` (historical + opted-out). Per-file coverage gate held at 100/91 after the change.
+- [x] `PactConfig` grows `pactName / pactPurpose / displayName`. The daemon stamps `displayName` on every `append`; authors can't forge someone else's name because routes read the daemon's config, not the request body.
+- [x] New admin verbs: `PUT /v1/pacts/:pactId/pact` (creator-only; `{ name?, purpose? }`) and `PUT /v1/pacts/:pactId/me` (`{ display_name? }`). SDK gets `admin.setPactInfo` + `admin.setDisplayName`.
+- [x] `GET /v1/pacts/:pactId/status` returns `pact_name`, `pact_purpose`, `display_name`. Dashboard sidebar, Network page, and entry cards render the display name (falls back to `shortHandle(agent_id)`).
+- [x] `openpact init` + `join` prompt for pact name, purpose, and display name using `@inquirer/prompts`. Themed word lists in `packages/cli/src/lib/themes.ts` seed every default. `--no-interactive` + per-prompt flags keep CI deterministic.
+- [x] `OPENPACT_BRAND.md` documents the themed word lists so future contributors don't reinvent them.
+
+## Phase 4b: Multi-pact ✅
+
+**Goal:** one daemon holds many pacts.
+
+**Status:** shipped across commits `ce751d9` (Pact + PactHost), `0d8bfa1` (REST + SDK), `69fc5a0` (CLI list/switch/rename/remove), `2c1024a` (dashboard switcher).
+
+### 4b.1 Daemon refactor
+
+- [x] New `Pact` class in `packages/daemon/src/pact.ts` encapsulates one Autobase + Corestore + PactConfig + peer list + event emitter. Constructor takes `{ dataDir, swarm }` — the swarm is injected by the host.
+- [x] `Daemon` becomes the host. Fields: `_pacts: Map<alias, Pact>`, one `Hyperswarm`, one port. Methods: `createPact / joinPact / removePact / renamePact / openPact / listPacts / currentAlias / setCurrentAlias`.
+- [x] Fresh-user-only data layout: `~/.openpact/{daemon.json, pacts/<alias>/{config.json, data/}, pid}`. No legacy migration path — the user explicitly opted out of backwards compat.
+- [x] New `DaemonConfig` in `packages/daemon/src/config.ts`: `{ port, pacts: [{ alias, pactId, dataDir, addedAt }], currentAlias }`. Helpers `loadDaemonConfig / saveDaemonConfig / validateDaemonConfig`.
+- [x] Host re-emits per-pact events with a `{pactId, alias, event, data}` envelope so one SSE stream multiplexes across every pact.
+
+### 4b.2 REST routing
+
+- [x] Per-pact routes moved under `/v1/pacts/:pactId/*`. `:pactId` accepts either the alias or the 64-hex pact ID. Pact resolution lives in `packages/daemon/src/api/pact-resolver.ts`; unknown pacts 404 with `UNKNOWN_PACT`.
+- [x] New host-level routes in `packages/daemon/src/api/routes/pacts.ts`: `GET /v1/pacts`, `POST /v1/pacts`, `POST /v1/pacts/join`, `POST /v1/pacts/switch`, `PUT /v1/pacts/:pactId/alias`, `DELETE /v1/pacts/:pactId` (destructive; body `{ confirm: alias }`).
+- [x] `/v1/events` stays single. Frame envelope now includes `pact_id` + `alias` so the client can demux.
+- [x] New error codes: `UNKNOWN_PACT` (404), `PACT_ALIAS_TAKEN` (409), `NO_CURRENT_PACT` (409).
+- [x] No legacy `/v1/<endpoint>` proxy. Fresh users only.
+
+### 4b.3 SDK rework
+
+- [x] `OpenPact` constructor takes an optional `pactId`. Internal `pactPath(suffix)` prepends `/v1/pacts/${pactId}`. Calling a pact-scoped resource without a `pactId` throws at construction.
+- [x] New `client.pacts` resource: `list / create / join / switch / rename / remove`. Errors surface as `UnknownPactError`, `PactAliasTakenError`.
+- [x] Integration test extended for multi-pact flows.
+
+### 4b.4 CLI multi-pact surface
+
+- [x] New verbs: `openpact list` (table or `--json`), `openpact switch <alias>`, `openpact rename <alias> <new>`, `openpact remove <alias> --yes` (destructive; requires `--yes` or type-to-confirm).
+- [x] Every per-pact verb (`status / peers / log / invite / add-writer / remove-writer / skill-install`) accepts `--pact <alias>`. Resolution precedence in `packages/cli/src/lib/pact-select.ts`: flag → `OPENPACT_PACT` env → `daemon.json.currentAlias` → `default`.
+- [x] `openpact init` writes to `daemon.json.pacts` with a user-picked alias (defaulting to `slugify(pact_name)`). `openpact invite` prints the current pact's key by default or the specified `--pact`'s.
+- [x] `openpact start` registry-aware check reads `daemon.json.currentAlias` so a running daemon holding a different pact doesn't masquerade as the target pact.
+
+### 4b.5 Dashboard pact switcher
+
+- [x] New `useCurrentPact` hook in `packages/dashboard/src/hooks/` — localStorage-backed, falls back to daemon's `currentAlias`. `setCurrent` syncs via `hostClient.pacts.switch`.
+- [x] `lib/client.ts` exports `hostClient` (host-level calls) and `clientForPact(pactId)` (memoized per pact). SDK singletons rebuild per pact; `useQuery` keys include `pact.pactId` so switching invalidates cached data.
+- [x] New `PactSwitcher` component in the sidebar: dropdown with every pact and a "Manage pacts" link.
+- [x] New `/pacts` page: PactCard grid + Create / Join / Rename / Remove dialogs (destructive actions gated by ConfirmDialog typing the alias).
+- [x] `App.tsx` wraps children in a `PactContext.Provider` keyed on the current alias so switching remounts the page subtree cleanly.
+
+### 4b.6 Phase 4b deliverables
+
+- [x] `openpact init --name A` then `openpact init --name B` yields two pacts in `openpact list`, replicating independently.
+- [x] `curl localhost:7666/v1/pacts` lists both with names.
+- [x] Dashboard switcher flips between them without a page reload. SSE envelope demuxes by `pact_id`.
+- [x] Scripted `openpact --pact foo status` works regardless of `currentAlias`.
+- [x] Bundle budget still green (25.0 KB JS, 7.1 KB CSS gzipped).
+- [x] `apply.ts` per-file coverage gate still ≥95/90.
+- [x] Doc sync landed in this commit: `OPENPACT_DESIGN.md`, `OPENPACT_BUILD_PLAN.md`, `CLAUDE.md`, `README.md`.
+
+---
+
 ## Phase 4: Polish and launch
 
 **Goal:** Documentation, security review, demo content, public launch — and a chaos/resilience suite that proves the network behaves under stress.
@@ -1365,9 +1446,13 @@ matrix; one slot is enough for the v0.1 surface.
 
 ```
 ~/.openpact/
-  config.json          # Pact key, keypair, role, daemon port
-  data/                # Corestore (Hypercores + Autobase)
+  daemon.json          # { port, pacts: [{ alias, pactId, dataDir, addedAt }], currentAlias }
   pid                  # PID file for background daemon
+  pacts/
+    <alias>/
+      config.json      # Pact key, keypair, role, name, purpose, display_name
+      data/            # Corestore (Hypercores + Autobase)
+      installed-skills.json
 ```
 
 ### Port allocation
@@ -1377,8 +1462,8 @@ matrix; one slot is enough for the v0.1 surface.
 
 ### Naming conventions
 
-- CLI commands: `openpact <verb>` (init, join, start, stop, status, invite, peers, log)
-- API routes: `/v1/<resource>` (knowledge, tasks, skills, messages, peers, status)
+- CLI commands: `openpact <verb>` (init, join, start, stop, status, invite, peers, log, list, switch, rename, remove, dashboard). Per-pact verbs accept `--pact <alias>`.
+- API routes: host-level `/v1/<resource>` (ping, events, pacts); per-pact `/v1/pacts/:pactId/<resource>` (knowledge, tasks, skills, messages, peers, status, entries, admin, pact, me)
 - Entry IDs: `<core_short_id>-<sequence_number>` (e.g. `a7f2-412`)
 - Peer handles: `anon-<word>-<4hex>` derived from public key (e.g. `anon-krait-7f2d`)
 - Test files: `*.test.ts` (or `*.spec.ts` for Playwright UI tests)

@@ -288,22 +288,36 @@ OpenPact is framework-agnostic. Any agent that can make HTTP calls to `localhost
 
 ### 6.1 REST API (works with everything)
 
-The OpenPact daemon exposes a local REST API:
+The OpenPact daemon exposes a local REST API. Per-pact resources live
+under `/v1/pacts/:pactId/*`. The `:pactId` segment accepts either the
+local alias (`default`, `obsidian-accord`) or the 64-hex canonical pact
+ID. Host-level routes (listing pacts, creating, joining, the shared SSE
+stream) stay on the bare `/v1/` prefix.
 
 ```
-GET  /v1/knowledge?topic=sales&limit=20     # Query shared knowledge
-POST /v1/knowledge                           # Write a discovery
-GET  /v1/tasks?status=open                   # List available tasks
-POST /v1/tasks                               # Create a task
-PUT  /v1/tasks/:id/claim                     # Claim a task
-PUT  /v1/tasks/:id/complete                  # Mark task complete
-GET  /v1/skills                              # Discover shared skills
-POST /v1/skills                              # Publish a skill
-GET  /v1/peers                               # List connected peers
-GET  /v1/status                              # Daemon health check
+# Host-level
+GET  /v1/pacts                                    # List every pact the daemon holds
+POST /v1/pacts                                    # Create a new pact
+POST /v1/pacts/join                               # Join an existing pact by key
+POST /v1/pacts/switch                             # Change the default (currentAlias)
+GET  /v1/events                                   # SSE stream, multiplexed across pacts
+
+# Per-pact (prefix /v1/pacts/:pactId)
+GET  /knowledge?topic=sales&limit=20              # Query shared knowledge
+POST /knowledge                                   # Write a discovery
+GET  /tasks?status=open                           # List available tasks
+POST /tasks                                       # Create a task
+PUT  /tasks/:id/claim                             # Claim a task
+PUT  /tasks/:id/complete                          # Mark task complete
+GET  /skills                                      # Discover shared skills
+POST /skills                                      # Publish a skill
+GET  /peers                                       # List connected peers
+GET  /status                                      # Daemon health check for this pact
 ```
 
 Any agent, script, or tool that speaks HTTP can use this. No SDK required.
+An agent that only cares about one pact can pin its alias once and call
+`/v1/pacts/<alias>/*` from there on.
 
 ### 6.2 OpenClaw skill (recommended for OpenClaw users)
 
@@ -384,17 +398,17 @@ against the daemon's REST API work from any language.
 ### 7.1 Setup flow
 
 1. Install the daemon: `npm i -g @openpact/cli` (provides the `openpact` command)
-2. Create a new pact: `openpact init` (generates keypair, creates local storage)
-3. Get a share key: `openpact invite` (prints a join key)
-4. Connect your agent to `localhost:7666` (via skill, SDK, or raw HTTP)
-5. The agent starts reading and writing to the shared memory
+2. Create a new pact: `openpact init` (interactive prompts for name, purpose, and display name; pass flags + `--no-interactive` for scripted setup)
+3. Start the daemon: `openpact start` (detaches by default; brings up the dashboard on `:7667`)
+4. Get a share key: `openpact invite` (prints the join key for the current pact; pass `--pact <alias>` for another)
+5. Connect your agent to `localhost:7666` (via skill, SDK, MCP, or raw HTTP). The agent addresses a pact by its alias under `/v1/pacts/:pactId/*`.
 
 ### 7.2 Joining flow
 
 1. Someone shares a pact key
-2. Run: `openpact join <key>`
+2. Run: `openpact join <key>` (prompts for your display name; an alias is auto-derived from the pact's name once replication starts)
 3. The daemon connects via Hyperswarm and replicates the shared view
-4. Your agent starts interacting with the collective memory
+4. Your agent starts interacting with the collective memory. `openpact list` shows every pact the daemon holds; `openpact switch <alias>` picks the default.
 
 ### 7.3 Daily operation
 
