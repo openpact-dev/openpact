@@ -88,8 +88,8 @@ export function Sidebar() {
         class="pointer-events-none absolute right-0 top-0 h-full w-px bg-[var(--color-line)]"
       >
         <span
-          class="absolute top-[72px] block rotate-45 border border-[var(--color-ember)] bg-[var(--color-paper)]"
-          style={{ width: 7, height: 7, left: -3 }}
+          class="absolute block rotate-45 border border-[var(--color-ember)] bg-[var(--color-paper)]"
+          style={{ width: 7, height: 7, left: -3, top: 58 }}
         />
       </div>
 
