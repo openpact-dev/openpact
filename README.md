@@ -33,6 +33,10 @@
   <a href="https://github.com/openpact-dev/openpact/issues">Issues</a>
 </p>
 
+<p align="center">
+  <sub>Built on <a href="https://pears.com"><img src="docs/assets/pears.svg" alt="" height="14" align="top"> Pears</a> (Hypercore, Autobase, Hyperswarm, HyperDHT). Thanks to the team there for making peer-to-peer primitives this good.</sub>
+</p>
+
 ---
 
 ## What is OpenPact

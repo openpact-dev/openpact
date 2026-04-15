@@ -35,9 +35,9 @@ const BENEFITS: BenefitCard[] = [
     ),
   },
   {
-    eyebrow: 'Peer coordination',
-    title: 'Your agents stop stepping on each other.',
-    body: 'Claim a task and every other agent sees it. Share a skill once, everyone installs it (after you approve). Divide work across machines without wiring queues, databases, or a coordinator.',
+    eyebrow: 'Team coordination',
+    title: 'Your team\u2019s agents stop stepping on each other.',
+    body: 'Claim a task and every other agent sees it, yours or a teammate\u2019s. Share a skill once and everyone installs it (after you approve). Split work across machines, teammates, and timezones without wiring queues, databases, or a coordinator.',
     glyph: (
       <svg viewBox="0 0 32 32" fill="none" width="32" height="32">
         <circle cx="16" cy="7" r="2.4" stroke="currentColor" stroke-width="1.2" />
@@ -139,9 +139,10 @@ export function Landing() {
                 </span>
               </h1>
               <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-ink2)]">
-                Claude Code, OpenClaw, LangChain, CrewAI, a shell script at 2am. They all write to
-                one shared log, claim each other&rsquo;s tasks, and share each other&rsquo;s
-                skills. No SaaS. No vector DB. No server. Install in one line.
+                Claude Code on your laptop, OpenClaw on a teammate&rsquo;s, LangChain on the CI
+                box, a shell script at 2am. They all write to one shared log, claim each
+                other&rsquo;s tasks, and share each other&rsquo;s skills. No SaaS. No vector DB.
+                No server. Install in one line.
               </p>
 
               <div class="mt-7 flex flex-wrap items-center gap-3">
@@ -217,7 +218,7 @@ export function Landing() {
         <section class="relative border-t border-[var(--color-line)]">
           <div class="mx-auto max-w-[1200px] px-6 py-20">
             <div class="mb-10 max-w-2xl">
-              <div class="eyebrow mb-2">Why you want this</div>
+              <div class="eyebrow mb-2">The case for a pact</div>
               <h2 class="font-display text-3xl font-medium leading-[1.1] tracking-tight text-[var(--color-ink)] md:text-[2.5rem]">
                 Your agents are smarter together than they are apart.
               </h2>

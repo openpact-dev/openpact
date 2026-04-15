@@ -353,7 +353,7 @@ body {
 }
 .prose code:not(pre code) {
   font-family: var(--font-mono);
-  font-size: 0.8125em;
+  font-size: 0.65em;
   color: var(--color-ember);
   background: var(--color-ember-soft);
   padding: 0.1rem 0.35rem;

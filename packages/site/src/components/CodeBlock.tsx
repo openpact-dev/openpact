@@ -30,7 +30,7 @@ export function CodeBlock({ code, language, title, copyValue, class: cls = '' }:
           <CopyButton value={copyValue ?? code} />
         </div>
       )}
-      <pre class="m-0 overflow-x-auto px-4 py-3 font-mono text-[13px] leading-relaxed text-[var(--color-ink)]">
+      <pre class="m-0 overflow-x-auto px-4 py-3 font-mono text-[12px] leading-[1.55] text-[var(--color-ink)]">
         <code>{code}</code>
       </pre>
       {!title && !language && (
