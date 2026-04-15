@@ -84,10 +84,17 @@ The horns establish the devilish theme immediately. The slit pupil gives it an i
 
 ### Colour rules
 
-- The app is dark-only. There is no light mode. The red accents glow against darkness.
-- Never use pure white (#FFFFFF) for body text. Use Blush (#FEE2E2). Reserve white for the brightest highlights only (logo eye centre, active indicators).
-- Red-on-dark is the dominant pattern. Every screen should feel like embers in a dark room.
+- The dashboard ships **both light and dark themes** with a system-default switcher. Light theme is the polished workspace palette (paper / canvas / mist surfaces, ink text, purple / teal / coral / amber accents) used in `docs/mockups/`. Dark theme is the brand palette (Abyss / Void / Smoke surfaces, Blush text, Hellfire / Ember reds). Each surfaces a different mood: light for daytime focused work, dark for the daemon-watching-over-you vibe.
+- The CLI is **dark-only**. The terminal is the daemon's voice; the red still glows against the abyss.
+- In the dark theme, never use pure white (#FFFFFF) for body text. Use Blush (#FEE2E2). Reserve white for the brightest highlights only (logo eye centre, active indicators).
+- In the light theme, use Ink (#1A1A1A) for primary text. Reserve pure black for nothing — even logo strokes go #1A1A1A on light surfaces.
 - For documentation on external platforms (GitHub README, npm page), match the dark theme where possible. Where you can't control the background, the red still works on white, just use Ember (#DC2626) or Brimstone (#B91C1C) instead of Hellfire for contrast.
+
+### Logo on each theme
+
+- **Dark theme:** `openpact-logo.svg` (the canonical eye + horns, designed for `#0F0A0A` Abyss).
+- **Light theme:** `openpact-logo-light.svg` (the same mark inverted for use on `#F7F7F5` Canvas).
+- The dashboard switches between the two automatically based on the active theme.
 
 ---
 

@@ -6,10 +6,10 @@ import { TopicChips } from '../components/TopicChips'
 import { EntryCard, type Entry } from '../components/EntryCard'
 
 const RECENCY_OPTIONS = [
-  { value: 'all', label: 'all time', ms: Number.POSITIVE_INFINITY },
-  { value: 'today', label: 'today', ms: 24 * 3600 * 1000 },
-  { value: 'week', label: 'this week', ms: 7 * 24 * 3600 * 1000 },
-  { value: 'month', label: 'this month', ms: 30 * 24 * 3600 * 1000 },
+  { value: 'all', label: 'All time', ms: Number.POSITIVE_INFINITY },
+  { value: 'today', label: 'Today', ms: 24 * 3600 * 1000 },
+  { value: 'week', label: 'This week', ms: 7 * 24 * 3600 * 1000 },
+  { value: 'month', label: 'This month', ms: 30 * 24 * 3600 * 1000 },
 ] as const
 
 const INPUT_BASE =
@@ -69,13 +69,13 @@ export function Knowledge() {
       <header class="mb-5 flex items-baseline justify-between">
         <h1 class="text-xl font-semibold tracking-[-0.4px] text-ink">Knowledge</h1>
         <span class="text-[12px] text-ink3">
-          {filtered.length} of {knowledge.data?.length ?? 0} entries
+          {filtered.length} of {knowledge.data?.length ?? 0} entries.
         </span>
       </header>
 
       <input
         type="search"
-        placeholder="search content…"
+        placeholder="Search content…"
         value={query}
         onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
         data-testid="knowledge-search"
@@ -84,7 +84,7 @@ export function Knowledge() {
 
       <div class="mb-[18px] flex flex-wrap items-center gap-3">
         <label class="inline-flex items-center gap-2 text-[12px] text-ink2">
-          confidence ≥ <span class="font-medium text-ink">{confidence.toFixed(1)}</span>
+          Confidence ≥ <span class="font-medium text-ink">{confidence.toFixed(1)}</span>
           <input
             type="range"
             min="0"
@@ -113,10 +113,10 @@ export function Knowledge() {
       <TopicChips topics={topics} selected={selectedTopic} onSelect={setSelectedTopic} />
 
       {knowledge.loading ? (
-        <p class="px-1 py-4 text-[13px] italic text-ink3">loading…</p>
+        <p class="px-1 py-4 text-[13px] italic text-ink3">Loading…</p>
       ) : filtered.length === 0 ? (
         <p class="px-1 py-4 text-[13px] italic text-ink3" data-testid="knowledge-empty">
-          no entries match
+          No entries match.
         </p>
       ) : (
         <div class="grid grid-cols-1 gap-2.5" data-testid="entry-list">

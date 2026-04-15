@@ -53,7 +53,7 @@ export function Dashboard() {
         <h1 class="text-xl font-semibold tracking-[-0.4px] text-ink">Dashboard</h1>
         <span class="text-[12px] text-ink3">
           {status.data?.peer_handle ? shortHandle(status.data.peer_handle) : ''}
-          {pactId ? <span class="text-ink3"> · synced</span> : null}
+          {pactId ? <span class="text-ink3"> · Synced</span> : null}
         </span>
       </header>
 
@@ -67,7 +67,7 @@ export function Dashboard() {
         <MetricCard
           label="Knowledge"
           value={knowledgeCount}
-          hint="recent entries"
+          hint="Recent entries"
           tone="text-teal"
         />
         <MetricCard
@@ -79,19 +79,19 @@ export function Dashboard() {
         <MetricCard
           label="Entries"
           value={status.data?.entries ?? 0}
-          hint="full pact"
+          hint="Full pact"
           tone="text-coral"
         />
       </div>
 
       <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Panel title="Recent activity" link={{ label: 'View all', href: '/knowledge' }}>
-          <ActivityFeed entries={feed} empty="no activity yet — the pact is quiet" />
+          <ActivityFeed entries={feed} empty="No activity yet. The pact is quiet." />
         </Panel>
 
         <Panel title="Connected peers" link={{ label: 'Manage', href: '/network' }}>
           {(peers.data ?? []).length === 0 ? (
-            <div class="px-[18px] py-6 text-[13px] italic text-ink3">no peers connected</div>
+            <div class="px-[18px] py-6 text-[13px] italic text-ink3">No peers connected.</div>
           ) : (
             (peers.data ?? []).map((p: any) => <PeerRow peer={p} key={p.id ?? p.remote_key} />)
           )}
@@ -100,7 +100,7 @@ export function Dashboard() {
 
       <Panel title="Open tasks" link={{ label: 'View task board', href: '/tasks' }}>
         {openTasks.length === 0 ? (
-          <div class="px-[18px] py-6 text-[13px] italic text-ink3">no open tasks</div>
+          <div class="px-[18px] py-6 text-[13px] italic text-ink3">No open tasks.</div>
         ) : (
           openTasks.map((t: any) => <TaskRow key={t.id} task={t} />)
         )}
@@ -118,7 +118,7 @@ function PeerRow({ peer }: { peer: any }) {
       </div>
       <div class="min-w-0 flex-1">
         <div class="truncate text-[13px] font-medium text-ink">{peer.id}</div>
-        <div class="text-[11px] text-ink3">remote {peer.remote_key?.slice(0, 12)}…</div>
+        <div class="text-[11px] text-ink3">Remote {peer.remote_key?.slice(0, 12)}…</div>
       </div>
       <span
         class={
@@ -127,22 +127,39 @@ function PeerRow({ peer }: { peer: any }) {
             : 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-medium text-ink3'
         }
       >
-        {peer.online ? 'online' : 'offline'}
+        {peer.online ? 'Online' : 'Offline'}
       </span>
     </div>
   )
 }
 
+const TASK_BADGE: Record<string, { label: string; cls: string }> = {
+  open: {
+    label: 'Open',
+    cls: 'rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal',
+  },
+  claimed: {
+    label: 'Claimed',
+    cls: 'rounded-full bg-amber-soft px-2 py-0.5 text-[10px] font-medium text-amber',
+  },
+  complete: {
+    label: 'Complete',
+    cls: 'rounded-full bg-purple-soft px-2 py-0.5 text-[10px] font-medium text-purple-deep',
+  },
+}
+
 function TaskRow({ task }: { task: any }) {
+  const badge = TASK_BADGE[task.status as string] ?? {
+    label: task.status,
+    cls: 'rounded-full bg-canvas px-2 py-0.5 text-[10px] font-medium text-ink3',
+  }
   return (
     <div class="border-b-[0.5px] border-line px-[18px] py-[11px] last:border-b-0">
       <div class="text-[13px] font-medium text-ink">{task.title}</div>
       <div class="mt-1 flex items-center gap-2">
-        <span class="rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-medium text-teal">
-          {task.status}
-        </span>
+        <span class={badge.cls}>{badge.label}</span>
         <span class="text-[11px] text-ink3">
-          {task.claimed_by ? `claimed by ${shortHandle(task.claimed_by)}` : 'unclaimed'}
+          {task.claimed_by ? `Claimed by ${shortHandle(task.claimed_by)}` : 'Unclaimed'}
         </span>
       </div>
     </div>

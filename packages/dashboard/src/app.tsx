@@ -7,7 +7,7 @@ function Stub({ name }: { name: string }) {
   return (
     <section class="p-6">
       <h1 class="text-xl font-semibold tracking-tight text-ink">{name}</h1>
-      <p class="mt-4 text-sm italic text-ink3">this screen lands in slice D.</p>
+      <p class="mt-4 text-sm italic text-ink3">This screen lands in slice D.</p>
     </section>
   )
 }
@@ -15,8 +15,8 @@ function Stub({ name }: { name: string }) {
 function NotFound() {
   return (
     <section class="p-6">
-      <h1 class="text-xl font-semibold tracking-tight text-ink">not found</h1>
-      <p class="mt-4 text-sm italic text-ink3">the route you asked for doesn't exist (yet).</p>
+      <h1 class="text-xl font-semibold tracking-tight text-ink">Not found</h1>
+      <p class="mt-4 text-sm italic text-ink3">The route you asked for doesn't exist (yet).</p>
     </section>
   )
 }

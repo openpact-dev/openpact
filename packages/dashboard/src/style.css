@@ -2,18 +2,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 /*
- * Design tokens lifted directly from the mockups in docs/mockups/.
- * Light theme, paper-white background, subtle borders, and the
- * polished palette (purple/teal/coral/amber/blue) used across all
- * three reference pages.
+ * Design tokens.
  *
- * The CLI brand voice (dark/devilish red) is intentionally separate
- * from the dashboard UI: CLI is the operator's voice, dashboard is
- * the agent's workspace.
+ * Light theme matches the mockups in docs/mockups/ — paper-white
+ * surfaces, polished palette (purple/teal/coral/amber/blue).
+ *
+ * Dark theme uses the brand palette from docs/OPENPACT_BRAND.md —
+ * Abyss/Void/Smoke surfaces, Blush text, Hellfire reds. Same token
+ * names; values swap when html.dark is set.
+ *
+ * The CLI brand voice (devilish red, lowercase verbs) lives in the
+ * terminal. The dashboard UI uses sentence-case copy and switches
+ * theme via the user's preference (system / light / dark).
  */
 
 @theme {
-  /* Surfaces */
+  /* Surfaces — light theme defaults */
   --color-paper: #ffffff;
   --color-canvas: #f7f7f5;
   --color-mist: #eeede9;
@@ -52,6 +56,57 @@
   --radius-lg: 0.75rem; /* 12px */
 }
 
+/*
+ * Dark theme overrides. Activated by `html.dark` (set by the
+ * theme hook based on user preference + system pref).
+ *
+ * Tailwind v4 reads the same custom properties through `bg-paper`,
+ * `text-ink`, etc. — so swapping the property values here is all
+ * we need to do.
+ */
+.dark {
+  --color-paper: #1a1214; /* Void */
+  --color-canvas: #0f0a0a; /* Abyss */
+  --color-mist: #2a1f22; /* Smoke */
+
+  --color-line: rgb(239 68 68 / 12%);
+  --color-line-h: rgb(239 68 68 / 25%);
+
+  --color-ink: #fee2e2; /* Blush */
+  --color-ink2: #fca5a5; /* Pale */
+  --color-ink3: #6b5555; /* muted red-grey */
+
+  /* Accents — keep type colours distinct, but reach for brand reds
+     for the primary (purple → hellfire) and brighten greens / yellows
+     so they read on the abyss. */
+  --color-purple: #ef4444; /* Hellfire */
+  --color-purple-soft: rgb(239 68 68 / 15%);
+  --color-purple-deep: #fca5a5;
+  --color-teal: #22c55e;
+  --color-teal-soft: rgb(34 197 94 / 12%);
+  --color-teal-deep: #4ade80;
+  --color-coral: #f87171; /* Spark */
+  --color-coral-soft: rgb(248 113 113 / 15%);
+  --color-coral-deep: #fca5a5;
+  --color-amber: #eab308;
+  --color-amber-soft: rgb(234 179 8 / 12%);
+  --color-amber-deep: #facc15;
+  --color-blue: #60a5fa;
+  --color-blue-soft: rgb(96 165 250 / 12%);
+  --color-blue-deep: #93c5fd;
+}
+
+/*
+ * Pre-paint to avoid a flash of the wrong theme. The theme hook
+ * also writes `html.dark` synchronously in the bootstrap script,
+ * so this rule sets the body bg before any JS runs.
+ */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    color-scheme: dark;
+  }
+}
+
 html,
 body {
   margin: 0;
@@ -63,6 +118,9 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.005em;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 
 #app {

@@ -154,8 +154,9 @@ Plain English. Specifically:
 - **No "It's not X — it's Y" framing** or breathless triplets ("real, recent, verified").
 - **No "Whether you're X, Y, or Z" intros.**
 - **Short, direct sentences.** Subject → verb → object. Two simple sentences beat one with a parenthetical aside.
+- **UI text and badges always start with a capital letter.** Empty states, dropdowns, chips, badges (`Online` / `Offline` / `Open` / `Claimed`), placeholders (`Search content…`), section headers (sentence case, not Title Case). Single-word filters get capped too (`All`, `Today`, `This week`). Lowercase starts look half-built.
 
-The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`) is the brand voice and stays. The rule is about *prose* copy: README, docs, commit messages, error messages.
+The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`) is the brand voice and stays. The rule is about *prose* copy and dashboard UI: README, docs, commit messages, error messages, dashboard chrome.
 
 ## Conventions
 

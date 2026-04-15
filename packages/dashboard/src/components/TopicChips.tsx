@@ -13,7 +13,7 @@ export function TopicChips({ topics, selected, onSelect }: Props) {
   return (
     <div class="mb-[18px] flex flex-wrap gap-1.5" role="group" aria-label="Topic filters">
       <button class={cls(selected === null)} onClick={() => onSelect(null)} data-testid="chip-all">
-        all
+        All
       </button>
       {topics.map((topic) => (
         <button

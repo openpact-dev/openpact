@@ -16,6 +16,9 @@ const TYPE_DOT: Record<Entry['type'], string> = {
   message: 'bg-coral',
 }
 
+// Mid-sentence verbs after a peer handle: "anon-fox-1234 shared
+// knowledge about routing: …". The handle starts the sentence (a
+// literal value), so these verb fragments stay lowercase.
 const TYPE_VERB: Record<Entry['type'], string> = {
   knowledge: 'shared knowledge',
   task: 'updated task',

@@ -8,6 +8,8 @@
  * shared context (preact-router updates URL in place).
  */
 import { useEffect, useState } from 'preact/hooks'
+import { ThemeSwitcher } from './ThemeSwitcher'
+import { useTheme } from '../hooks/useTheme'
 
 interface NavLink {
   href: string
@@ -113,6 +115,12 @@ function NavRow({ link, current }: { link: NavLink; current: string }) {
 }
 
 export function Sidebar() {
+  const { resolved: theme } = useTheme()
+  // Brand convention: openpact-logo.svg is designed for dark
+  // backgrounds (Abyss); openpact-logo-light.svg is designed for
+  // light backgrounds (Canvas). Pick the one whose intended surface
+  // matches the active theme.
+  const logoSrc = theme === 'dark' ? '/openpact-logo.svg' : '/openpact-logo-light.svg'
   const [path, setPath] = useState<string>(
     typeof window !== 'undefined' ? window.location.pathname : '/',
   )
@@ -136,8 +144,8 @@ export function Sidebar() {
   return (
     <nav class="flex w-[220px] shrink-0 flex-col gap-0.5 border-r-[0.5px] border-line bg-paper px-3 py-4">
       <div class="mb-4 flex items-center gap-2.5 px-2.5 py-2">
-        <img src="/openpact-logo.svg" alt="" class="h-8 w-8" />
-        <span class="text-[15px] font-semibold tracking-tight">OpenPact</span>
+        <img src={logoSrc} alt="" class="h-8 w-8" />
+        <span class="text-[15px] font-semibold tracking-tight text-ink">OpenPact</span>
       </div>
 
       {PRIMARY.map((link) => (
@@ -151,11 +159,12 @@ export function Sidebar() {
         <NavRow key={link.href} link={link} current={path} />
       ))}
 
-      <div class="mt-auto border-t-[0.5px] border-line p-2.5">
+      <div class="mt-auto flex flex-col gap-3 border-t-[0.5px] border-line p-2.5">
         <div class="flex items-center gap-1.5 text-xs text-ink2">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#1d9e75]" />
-          <span>connected</span>
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-teal" />
+          <span>Connected</span>
         </div>
+        <ThemeSwitcher />
       </div>
     </nav>
   )

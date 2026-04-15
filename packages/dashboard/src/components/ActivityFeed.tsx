@@ -5,7 +5,7 @@ interface Props {
   empty?: string
 }
 
-export function ActivityFeed({ entries, empty = 'no activity yet' }: Props) {
+export function ActivityFeed({ entries, empty = 'No activity yet.' }: Props) {
   if (entries.length === 0) {
     return <div class="px-[18px] py-6 text-[13px] italic text-ink3">{empty}</div>
   }
