@@ -127,11 +127,12 @@ export default async function invitesRoute(
     },
   )
 
-  // Redeem a token on behalf of a new writer. On success, this daemon
-  // appends `invite-redeemed` + `admin.addWriter` to its writer core.
-  // Caller passes the joiner's writer_key (the Autobase local core
-  // public key), which the REST client can get from its own daemon's
-  // /status endpoint.
+  // Redeem a token on behalf of a new writer. If this daemon is an
+  // indexer for the pact, we redeem locally (appending the
+  // invite-redeemed + admin.addWriter pair). If we're a reader — which
+  // is the normal case on a joining peer — we forward the request over
+  // the openpact/invites/v1 protomux channel to every connected peer
+  // and resolve on the first indexer to respond with ok: true.
   app.post<{
     Params: { pactId: string }
     Body: { token: string; writer_key: string; confirm: boolean }
@@ -147,15 +148,58 @@ export default async function invitesRoute(
         )
       }
       const pact = await resolvePact(daemon, req)
-      try {
-        const result = await pact.redeemInvite(req.body.token, req.body.writer_key)
-        return { ok: true, nonce: result.nonce }
-      } catch (e) {
-        if (e instanceof RedeemError) {
-          throw new HttpError(e.status, e.code, e.message)
+
+      // Local path: this daemon is the indexer for the pact.
+      if (pact.isIndexer) {
+        try {
+          const result = await pact.redeemInvite(req.body.token, req.body.writer_key)
+          return { ok: true, nonce: result.nonce }
+        } catch (e) {
+          if (e instanceof RedeemError) {
+            throw new HttpError(e.status, e.code, e.message)
+          }
+          throw e
         }
-        throw e
       }
+
+      // Forward path: ask every connected peer, first indexer wins.
+      if (!pact.pactKey) {
+        throw new HttpError(409, 'PACT_NOT_READY', 'pact has no key yet')
+      }
+      const result = await daemon.redeemThroughPeers(
+        pact.pactKey,
+        req.body.token,
+        req.body.writer_key,
+      )
+      if (result.ok) {
+        return { ok: true, nonce: result.nonce }
+      }
+      const status = errorStatus(result.code)
+      throw new HttpError(status, result.code || 'REDEEM_FAILED', result.message || 'redeem failed')
     },
   )
+}
+
+function errorStatus(code: string | undefined): number {
+  switch (code) {
+    case 'INVITE_BAD_SHAPE':
+    case 'INVITE_WRONG_PACT':
+      return 400
+    case 'INVITE_UNKNOWN':
+    case 'UNKNOWN_PACT':
+      return 404
+    case 'INVITE_NOT_INDEXER':
+    case 'INVITE_REVOKED':
+    case 'INVITE_SPENT':
+      return 409
+    case 'INVITE_EXPIRED':
+      return 410
+    case 'NO_PEERS':
+    case 'NO_INDEXER_REACHABLE':
+    case 'TIMEOUT':
+    case 'PEER_DISCONNECTED':
+      return 503
+    default:
+      return 500
+  }
 }

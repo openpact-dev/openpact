@@ -530,7 +530,6 @@ test('display_name missing field is preserved (backward compat from pre-4a pacts
 // ─────── invite-redeemed ────────────────────────────────────────────
 
 const NONCE_A = '11'.repeat(24)
-const NONCE_B = '22'.repeat(24)
 
 test('invite-redeemed from indexer writes _invites/<nonce>', async (t) => {
   const view = fakeView()

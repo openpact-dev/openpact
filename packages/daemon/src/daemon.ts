@@ -1,6 +1,8 @@
 import EventEmitter from 'events'
 import b4a from 'b4a'
+import crypto from 'crypto'
 import Hyperswarm from 'hyperswarm'
+import Protomux from 'protomux'
 import fs from 'fs/promises'
 
 import { defaultDataDir, pactConfigDir } from './data-dir'
@@ -13,6 +15,21 @@ import {
   type PactRegistryEntry,
 } from './config'
 import { Pact } from './pact'
+import { RedeemError } from './invites'
+import {
+  PROTOCOL as INVITE_PROTOCOL,
+  redeemRequestEnc,
+  redeemResponseEnc,
+  type RedeemRequest,
+  type RedeemResponse,
+} from './invite-wire'
+
+interface PeerLink {
+  conn: unknown
+  channel: unknown
+  sendRequest: (req: RedeemRequest) => boolean
+  pending: Map<string, (res: RedeemResponse) => void>
+}
 
 export interface DaemonOpts {
   dataDir?: string
@@ -78,6 +95,8 @@ export class Daemon extends EventEmitter {
   private _pacts: Map<string /* alias */, Pact> = new Map()
   private _currentAlias: string | null = null
   private _joinedTopics: Set<string> = new Set()
+  /** Open invite-protocol links, one per connected peer. */
+  private _peerLinks: Set<PeerLink> = new Set()
 
   constructor({
     dataDir,
@@ -286,17 +305,210 @@ export class Daemon extends EventEmitter {
     if (this._started) return
     this._swarm = new Hyperswarm(this._swarmOpts)
     this._swarm.on('connection', (conn: any) => {
+      // Attach protomux BEFORE corestore, so our channel shares the
+      // same mux that replicate() grabs via Protomux.from().
+      const mux: any = Protomux.from(conn)
+      const link = this._openInviteChannel(conn, mux)
+      this._peerLinks.add(link)
+
       for (const pact of this._pacts.values()) {
         pact.store.replicate(conn)
       }
       this.emit('peer-add', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
-      conn.on('close', () =>
-        this.emit('peer-remove', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') }),
-      )
+      conn.on('close', () => {
+        this._peerLinks.delete(link)
+        this.emit('peer-remove', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
+      })
     })
     this._started = true
     for (const pact of this._pacts.values()) this._joinTopic(pact)
     this.emit('start')
+  }
+
+  /**
+   * Open the `openpact/invites/v1` channel on a newly-connected peer.
+   * The returned PeerLink is used by redeemThroughPeers() to broadcast
+   * requests and correlate responses. Incoming redeem-requests are
+   * handled locally and responded to in place.
+   */
+  private _openInviteChannel(conn: any, mux: any): PeerLink {
+    const pending = new Map<string, (res: RedeemResponse) => void>()
+    let sendMsg: any = null
+
+    const channel = mux.createChannel({
+      protocol: INVITE_PROTOCOL,
+      onclose: () => {
+        for (const resolve of pending.values()) {
+          resolve({
+            corr: Buffer.alloc(0),
+            ok: false,
+            code: 'PEER_DISCONNECTED',
+            message: 'peer disconnected before responding',
+          })
+        }
+        pending.clear()
+      },
+    })
+    if (!channel) {
+      // peer didn't advertise our protocol — construct a dead link
+      return {
+        conn,
+        channel: null,
+        sendRequest: () => false,
+        pending,
+      }
+    }
+
+    const requestMsg = channel.addMessage({
+      encoding: redeemRequestEnc,
+      onmessage: (req: RedeemRequest) => {
+        this._handleRedeemRequest(req)
+          .then((res) => sendMsg && sendMsg.send({ ...res, corr: req.corr }))
+          .catch((err) =>
+            sendMsg &&
+            sendMsg.send({
+              corr: req.corr,
+              ok: false,
+              code: 'INTERNAL',
+              message: (err as Error).message,
+            }),
+          )
+      },
+    })
+    const responseMsg = channel.addMessage({
+      encoding: redeemResponseEnc,
+      onmessage: (res: RedeemResponse) => {
+        const key = corrKey(res.corr)
+        const resolve = pending.get(key)
+        if (resolve) {
+          pending.delete(key)
+          resolve(res)
+        }
+      },
+    })
+    sendMsg = responseMsg
+    channel.open()
+
+    return {
+      conn,
+      channel,
+      sendRequest: (req) => requestMsg.send(req),
+      pending,
+    }
+  }
+
+  /** Handle an inbound redeem-request: map to local Pact.redeemInvite and reply. */
+  private async _handleRedeemRequest(req: RedeemRequest): Promise<RedeemResponse> {
+    const pact = await this._findPactByPactId(req.pactId)
+    if (!pact) {
+      return { corr: req.corr, ok: false, code: 'UNKNOWN_PACT', message: 'pact not found' }
+    }
+    try {
+      const result = await pact.redeemInvite(req.token, req.writerKey)
+      return { corr: req.corr, ok: true, nonce: result.nonce }
+    } catch (e) {
+      if (e instanceof RedeemError) {
+        return { corr: req.corr, ok: false, code: e.code, message: e.message }
+      }
+      return {
+        corr: req.corr,
+        ok: false,
+        code: 'INTERNAL',
+        message: (e as Error).message || 'internal error',
+      }
+    }
+  }
+
+  private async _findPactByPactId(pactId: string): Promise<Pact | null> {
+    const hex = pactId.toLowerCase()
+    for (const pact of this._pacts.values()) {
+      if (pact.pactKey?.toLowerCase() === hex) return pact
+    }
+    const cfg = await this._loadRegistry()
+    const entry = cfg.pacts.find((p) => p.pactId.toLowerCase() === hex)
+    if (!entry) return null
+    return this.openPact(entry.alias)
+  }
+
+  /**
+   * Broadcast a redeem-request to every connected peer, resolving on
+   * the first `ok: true` response. Rejects with the last terminal
+   * error (non-NOT_INDEXER, non-UNKNOWN_PACT) if all peers reject, or
+   * times out after `timeoutMs`.
+   */
+  async redeemThroughPeers(
+    pactId: string,
+    token: string,
+    writerKey: string,
+    { timeoutMs = 15_000 }: { timeoutMs?: number } = {},
+  ): Promise<{ ok: true; nonce: string } | { ok: false; code: string; message: string }> {
+    if (this._peerLinks.size === 0) {
+      return { ok: false, code: 'NO_PEERS', message: 'no peers connected' }
+    }
+    const corr = crypto.randomBytes(8)
+    const req: RedeemRequest = { pactId, token, writerKey, corr }
+    const responses: RedeemResponse[] = []
+
+    return new Promise((resolve) => {
+      let settled = false
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        // Timeout — summarise best-known failure
+        const last = responses.at(-1)
+        resolve(
+          last
+            ? { ok: false, code: last.code || 'TIMEOUT', message: last.message || 'timeout' }
+            : { ok: false, code: 'NO_INDEXER_REACHABLE', message: 'no indexer responded' },
+        )
+      }, timeoutMs)
+
+      const done = (res: RedeemResponse) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        if (res.ok && res.nonce) resolve({ ok: true, nonce: res.nonce })
+        else
+          resolve({
+            ok: false,
+            code: res.code || 'UNKNOWN',
+            message: res.message || 'redeem failed',
+          })
+      }
+
+      let outstanding = 0
+      for (const link of this._peerLinks) {
+        if (!link.channel) continue
+        const ok = link.sendRequest(req)
+        if (!ok) continue
+        outstanding++
+        link.pending.set(corrKey(corr), (res) => {
+          responses.push(res)
+          // First success wins; otherwise wait for all replies then
+          // resolve with the "best" (non-NOT_INDEXER, non-UNKNOWN_PACT)
+          // failure if any, else NOT_INDEXER.
+          if (res.ok) return done(res)
+          outstanding--
+          if (outstanding === 0) {
+            const terminal = responses.find(
+              (r) => !r.ok && r.code !== 'INVITE_NOT_INDEXER' && r.code !== 'UNKNOWN_PACT',
+            )
+            if (terminal) return done(terminal)
+            done(responses[0])
+          }
+        })
+      }
+
+      if (outstanding === 0) {
+        settled = true
+        clearTimeout(timer)
+        resolve({
+          ok: false,
+          code: 'NO_INDEXER_REACHABLE',
+          message: 'no peer accepted the invite channel',
+        })
+      }
+    })
   }
 
   private _joinTopic(pact: Pact): void {
@@ -507,4 +719,8 @@ async function _wait(
     await new Promise((r) => setTimeout(r, 50))
   }
   throw new Error(`timeout: ${label()}`)
+}
+
+function corrKey(buf: Buffer): string {
+  return b4a.toString(buf, 'hex') as string
 }
