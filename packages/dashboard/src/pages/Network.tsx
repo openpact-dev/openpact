@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
@@ -354,11 +354,15 @@ function PactInfoCard({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Re-seed the drafts whenever we enter edit mode so stale state doesn't
-  // leak between opens.
-  if (editing && nameDraft !== (pactName ?? '') && purposeDraft !== (pactPurpose ?? '')) {
-    // no-op guard; intentional
-  }
+  // Re-seed the drafts whenever we enter edit mode so the form shows the
+  // current values, not whatever was last typed.
+  useEffect(() => {
+    if (editing) {
+      setNameDraft(pactName ?? '')
+      setPurposeDraft(pactPurpose ?? '')
+      setError(null)
+    }
+  }, [editing, pactName, pactPurpose])
 
   const save = async () => {
     setSaving(true)

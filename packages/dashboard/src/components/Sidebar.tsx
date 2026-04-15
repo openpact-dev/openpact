@@ -42,7 +42,7 @@ const PRIMARY: NavLink[] = [
   { href: '/skills', label: 'Skills', hint: 'IV' },
 ]
 
-const NETWORK: NavLink[] = [{ href: '/network', label: 'Peers', hint: 'V' }]
+const NETWORK: NavLink[] = [{ href: '/network', label: 'Network', hint: 'V' }]
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === '/') return currentPath === '/'
@@ -142,14 +142,6 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
         {PRIMARY.map((link) => (
           <NavRow key={link.href} link={link} current={path} />
         ))}
-      </div>
-
-      <div class="mt-5 px-5">
-        <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-          Network
-        </span>
-      </div>
-      <div class="px-2.5">
         {NETWORK.map((link) => (
           <NavRow key={link.href} link={link} current={path} />
         ))}
