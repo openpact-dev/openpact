@@ -32,6 +32,45 @@ test('formatStatus: includes all fields', (t) => {
   t.ok(out.includes('OpenPact'), 'wordmark in header')
 })
 
+test('formatStatus: renders pact name, purpose, display name, and context', (t) => {
+  const out = strip(
+    formatStatus(
+      {
+        pact_id: 'deadbeefcafebabe',
+        pact_name: 'QuiteRight',
+        pact_purpose: 'Co-ordinate QR Agent Outreach',
+        peer_handle: 'anon-krait-7f2d',
+        display_name: 'Henry',
+        role: 'creator',
+        public_key: 'abcdef',
+        peers: 2,
+        entries: 14,
+        is_writer: true,
+        is_indexer: true,
+        synced: true,
+      },
+      {
+        alias: 'quiteright',
+        totalPacts: 3,
+        currentAlias: 'quiteright',
+        apiPort: 7666,
+        dashboardPort: 7667,
+        dataDir: '/tmp/op-solo',
+      },
+    ),
+  )
+  t.ok(out.includes('QuiteRight'), 'pact name shown')
+  t.ok(out.includes('Co-ordinate QR Agent Outreach'), 'purpose shown')
+  t.ok(out.includes('Henry'), 'display name shown')
+  t.ok(out.includes('anon-krait-7f2d'), 'handle shown alongside display name')
+  t.ok(out.includes('quiteright'), 'alias shown')
+  t.ok(out.includes('(current)'), 'marks alias as current when it matches')
+  t.ok(out.includes('3 pacts on this host'), 'total pact count')
+  t.ok(out.includes('/v1/pacts/quiteright/*'), 'REST base path')
+  t.ok(out.includes('http://127.0.0.1:7667'), 'dashboard url')
+  t.ok(out.includes('/tmp/op-solo'), 'data dir')
+})
+
 test('formatStatus: handles uninitialised state', (t) => {
   const out = strip(
     formatStatus({

@@ -3,7 +3,10 @@ import { c, emoji, mark } from './theme'
 
 export interface StatusPayload {
   pact_id: string | null
+  pact_name?: string | null
+  pact_purpose?: string | null
   peer_handle: string | null
+  display_name?: string | null
   role: string | null
   public_key: string | null
   peers: number
@@ -11,6 +14,15 @@ export interface StatusPayload {
   is_writer: boolean
   is_indexer: boolean
   synced: boolean
+}
+
+export interface StatusContext {
+  alias: string
+  totalPacts: number
+  currentAlias: string | null
+  apiPort: number
+  dashboardPort: number
+  dataDir: string
 }
 
 export interface PeerPayload {
@@ -36,21 +48,54 @@ const TYPE_COLOUR: Record<string, (s: string) => string> = {
   message: pc.cyan,
 }
 
-export function formatStatus(s: StatusPayload): string {
+export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
   const yes = c.brand('●')
   const no = c.ash('○')
   const unknown = c.ash('—')
   const synced = s.synced ? c.brand('synced') : c.ember('not synced')
 
-  const lines = [
-    `  ${mark()}`,
-    '',
-    `  ${c.brandBold('Pact')}     ${s.pact_id ? c.bone(short(s.pact_id, 16)) : unknown}`,
-    `  ${c.brandBold('You')}      ${s.peer_handle ?? unknown}  ${c.ash(`(${s.role ?? '?'})`)}`,
-    `  ${c.brandBold('Peers')}    ${s.peers}`,
-    `  ${c.brandBold('Entries')}  ${s.entries}  ${c.ash(synced)}`,
-    `  ${c.brandBold('Writer')}   ${s.is_writer ? yes : no}    ${c.brandBold('Indexer')} ${s.is_indexer ? yes : no}`,
-  ]
+  const pactName = s.pact_name ?? null
+  const pactPurpose = s.pact_purpose ?? null
+  const displayName = s.display_name ?? null
+
+  // Pad to the widest label so every column aligns.
+  const LABEL_WIDTH = 10
+  const row = (label: string, value: string): string =>
+    `  ${c.brandBold(label)}${' '.repeat(Math.max(1, LABEL_WIDTH - label.length))}${value}`
+
+  const aliasLine = ctx
+    ? `${ctx.alias}${ctx.alias === ctx.currentAlias ? c.ash('  (current)') : ''}  ${c.ash(`${ctx.totalPacts} pact${ctx.totalPacts === 1 ? '' : 's'} on this host`)}`
+    : null
+
+  const lines: string[] = [`  ${mark()}`, '']
+
+  if (pactName) lines.push(row('Pact', c.bone(pactName)))
+  if (pactPurpose) lines.push(row('Purpose', c.ash(pactPurpose)))
+  if (aliasLine) lines.push(row('Alias', aliasLine))
+  lines.push(row('ID', s.pact_id ? c.ash(short(s.pact_id, 16)) : unknown))
+  lines.push('')
+
+  const handle = s.peer_handle ?? unknown
+  const you = displayName ? `${c.bone(displayName)}  ${c.ash(`(${handle})`)}` : handle
+  lines.push(row('You', `${you}  ${c.ash(`· ${s.role ?? '?'}`)}`))
+  lines.push(
+    row(
+      'Writer',
+      `${s.is_writer ? yes : no}    ${c.brandBold('Indexer')} ${s.is_indexer ? yes : no}`,
+    ),
+  )
+  lines.push('')
+
+  lines.push(row('Peers', String(s.peers)))
+  lines.push(row('Entries', `${s.entries}  ${c.ash(`· ${synced}`)}`))
+
+  if (ctx) {
+    lines.push('')
+    lines.push(row('REST', c.ash(`http://127.0.0.1:${ctx.apiPort}/v1/pacts/${ctx.alias}/*`)))
+    lines.push(row('Dashboard', c.ash(`http://127.0.0.1:${ctx.dashboardPort}`)))
+    lines.push(row('Data dir', c.ash(ctx.dataDir)))
+  }
+
   return lines.join('\n')
 }
 

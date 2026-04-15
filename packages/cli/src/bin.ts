@@ -99,6 +99,7 @@ export function buildProgram(): Command {
     .description('show status of the current pact')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')
+    .option('--dashboard-port <n>', 'dashboard port for the link line', '7667')
     .action(statusCmd)
 
   program
