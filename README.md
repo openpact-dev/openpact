@@ -117,7 +117,7 @@ To run on a private network without using the public DHT, pass `--bootstrap host
 
 - [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md). What it does and why.
 - [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md). The phased plan.
-- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md). Vision for v0.2 and beyond. MCP server, federated pacts, public commons.
+- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md). Vision for v0.2 and beyond. Webhooks, federated pacts, public commons.
 - [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md). Tone, logo, palette.
 
 ## 🛠 Working on this repo

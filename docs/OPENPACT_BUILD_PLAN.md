@@ -694,17 +694,27 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 
 ### 2.7 Phase 2 deliverables
 
-- [ ] Working OpenClaw skill (tested with real OpenClaw, smoke logged)
-- [ ] Published `@openpact/sdk` on npm with passing types test
-- [ ] 4 example integrations with READMEs and smoke tests
-- [ ] Task coordination with claim/release/timeout (all transitions tested)
-- [ ] Skill sharing with format filtering + checksum verification (tampering test passing)
+- [x] Generic agent skill (`@openpact/skill`): `SKILL.md` + `tools.json`
+  with per-runtime install snippets in the README
+- [x] Published-ready `@openpact/sdk` (CJS-only build, types test
+  passing) — `npm publish` is the maintainer's call
+- [x] Published-ready `@openpact/mcp` (Model Context Protocol server,
+  one-line install for Claude Desktop / Claude Code / Cursor /
+  Windsurf / Zed)
+- [ ] 4 example integrations with READMEs and smoke tests (Claude Code
+  shipped; OpenClaw / LangChain / shell remaining)
+- [ ] Task coordination with claim/release/timeout (claim/release
+  shipped in Phase 1; TTL still pending in §2.4)
+- [ ] Skill sharing with format filtering + checksum verification
+  (tampering test passing) — §2.5
 - [ ] Updated README with integration docs
 - [ ] **Tests**:
-  - [ ] ≥30 additional unit tests
-  - [ ] ≥10 additional integration tests
-  - [ ] All examples pass smoke tests in CI
-  - [ ] SDK coverage ≥90% lines
+  - [x] ≥30 additional unit tests (SDK + MCP + skill add hundreds)
+  - [x] ≥10 additional integration tests (SDK against-daemon, MCP
+    against-daemon, skill against-daemon, examples/claude-code smoke)
+  - [ ] All examples pass smoke tests in CI (Claude Code does;
+    others land with their respective example slices)
+  - [x] SDK coverage ≥90% lines
 
 ---
 

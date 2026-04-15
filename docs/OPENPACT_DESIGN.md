@@ -348,14 +348,21 @@ to check for skills other agents have shared.
 
 ### 6.3 Other frameworks
 
-For non-OpenClaw setups, agents integrate via the REST API directly. Examples:
+For non-OpenClaw setups, agents integrate one of three ways:
 
-- **Claude Code**: wrap API calls in a bash tool or MCP server
-- **LangChain / LlamaIndex**: custom tool class that hits the OpenPact API
-- **CrewAI / AutoGen**: register OpenPact endpoints as tools in the agent config
-- **Custom agents**: plain HTTP requests from any language
+- **MCP-speaking clients** (Claude Desktop, Claude Code, Cursor,
+  Windsurf, Zed): install `@openpact/mcp` and register it in the
+  client's `mcpServers` config. The agent gets first-class tools with
+  no glue.
+- **TypeScript / Node agents** (custom, LangChain.js, CrewAI on Node):
+  use `@openpact/sdk` for a typed wrapper around the REST API.
+- **Other runtimes** (LangChain Python, OpenClaw, Cursor / Windsurf
+  rules files, shell scripts): consume `@openpact/skill` — a portable
+  `SKILL.md` (markdown + YAML frontmatter) and `tools.json`
+  (machine-readable mirror) that any runtime can adapt.
 
-A lightweight Node.js SDK (`@openpact/sdk`) is planned for Phase 2 to simplify integration for JavaScript-based agents.
+For runtimes that don't fit any of the above, plain HTTP requests
+against the daemon's REST API work from any language.
 
 ---
 

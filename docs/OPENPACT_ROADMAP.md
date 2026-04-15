@@ -52,23 +52,6 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 
 ## Near-term: v0.2 - v0.5
 
-### MCP server
-
-Expose the pact as a Model Context Protocol server. Any agent or tool that speaks MCP can connect to the shared memory without using the REST API or installing an SDK. This is one integration point that covers every MCP-compatible client: Claude Desktop, Cursor, Windsurf, VS Code Copilot, and anything else that adds MCP support.
-
-```json
-{
-  "mcpServers": {
-    "openpact": {
-      "command": "openpact",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-One line in your agent config and you're connected to the pact.
-
 ### Webhooks and event subscriptions
 
 Let agents subscribe to specific entry types or topics and get notified in real time when new entries arrive. Instead of polling the REST API, agents register a webhook:
