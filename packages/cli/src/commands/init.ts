@@ -1,9 +1,11 @@
 import fs from 'fs/promises'
+import open from 'open'
 import { Daemon, config as daemonConfig, dataDir as daemonDataDir } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji, banner } from '../lib/theme'
 import { askText } from '../lib/prompt'
 import { suggestPactName, suggestPactPurpose, suggestDisplayName } from '../lib/themes'
+import { startCmd } from './start'
 
 export interface InitOpts {
   force?: boolean
@@ -12,6 +14,13 @@ export interface InitOpts {
   displayName?: string
   /** Commander maps `--no-interactive` to `interactive: false`. */
   interactive?: boolean
+  /** Commander maps `--no-start` to `start: false`. Default: auto-start when interactive. */
+  start?: boolean
+  /** Commander maps `--no-open` to `open: false`. Default: open the browser when auto-started. */
+  open?: boolean
+  /** Optional port overrides forwarded to auto-start. */
+  port?: string | number
+  dashboardPort?: string | number
 }
 
 export async function initCmd(
@@ -65,19 +74,54 @@ export async function initCmd(
     pactPurpose,
     displayName,
   })
-  try {
-    process.stdout.write(banner())
-    console.log(`  ${emoji.brand} ${c.brandBold('A pact has been sealed.')}`)
-    console.log()
-    console.log(`  ${c.brandBold('Pact')}        ${pactName}`)
-    console.log(`  ${c.brandBold('Purpose')}     ${c.ash(pactPurpose)}`)
-    console.log(`  ${c.brandBold('Data dir')}    ${c.ash(dir)}`)
-    console.log(`  ${c.brandBold('Pact key')}    ${c.bone(daemon.pactKey ?? '')}`)
-    console.log(`  ${c.brandBold('Your mark')}   ${displayName} ${c.ash(`(${daemon.peerHandle})`)}`)
-    console.log()
+  const pactKey = daemon.pactKey ?? ''
+  const peerHandle = daemon.peerHandle ?? ''
+  // Stop the init-owned daemon before auto-start tries to spawn a
+  // detached process against the same Corestore.
+  await daemon.stop()
+
+  process.stdout.write(banner())
+  console.log(`  ${emoji.brand} ${c.brandBold('A pact has been sealed.')}`)
+  console.log()
+  console.log(`  ${c.brandBold('Pact')}        ${pactName}`)
+  console.log(`  ${c.brandBold('Purpose')}     ${c.ash(pactPurpose)}`)
+  console.log(`  ${c.brandBold('Data dir')}    ${c.ash(dir)}`)
+  console.log(`  ${c.brandBold('Pact key')}    ${c.bone(pactKey)}`)
+  console.log(`  ${c.brandBold('Your mark')}   ${displayName} ${c.ash(`(${peerHandle})`)}`)
+  console.log()
+
+  // Auto-start: on when stdin is a TTY (interactive run), off otherwise
+  // (CI / piped). `--no-start` always disables regardless. Commander
+  // maps `--no-start` to `start: false` and defaults to `true`, so we
+  // only look for the explicit `false` here — the TTY check decides
+  // the default.
+  const shouldAutoStart = opts.start !== false && !!process.stdin.isTTY
+  if (!shouldAutoStart) {
     console.log(c.ash('  next:  openpact start'))
     console.log(c.ash('         openpact invite              (share the pact key)'))
-  } finally {
-    await daemon.stop()
+    return
+  }
+
+  await startCmd(
+    {
+      port: opts.port,
+      dashboardPort: opts.dashboardPort,
+    },
+    cmd,
+  )
+
+  const shouldOpen = opts.open !== false
+  if (shouldOpen) {
+    const dashPort = Number(opts.dashboardPort ?? 7667)
+    const url = `http://localhost:${dashPort}`
+    try {
+      await open(url)
+      console.log()
+      console.log(c.ash(`  opened ${url} in your default browser`))
+    } catch {
+      // `open` can fail in headless environments (no DISPLAY, WSL
+      // without wslview, etc.). Fall through silently — the URL
+      // is already in the banner above.
+    }
   }
 }

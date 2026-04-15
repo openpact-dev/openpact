@@ -67,3 +67,25 @@ test('--name over 64 chars rejected by config validation', async (t) => {
   t.not(res.exitCode, 0)
   t.ok(res.stderr.includes('pactName') || res.stderr.includes('64'))
 })
+
+test('init without TTY does not auto-start (CI-safe default)', async (t) => {
+  // execa pipes stdin, so process.stdin.isTTY is undefined inside
+  // the child. Auto-start must be skipped so scripted usage never
+  // accidentally binds a port it didn't ask for.
+  const home = await tmpHome(t)
+  const res = await runWithDir(home, ['init', '--no-interactive'])
+  t.is(res.exitCode, 0)
+  t.ok(res.stdout.includes('pact has been sealed'))
+  // The "next:" hint appears when auto-start is skipped.
+  t.ok(res.stdout.includes('next:  openpact start'))
+  // And no daemon PID file exists (proves no detached child spawned).
+  const fs = await import('fs/promises')
+  const path = await import('path')
+  let stat: any = null
+  try {
+    stat = await fs.stat(path.join(home, 'pid'))
+  } catch {
+    /* expected: no pid file */
+  }
+  t.absent(stat, 'no pid file — no detached daemon')
+})

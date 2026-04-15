@@ -30,12 +30,16 @@ export function buildProgram(): Command {
 
   program
     .command('init')
-    .description('seal a new pact')
+    .description('seal a new pact; auto-starts the daemon when run from a TTY')
     .option('--force', 'break the existing pact and seal a fresh one')
     .option('--name <str>', 'pact name (e.g. "The Obsidian Accord")')
     .option('--purpose <str>', 'one-line purpose statement for the pact')
     .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
+    .option('--no-start', "don't auto-start the daemon after init")
+    .option('--no-open', "don't open the dashboard in the default browser")
+    .option('--port <n>', 'REST API port (forwarded to auto-start)', '7666')
+    .option('--dashboard-port <n>', 'dashboard port (forwarded to auto-start)', '7667')
     .action(initCmd)
 
   program
