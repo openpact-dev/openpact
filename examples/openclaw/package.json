@@ -1,0 +1,17 @@
+{
+  "name": "examples-openclaw",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Example OpenClaw workspace with the @openpact/skill installed",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*",
+    "@openpact/skill": "*"
+  }
+}

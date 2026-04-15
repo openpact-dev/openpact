@@ -46,6 +46,13 @@ jobs:
         with:
           node-version: '22.x'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python deps for the langchain example smoke test
+        run: pip install -r examples/langchain/requirements.txt
       - run: npm ci
       - name: Run e2e tests
         run: npm run test:e2e
+      - name: Run example smoke tests
+        run: npm run test:examples

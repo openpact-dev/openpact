@@ -1,0 +1,16 @@
+{
+  "name": "examples-shell",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shell scripts demonstrating OpenPact reads + writes via curl",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*"
+  }
+}

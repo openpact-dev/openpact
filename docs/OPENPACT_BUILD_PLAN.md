@@ -66,7 +66,7 @@ test('apply rejects unknown entry type', async (t) => {
 | `hyperswarm/testnet` | In-memory swarm for integration tests (no real DHT) |
 | `fastify.inject()` | In-process HTTP request injection for API tests (no real port bind) |
 | `execa` | CLI invocation in subprocess for end-to-end tests |
-| `playwright` | Desktop UI tests (Phase 3 only) |
+| `playwright` | Dashboard UI tests (Phase 3 only) |
 | `eslint` + `prettier` | Lint + format (run in CI, fail on diff) |
 
 ### Test layout
@@ -98,7 +98,7 @@ packages/
 | **Unit** | A single module, no I/O. | `apply()` accepts/rejects entries; entry-ID encoding; peer-handle derivation. |
 | **Integration** | Multi-component within one process, real Corestore + testnet swarm. | Two daemons sync entries; concurrent task claims resolve via merge order; writer added by indexer propagates. |
 | **End-to-end** | Subprocess CLI, real ports, real fastify, isolated `~/.openpact/` dirs. | `openpact init` + `start` + curl POST + `openpact log` on a second instance. |
-| **UI** (Phase 3) | Playwright against the Pear desktop window. | Dashboard renders peer count; clicking task card opens detail. |
+| **UI** (Phase 3) | Playwright against the web dashboard served on `:7667`. | Dashboard renders peer count; clicking task card opens detail. |
 
 ### Fixtures
 
@@ -150,7 +150,7 @@ Enforced in CI via `c8 --check-coverage`:
 | `daemon` | 80% | 75% |
 | `cli` | 70% | 65% |
 | `sdk` | 90% | 85% |
-| `desktop` (Phase 3) | 50% | 40% |
+| `dashboard` (Phase 3, server) | 80% | 75% |
 
 The `apply` function has a hard floor of **95% lines / 90% branches** — it's the trust-critical path.
 
@@ -572,6 +572,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   tsconfig.cjs.json` pass. ESM was scoped out — the surface is small and
   modern Node consumers can `require()` fine. Daemon and CLI follow the
   same pattern in Phase 4.
+- [ ] **§2.2a — ESM build (precursor to Phase 3).** Add `dist/esm/` alongside `dist/cjs/` via a second `tsc -p tsconfig.esm.json` pass. Wire a dual-condition `"exports"` map in `package.json` (`{"import": "./dist/esm/index.js", "require": "./dist/cjs/index.js", "types": "./dist/types/index.d.ts"}`). Keep `main` pointing at CJS for older tools. This is a hard prerequisite for Phase 3: the dashboard imports the SDK into a browser bundle, and shipping dual output now avoids a later migration. `publint` in CI verifies both conditions resolve to real files.
 - [x] Publish-ready as `@openpact/sdk` with `main`, `types`, and `exports`
   set. (Not yet `npm publish`d — that's a manual step the maintainer
   takes when ready.)
@@ -597,27 +598,47 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 - [x] **Coverage gate**: sdk ≥90% lines / 85% branches (achieved; global
   c8 gate also still green at 93% lines / 82% branches)
 
-### 2.3 Example integrations
+### 2.3 Example integrations ✅
 
-- [ ] `examples/openclaw/`: Full OpenClaw workspace with the skill installed, README with setup steps
-- [ ] `examples/langchain/`: Python script showing a LangChain tool that calls the REST API
+- [x] `examples/openclaw/`: full OpenClaw workspace with the
+  `@openpact/skill` `SKILL.md` installed; README with copy-paste
+  install for the user's own workspace
+- [x] `examples/langchain/`: Python `openpact_tools.py` loader that
+  reads the canonical `tools.json` and codegens callable tools (plus
+  optional LangChain `StructuredTool` wrappers via lazy import); a
+  tiny `example.py` demo; pytest exercising the loader
 - [x] `examples/claude-code/`: paste-into-project `CLAUDE.md` snippet
-  using plain curl + jq (no SDK runtime dep — Claude Code's Bash tool
-  hits the daemon directly), plus a `README.md` and a `smoke.test.ts`
-  that runs every documented recipe against a real in-process daemon
-- [ ] `examples/shell/`: Plain bash scripts demonstrating read/write via curl
+  using plain curl + jq (no SDK runtime dep)
+- [x] `examples/shell/`: plain bash scripts (`recall.sh`, `record.sh`,
+  `tasks.sh`, `send.sh`) demonstrating read/write via curl + jq
 
 #### 2.3 Tests
 
-- [ ] **Smoke** (`examples/*/test/`):
-  - [x] `examples/claude-code/test/smoke.test.ts` — boots a tmp daemon
-    on an ephemeral port, runs each curl recipe from `CLAUDE.md` (in
-    argv form, no shell), and asserts state changed correctly. Also
-    pipes one response through real `jq` to catch shape drift.
-  - [ ] Each remaining example has a `smoke.test.ts` (or `smoke.sh`) that boots a tmp daemon, runs the example, asserts the expected entry appears in the pact
-  - [ ] Python example: a tiny pytest that runs the LangChain script against a tmp daemon
-  - [x] Examples are wired into CI via the root `npm run test:examples`
-    script (and rolled into `test:all` so coverage covers them)
+- [x] **Smoke** (`examples/*/test/`):
+  - [x] `examples/claude-code/test/smoke.test.ts` — runs each curl
+    recipe against a tmp daemon
+  - [x] `examples/shell/test/smoke.test.ts` — runs each `.sh` script
+    against a tmp daemon
+  - [x] `examples/openclaw/test/smoke.test.ts` — asserts byte-identity
+    between the workspace `SKILL.md` and the canonical
+    `@openpact/skill` (drift guard); walks every tool in the
+    canonical `tools.json` against a real daemon
+  - [x] `examples/langchain/test/smoke.test.ts` — boots a tmp daemon,
+    sets `OPENPACT_URL`, shells out to `pytest tests/example_test.py`;
+    skips gracefully when Python or `pytest`/`requests` are unavailable
+- [x] **Python example tests** (`examples/langchain/tests/example_test.py`)
+  — pytest covering ping, record + recall round-trip, full task
+  lifecycle, lost-claim race raising `OpenPactError(TASK_NOT_OPEN)`,
+  skill checksum (correct accepted; mismatch raises
+  `OpenPactError(SKILL_CHECKSUM_MISMATCH)`)
+- [x] CI gains a Python step (gated to the ubuntu e2e job) that
+  installs `examples/langchain/requirements.txt` so the Python smoke
+  test runs for real on the matrix slot
+- [x] Examples wired into CI via the root `npm run test:examples`
+  script (rolled into `test:all` so coverage covers them)
+- [ ] **Manual** (recorded in PR template): a real OpenClaw or
+  LangChain agent reads from and writes to the pact during normal
+  operation
 
 ### 2.4 Task coordination logic ✅
 
@@ -759,101 +780,382 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 
 ---
 
-## Phase 3: Desktop app
+## Phase 3: Web dashboard (revised)
 
-**Goal:** A visual interface for browsing the pact, monitoring the network, and managing permissions. Built as a Pear desktop app, with Playwright UI tests.
+**Goal:** A visual interface for browsing the pact, monitoring the network, and managing permissions. Served by the daemon on localhost. No separate app to install.
 
 **Duration:** ~2 weeks
 
-### 3.1 App setup
+**Replaces:** The original Phase 3 spec called for a Pear desktop app using `pear-electron`. That added a runtime dependency, a separate install, and a build pipeline that doesn't exist yet. The web dashboard achieves the same screens with zero additional dependencies for the user. The daemon they already run serves the UI.
 
-- [ ] Create `packages/desktop/` as a Pear desktop project
-- [ ] Use `pear-electron` for the UI shell
-- [ ] Set up the build pipeline (Pear stage, release)
-- [ ] Connect to the local daemon's REST API on startup
-- [ ] Handle the case where the daemon isn't running (prompt to start it)
+---
 
-#### 3.1 Tests
+### 3.1 Architecture
 
-- [ ] **Unit** (`packages/desktop/test/unit/`):
-  - [ ] `api-client.test.ts` — same SDK contract; pure functions for transforming API responses into view-models
-  - [ ] `daemon-detect.test.ts` — daemon-not-running state surfaces the prompt
-- [ ] **UI bootstrap** (`packages/desktop/test/ui/`):
-  - [ ] `playwright.config.ts` launches the Pear app via `pear-electron`'s test harness against a stub daemon
-  - [ ] `boot.spec.ts` — app window opens, dashboard loads, no console errors
+The dashboard is a static frontend (HTML/CSS/JS) served by Fastify on a second port. It talks to the existing REST API on :7666.
 
-### 3.2 Dashboard screen
+```
+openpact daemon process
+  ├── REST API        localhost:7666   (agents, SDK, MCP, curl)
+  └── Web dashboard   localhost:7667   (browser)
+        ├── GET /            → serves index.html (SPA entry point)
+        ├── GET /assets/*    → serves JS/CSS/static files
+        └── GET /api/*       → proxies to localhost:7666/v1/*
+                               (avoids CORS between two ports)
+```
 
-- [ ] Metric cards (peers, knowledge, tasks, skills)
-- [ ] Recent activity feed (last 20 entries)
-- [ ] Peer list with status badges
-- [ ] Open tasks summary
-- [ ] Auto-refresh every 5 seconds
+The `/api/*` proxy is the cleanest approach. The frontend makes all requests to the same origin (`localhost:7667/api/knowledge?topic=sales`) and Fastify forwards them to the daemon API on :7666. No CORS headers, no cross-origin complexity, no separate fetch configuration.
 
-#### 3.2 Tests
+An alternative: mount the dashboard routes directly on the :7666 Fastify instance under a `/dashboard` prefix. This avoids the second port entirely. The tradeoff is mixing agent API traffic with browser traffic on one server. For v0.1, separate ports are cleaner. The dashboard port can be disabled with `--no-dashboard` for headless/production seed nodes.
 
-- [ ] `dashboard.spec.ts` — metric cards reflect stub daemon state; activity feed shows the last 20 entries in correct order; refresh interval observed (use Playwright's clock control)
+#### Frontend tech
 
-### 3.3 Knowledge browser
+Vite + Preact. Vite gives you fast HMR in development, proper JSX, TypeScript support, and a single `vite build` that outputs a small bundle of static files. Preact keeps the runtime tiny (3KB) while giving you a real component model with hooks, context, and routing.
 
-- [ ] Searchable list, topic chips, recency + confidence filters
-- [ ] Entry cards with click-through to entry trace
+During development, run `vite dev` with a proxy to :7666 for the API. This gives you instant hot-reload on every file change. For production, `vite build` outputs static HTML/JS/CSS into `packages/dashboard/dist/`. The daemon ships this `dist/` folder inside the `@openpact/daemon` package (or as a separate `@openpact/dashboard` package that the daemon optionally loads). When the daemon starts, Fastify serves the dist folder with `@fastify/static`.
 
-#### 3.3 Tests
+Dependencies (runtime):
 
-- [ ] `knowledge.spec.ts` — search input filters list; topic chips combine; confidence slider filters; clicking a card navigates to trace view
+- `preact` (runtime, 3KB gzipped)
+- `preact-router` (client-side routing, tiny)
+- `@openpact/sdk` (typed API client — see §3.1.1)
 
-### 3.4 Task board
+Dev-time:
 
-- [ ] Kanban columns: Open, Claimed, In Progress, Complete
-- [ ] Task cards with click-through to detail
+- `vite` (dev server + bundler)
+- `@preact/preset-vite` (JSX transform, Preact-specific optimisations)
 
-#### 3.4 Tests
+No Tailwind. The brand palette from `OPENPACT_BRAND.md` is a small set of CSS custom properties. A single `style.css` with the brand tokens and component styles is cleaner for 6 screens than a utility framework.
 
-- [ ] `tasks.spec.ts` — tasks land in the correct column based on status; detail view shows full claim history
+#### 3.1.1 API access: use `@openpact/sdk`
 
-### 3.5 Skill registry
+The dashboard uses `@openpact/sdk` directly instead of writing a parallel `api.ts` in the dashboard package. The SDK is already a typed client for every endpoint the daemon exposes. Duplicating that surface would be a worse copy that drifts the moment a new endpoint lands.
 
-- [ ] Grid of skill cards
-- [ ] "New from network" and "Installed" sections
-- [ ] Install + Inspect buttons
+```tsx
+import { OpenPact } from '@openpact/sdk'
 
-#### 3.5 Tests
+const pact = new OpenPact({ baseUrl: '/api' })
 
-- [ ] `skills.spec.ts` — skills appear in correct section; Install button writes to configurable dir (verify via filesystem); Inspect opens code viewer with verified-checksum content
-- [ ] `skill-install-safety.spec.ts` — install never auto-executes the skill (regression guard)
+// In a hook
+const knowledge = await pact.knowledge.list({ topic: 'sales' })
+const tasks = await pact.tasks.list({ status: 'open' })
+```
 
-### 3.6 Network view
+The `baseUrl: '/api'` is the key bit. The SDK normally points at `http://127.0.0.1:7666`. In the dashboard we point it at `/api`, which Vite (in dev) and Fastify (in production) both proxy to the daemon. The SDK doesn't know or care that it's running in a browser.
 
-- [ ] Peer list with role, entry count, status, last seen
-- [ ] Invite section with copyable join key
-- [ ] Admin controls (creator only): promote writer to indexer, remove writer
+**Precursor: SDK must ship ESM before Phase 3 starts.** See §2.2a. Vite *would* pre-bundle the CJS-only build via esbuild, but relying on that means every dashboard dev server and every `vite build` carries the CJS→ESM conversion cost, and the SDK stays second-class for any ESM-only consumer (Deno, modern bundlers, ESM-only projects). Shipping a proper dual-condition `"exports"` map in `@openpact/sdk` first is a small change to `tsconfig` and `package.json` and removes a class of "it works in Vite but breaks in $other" bugs. Phase 3 does not start until §2.2a is green.
 
-#### 3.6 Tests
+With the ESM build in place, you import normally and Vite resolves to `dist/esm/index.js` directly:
 
-- [ ] `network.spec.ts` — peer list reflects stub state; admin controls hidden for non-creators; promote button calls correct API endpoint
+```tsx
+import { OpenPact } from '@openpact/sdk'  // resolves via "exports.import"
+```
 
-### 3.7 Entry trace
+Browsers have native `fetch`, so the custom `fetch` option on the SDK stays unused in this context.
 
-- [ ] Hypercore provenance for any entry
-- [ ] Knowledge: refs (what it built on)
-- [ ] Task: full lifecycle
+This also means the SDK gets battle-tested by the dashboard itself. Every screen exercises the client code; any SDK bug shows up immediately as a broken dashboard.
 
-#### 3.7 Tests
+#### Real-time updates
 
-- [ ] `trace.spec.ts` — given a known entry, all provenance fields render; refs link to other entries; task lifecycle renders all events in order
+Server-Sent Events (SSE), not polling.
 
-### 3.8 Phase 3 deliverables
+The daemon already emits events internally (`entry-applied`, `peer-add`, `peer-remove`, `update`). Add a new endpoint:
 
-- [ ] Working Pear desktop app
-- [ ] All 6 screens implemented
-- [ ] Installable via `pear://` link
-- [ ] README with screenshots
+```
+GET /v1/events   → SSE stream
+```
+
+The dashboard opens a single EventSource connection. The daemon pushes events as they happen:
+
+```
+event: entry
+data: {"type":"knowledge","id":"a7f2-543","topic":"sales","timestamp":"..."}
+
+event: peer-add
+data: {"remoteKey":"3e91..."}
+
+event: peer-remove
+data: {"remoteKey":"3e91..."}
+```
+
+Fallback: if SSE proves tricky with Fastify (it shouldn't, `@fastify/sse` or raw response streaming works), fall back to polling `/v1/status` every 3 seconds. The SSE approach is better because the dashboard updates the instant something happens, not 3 seconds later.
+
+---
+
+### 3.2 Package structure
+
+```
+packages/dashboard/
+  src/
+    components/
+      MetricCard.tsx
+      EntryCard.tsx
+      TaskCard.tsx
+      SkillCard.tsx
+      PeerRow.tsx
+      ActivityFeed.tsx
+      TopicChips.tsx
+      ConfirmDialog.tsx
+    pages/
+      Dashboard.tsx
+      Knowledge.tsx
+      Tasks.tsx
+      Skills.tsx
+      Network.tsx
+      Trace.tsx
+    hooks/
+      usePact.ts         # exposes the shared OpenPact SDK client via context
+      useQuery.ts        # thin wrapper: run an SDK call, return { data, error, loading }
+      useSse.ts          # EventSource hook, auto-reconnect
+    lib/
+      client.ts          # `new OpenPact({ baseUrl: '/api' })` singleton
+      format.ts          # relative time, peer handle display, etc.
+    app.tsx              # root component, router, layout shell
+    index.tsx            # Preact render entry
+    index.html           # Vite entry HTML
+    style.css            # brand tokens + global styles
+  server/
+    index.ts             # Fastify: static file serving + API proxy
+    sse.ts               # SSE endpoint wired to daemon events
+  dist/                  # vite build output (gitignored, shipped in npm tarball)
+  vite.config.ts
+  tsconfig.json
+  test/
+    unit/
+      api-proxy.test.ts
+      sse.test.ts
+    ui/
+      playwright.config.ts
+      dashboard.spec.ts
+      knowledge.spec.ts
+      tasks.spec.ts
+      skills.spec.ts
+      network.spec.ts
+      trace.spec.ts
+  package.json
+```
+
+The `server/` directory holds the Fastify code that runs inside the daemon process. The `src/` directory is the Vite-managed frontend. They're separate concerns: `server/` is Node, `src/` is browser.
+
+Scripts in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "brittle test/unit/**/*.test.ts",
+    "test:ui": "playwright test"
+  }
+}
+```
+
+`npm run dev` starts Vite's dev server with HMR and a proxy to :7666. Use this when iterating on the UI. In production (and when launched by `openpact start`), the daemon serves the pre-built `dist/` folder directly.
+
+The dashboard package depends on `@openpact/daemon` (for event types and to start a test daemon in Playwright tests). It exports a `startDashboard(daemon, port)` function from `server/index.ts` that the CLI calls when launching. The `dist/` folder (Vite build output) is included in the npm tarball via the `files` field in package.json, so users never need to run a build.
+
+#### CLI integration
+
+The `openpact start` command already starts the daemon. Add dashboard startup to the same command:
+
+```
+$ openpact start
+
+  Daemon awakened on localhost:7666
+  Dashboard at http://localhost:7667
+  Listening for peers in the dark...
+```
+
+With flags:
+
+```
+openpact start                        # daemon + dashboard
+openpact start --no-dashboard         # daemon only (for seed nodes, CI)
+openpact start --dashboard-port 8080  # custom dashboard port
+```
+
+Also add a convenience command:
+
+```
+openpact dashboard                    # opens localhost:7667 in default browser
+```
+
+Uses `open` (the npm package) or `xdg-open` / `open` system command to launch the browser.
+
+#### Vite config
+
+```ts
+// packages/dashboard/vite.config.ts
+import { defineConfig } from 'vite'
+import preact from '@preact/preset-vite'
+
+export default defineConfig({
+  plugins: [preact()],
+  root: 'src',
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
+  },
+  server: {
+    port: 7667,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:7666',
+        rewrite: (path) => path.replace(/^\/api/, '/v1'),
+      },
+    },
+  },
+})
+```
+
+In dev mode (`npm run dev`), Vite handles the proxy. In production, the Fastify server in `server/index.ts` does the same proxying. Same `/api/*` -> `/v1/*` rewrite in both cases, so the frontend code doesn't change between environments.
+
+#### Development workflow
+
+Two terminals:
+
+```bash
+# Terminal 1: start the daemon
+openpact start --no-dashboard
+
+# Terminal 2: start Vite dev server with HMR
+cd packages/dashboard
+npm run dev
+# → http://localhost:7667
+```
+
+Edit a component, save, see the change instantly. Vite's proxy forwards API calls to the running daemon. When you're done, `npm run build` and the output lands in `dist/` ready for the daemon to serve.
+
+---
+
+### 3.3 Screens
+
+All screens follow the existing HTML mockups in `docs/01-dashboard.html`, `docs/02-knowledge-browser.html`, `docs/03-skill-registry.html`. The brand palette from `docs/OPENPACT_BRAND.md` applies. Dark theme (abyss background, red accents).
+
+#### 3.3.1 Dashboard (route: `/`)
+
+- Metric cards: peers (online/total), knowledge count (+delta this week), task count (open/in-progress), skill count (new from network)
+- Recent activity feed: last 20 entries across all types, colour-coded dots by type, relative timestamps ("2m ago"), peer handle attribution
+- Peer list sidebar: avatar with initials, name, role badge, online/offline status
+- Open tasks summary: title, status badge, assigned agent, age
+
+Data source: `GET /api/status` for metrics, `GET /api/knowledge?limit=20` + `GET /api/tasks` + `GET /api/messages?limit=20` merged and sorted for the feed. SSE keeps it live.
+
+#### 3.3.2 Knowledge browser (route: `/knowledge`)
+
+- Search input (filters by content substring, debounced 300ms)
+- Topic filter chips (derived from distinct topics in the data)
+- Confidence threshold slider
+- Recency filter (today, this week, this month, all time)
+- Entry cards: topic dot, topic label, content, source peer, confidence bar, entry ID, relative timestamp
+- Click-through to entry trace view
+
+Data source: `GET /api/knowledge?topic=X&limit=50`. Client-side filtering for search, confidence, and recency (the dataset per pact is small enough that fetching all and filtering in the browser is fine for v0.1). If the pact grows past ~1000 knowledge entries, add server-side search later.
+
+#### 3.3.3 Task board (route: `/tasks`)
+
+- Kanban columns: Open, Claimed, Complete
+- Cards show: title, status badge, assigned peer (if claimed/complete), time since creation or completion
+- Click-through to task detail showing full lifecycle (created, claimed by X at T, completed by X at T with result)
+
+Data source: `GET /api/tasks` returns all tasks. Client groups by status. SSE pushes task state changes in real time.
+
+No drag-and-drop for v0.1. Tasks are managed by agents through the API, not by humans dragging cards. The dashboard is for visibility, not control. (Exception: the admin controls in the network view, which are human-initiated.)
+
+#### 3.3.4 Skill registry (route: `/skills`)
+
+- Two sections: "New from network" (skills not yet installed locally) and "Installed"
+- Skill cards: name, version pill, description, format badge (openclaw/langchain/generic), tags, source peer, age
+- Inspect button: opens a modal/panel showing the full skill content in a code viewer (pre-formatted, read-only)
+- Install button: calls a new endpoint `POST /api/skills/:id/install` that copies the skill content to a configurable local directory. Requires user confirmation (the button says "Install" and a confirmation dialog appears). Skills are never auto-installed.
+
+Data source: `GET /api/skills` for all shared skills. Local install state tracked by the daemon (a simple JSON file listing installed skill IDs and their local paths).
+
+#### 3.3.5 Network view (route: `/network`)
+
+- Peer list table: handle, role badge, entry count, online/offline, last seen timestamp
+- Invite section: displays the pact join key with a "Copy" button
+- Admin controls (visible to creator only):
+  - Promote writer to indexer: button per peer row, calls `POST /api/admin/promote` (wraps the addWriter admin entry with indexer=true)
+  - Remove writer: button per peer row, calls `POST /api/admin/remove` (wraps removeWriter admin entry). Confirmation dialog required.
+
+Data source: `GET /api/peers` for the list. `GET /api/status` for the join key. SSE for online/offline transitions.
+
+#### 3.3.6 Entry trace (route: `/trace/:id`)
+
+- For any entry: peer handle, core ID, sequence number, timestamp, entry type, full payload
+- If the entry has `refs`: list each referenced entry with a clickable link to its own trace
+- For task entries: show the full lifecycle as a vertical timeline (created, claimed, released, re-claimed, completed)
+- For knowledge entries: show which other entries reference this one ("referenced by") in addition to what it references ("builds on")
+
+Data source: `GET /api/entries/:id` (new endpoint) returns the full entry with resolved refs. For the "referenced by" reverse lookup, the daemon indexes incoming refs in the Hyperbee view (key: `ref/<target_id>/<source_id>`).
+
+---
+
+### 3.4 New daemon endpoints
+
+The dashboard needs a few endpoints that don't exist yet:
+
+```
+GET  /v1/entries/:id                # Full entry by ID with resolved refs
+GET  /v1/entries/:id/referenced-by  # Entries that reference this one
+GET  /v1/events                     # SSE stream of real-time events
+POST /v1/skills/:id/install         # Install a skill to local directory
+GET  /v1/skills/installed           # List locally installed skills
+POST /v1/admin/promote              # Promote writer to indexer (creator only)
+POST /v1/admin/remove               # Remove a writer (creator only)
+```
+
+The `/v1/events` SSE endpoint is the most significant addition. The admin endpoints are thin wrappers around the existing `addWriter` and `removeWriter` methods with role checking.
+
+---
+
+### 3.5 Tests
+
+#### Unit tests (`packages/dashboard/test/unit/`)
+
+- [ ] `api-proxy.test.ts`: proxy routes forward requests to :7666 correctly; handles :7666 being down (returns 502); preserves query params and request bodies
+- [ ] `sse.test.ts`: SSE endpoint emits events when daemon emits them; client reconnection works (EventSource auto-reconnects); events have correct format (event type + JSON data)
+- [ ] `entries-endpoint.test.ts`: `/v1/entries/:id` returns full entry; 404 for missing ID; refs resolved to entry summaries; referenced-by reverse lookup works
+- [ ] `admin-endpoints.test.ts`: promote calls addWriter with indexer=true; remove calls removeWriter; non-creator gets 403; confirmation required (request must include `confirm: true`)
+- [ ] `skill-install.test.ts`: install writes to configurable directory; checksum verified before install; never auto-executes; installed list tracks state
+
+#### UI tests (`packages/dashboard/test/ui/`)
+
+Playwright against a real daemon (started in the test fixture, using a testnet DHT, seeded with fixture data).
+
+- [ ] `dashboard.spec.ts`: metric cards show correct counts; activity feed shows entries in time order; feed updates within 2 seconds of a new entry (SSE test); peer list shows correct online/offline state
+- [ ] `knowledge.spec.ts`: search input filters entries; topic chips filter; confidence slider filters; clicking a card navigates to `/trace/:id`
+- [ ] `tasks.spec.ts`: tasks appear in correct kanban column; detail view shows lifecycle timeline
+- [ ] `skills.spec.ts`: skills in correct section (new vs installed); install button triggers confirmation dialog; inspect shows skill content
+- [ ] `network.spec.ts`: peer list reflects daemon state; admin controls hidden for non-creators; copy invite button puts key in clipboard; promote button visible for creator
+- [ ] `trace.spec.ts`: entry provenance renders all fields; refs link to other trace pages; task lifecycle timeline renders all events
+
+#### Coverage
+
+- [ ] Dashboard server (proxy + SSE + new endpoints): 80% lines, 75% branches
+- [ ] Frontend hooks and lib (usePact, useQuery, useSse, client.ts, format.ts): 80% lines via Vitest (Vite's built-in test runner, runs in jsdom). The SDK itself is tested in `@openpact/sdk`; the dashboard doesn't re-cover it.
+- [ ] UI components: not line-gated. Playwright covers user-facing interaction. Don't unit-test individual Preact components unless they contain non-trivial logic beyond rendering props.
+
+---
+
+### 3.6 Phase 3 deliverables
+
+- [ ] **Precursor §2.2a shipped**: `@openpact/sdk` emits dual CJS + ESM with a `"exports"` map, verified by `publint` in CI.
+- [ ] Web dashboard served on localhost:7667, started automatically with `openpact start`
+- [ ] Vite + Preact frontend with 6 screens matching the brand
+- [ ] SSE real-time updates (no polling)
+- [ ] `--no-dashboard` flag for headless deployments
+- [ ] `openpact dashboard` command to open in browser
+- [ ] `vite build` output ships inside the package (pre-built, no user-side build step)
+- [ ] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install, admin promote/remove)
+- [ ] README updated with dashboard screenshots
 - [ ] **Tests**:
-  - [ ] ≥10 Playwright UI tests covering all 6 screens
-  - [ ] ≥5 unit tests for view-model transformers
-  - [ ] Desktop coverage ≥50% lines
-  - [ ] UI tests run in CI on `ubuntu-latest` (xvfb if needed)
+  - [ ] 6+ Playwright UI tests covering all screens
+  - [ ] 5+ unit tests for proxy, SSE, and new endpoints (brittle)
+  - [ ] Frontend hooks/lib tests via Vitest
+  - [ ] Dashboard server coverage at 80% lines
 
 ---
 
@@ -954,7 +1256,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 | `c8` | Coverage | V8-native, no Babel; instruments `.ts` via tsx |
 | `execa` | Subprocess for e2e CLI tests | Ergonomic API, good defaults |
 | `fast-check` | Property-based testing | Best-in-class for JS/TS |
-| `playwright` | Desktop UI tests (Phase 3) | Stable Electron support |
+| `playwright` | Dashboard UI tests (Phase 3) | Cross-browser, real daemon fixture |
 
 ### Data directory
 
@@ -1030,10 +1332,10 @@ The following must all be true before tagging v0.1.0:
 - [ ] An OpenClaw agent can use the skill file to interact with the pact without any custom code
 - [ ] The CLI provides a complete setup and monitoring experience
 - [ ] The REST API is documented with request/response examples
-- [ ] The desktop app shows all six screens and updates in near-real-time
+- [ ] The web dashboard shows all six screens and updates in near-real-time
 - [ ] A seed node can be deployed in under 5 minutes
 - [ ] The README explains what OpenPact is, why it exists, and how to get started in under 2 minutes of reading
 - [ ] The repo has an MIT licence, contributing guide, and code of conduct
 - [ ] **Full test suite is green**: unit, integration, e2e, UI, security, chaos, examples
-- [ ] **Coverage gates met** across all packages (daemon 80/75, cli 70/65, sdk 90/85, desktop 50/40, `apply` 95/90)
+- [ ] **Coverage gates met** across all packages (daemon 80/75, cli 70/65, sdk 90/85, dashboard server 80/75, `apply` 95/90)
 - [ ] **CI matrix passes** on Node 20 + 22 × Ubuntu + macOS for every commit on `main`

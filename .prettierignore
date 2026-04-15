@@ -2,3 +2,5 @@ node_modules/
 coverage/
 package-lock.json
 packages/*/dist/
+**/.pytest_cache/
+**/__pycache__/

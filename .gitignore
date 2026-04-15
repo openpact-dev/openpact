@@ -26,3 +26,7 @@ Thumbs.db
 
 # SDK build output
 packages/*/dist/
+
+# Python
+**/.pytest_cache/
+**/__pycache__/
