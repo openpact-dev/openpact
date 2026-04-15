@@ -754,7 +754,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 - [x] **Coverage gate**: global c8 gate still green (95% lines /
   82% branches); MCP package surface is small and uniform
 
-### 2.7 Phase 2 deliverables
+### 2.7 Phase 2 deliverables ✅
 
 - [x] Generic agent skill (`@openpact/skill`): `SKILL.md` + `tools.json`
   with per-runtime install snippets in the README
@@ -763,13 +763,15 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 - [x] Published-ready `@openpact/mcp` (Model Context Protocol server,
   one-line install for Claude Desktop / Claude Code / Cursor /
   Windsurf / Zed)
-- [ ] 4 example integrations with READMEs and smoke tests (Claude Code
-  shipped; OpenClaw / LangChain / shell remaining)
-- [ ] Task coordination with claim/release/timeout (claim/release
-  shipped in Phase 1; TTL still pending in §2.4)
-- [ ] Skill sharing with format filtering + checksum verification
+- [x] 4 example integrations with READMEs and smoke tests (Claude Code,
+  OpenClaw, LangChain, shell)
+- [x] Task coordination with claim/release/TTL (state machine + TTL
+  fully shipped in §2.4; 3-daemon concurrent-claim race + offline-
+  claimer recovery covered)
+- [x] Skill sharing with format filtering + checksum verification
   (tampering test passing) — §2.5
-- [ ] Updated README with integration docs
+- [x] Updated README + CLAUDE.md with integration docs (mcp / sdk /
+  skill table; per-section status reflects what's actually shipped)
 - [ ] **Tests**:
   - [x] ≥30 additional unit tests (SDK + MCP + skill add hundreds)
   - [x] ≥10 additional integration tests (SDK against-daemon, MCP
