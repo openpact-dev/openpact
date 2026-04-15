@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
-import { listByType } from '../views'
+import { listByType, BadCursorError } from '../views'
+import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
+import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
 const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{4}$'
 
@@ -18,10 +20,9 @@ const messagePayloadSchema = {
   additionalProperties: true,
 }
 
-interface ListQuery {
+interface ListQuery extends ListPageQuery {
   since?: string
   to?: string
-  limit?: number
 }
 
 export default async function messagesRoute(
@@ -35,24 +36,33 @@ export default async function messagesRoute(
         querystring: {
           type: 'object',
           properties: {
+            ...LIST_PAGE_QUERY,
             since: { type: 'string', format: 'date-time' },
             to: { type: 'string' },
-            limit: { type: 'integer', minimum: 1, maximum: 1000 },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { since, to, limit } = req.query
-      return listByType(pact.view, 'message', {
-        limit,
-        filter: (v) => {
-          if (since && v?.timestamp <= since) return false
-          if (to && v?.payload?.to !== to) return false
-          return true
-        },
-      })
+      const { since, to, order, limit, cursor } = req.query
+      try {
+        return await listByType(pact.view, 'message', {
+          order,
+          limit,
+          cursor: cursor ?? null,
+          filter: (v) => {
+            if (since && v?.timestamp <= since) return false
+            if (to && v?.payload?.to !== to) return false
+            return true
+          },
+        })
+      } catch (err) {
+        if (err instanceof BadCursorError) {
+          throw new HttpError(400, 'BAD_CURSOR', err.message)
+        }
+        throw err
+      }
     },
   )
 

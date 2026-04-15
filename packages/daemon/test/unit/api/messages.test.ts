@@ -64,9 +64,9 @@ test('GET /v1/messages: since cursor filters', async (t) => {
   await daemon.waitForViewVersion(2, { timeout: 2000 })
 
   const res = await app.inject({ method: 'GET', url: `/v1/pacts/default/messages?since=${cutoff}` })
-  const entries = JSON.parse(res.body) as any[]
-  t.is(entries.length, 1)
-  t.is(entries[0].payload.content, 'second')
+  const body = JSON.parse(res.body)
+  t.is(body.entries.length, 1)
+  t.is(body.entries[0].payload.content, 'second')
 })
 
 test('GET /v1/messages: filter by recipient', async (t) => {
@@ -91,7 +91,7 @@ test('GET /v1/messages: filter by recipient', async (t) => {
     method: 'GET',
     url: '/v1/pacts/default/messages?to=anon-cobra-3e91',
   })
-  const entries = JSON.parse(res.body) as any[]
-  t.is(entries.length, 1)
-  t.is(entries[0].payload.content, 'direct')
+  const body = JSON.parse(res.body)
+  t.is(body.entries.length, 1)
+  t.is(body.entries[0].payload.content, 'direct')
 })

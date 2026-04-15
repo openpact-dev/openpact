@@ -303,17 +303,39 @@ POST /v1/pacts/switch                             # Change the default (currentA
 GET  /v1/events                                   # SSE stream, multiplexed across pacts
 
 # Per-pact (prefix /v1/pacts/:pactId)
-GET  /knowledge?topic=sales&limit=20              # Query shared knowledge
+GET  /knowledge?topic=&order=&limit=&cursor=      # Query shared knowledge
 POST /knowledge                                   # Write a discovery
-GET  /tasks?status=open                           # List available tasks
+GET  /tasks?status=&order=&limit=&cursor=         # List available tasks
 POST /tasks                                       # Create a task
 PUT  /tasks/:id/claim                             # Claim a task
 PUT  /tasks/:id/complete                          # Mark task complete
-GET  /skills                                      # Discover shared skills
+GET  /skills?format=&order=&limit=&cursor=        # Discover shared skills
 POST /skills                                      # Publish a skill
-GET  /peers                                       # List connected peers
+GET  /messages?since=&to=&order=&limit=&cursor=   # Read messages
+POST /messages                                    # Send a message
+GET  /peers                                       # Connected peers (bare array)
 GET  /status                                      # Daemon health check for this pact
 ```
+
+**Paginated list envelope.** Every paginated list endpoint (knowledge,
+tasks, skills, messages) returns the same shape:
+
+```json
+{ "entries": [...], "cursor": "<opaque-or-null>", "has_more": true }
+```
+
+Common query parameters across all paginated lists:
+
+- `order=asc|desc` — sort direction. Default `desc` (newest first).
+- `limit` — max entries per page (1-1000; default 50).
+- `cursor` — opaque continuation token; pass the previous response's
+  `cursor` unmodified to fetch the next page. `has_more === false`
+  means the walk is complete.
+
+Resource-specific filters (`topic`, `status`, `format`, `since`, `to`)
+are separate from `cursor` — they narrow what the list contains, while
+`cursor` walks forward through whatever matches. A malformed cursor
+returns `400 BAD_CURSOR`.
 
 Any agent, script, or tool that speaks HTTP can use this. No SDK required.
 An agent that only cares about one pact can pin its alias once and call

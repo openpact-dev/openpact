@@ -69,7 +69,7 @@ test('POST /v1/skills: requires_approval is preserved on the appended entry', as
     requires_approval: true,
   })
   t.is(res.status, 200)
-  const entries = await listByType(daemon.view, 'skill', { limit: 10 })
-  t.is(entries.length, 1)
-  t.is(entries[0].payload.requires_approval, true, 'requires_approval round-trips')
+  const page = await listByType(daemon.view, 'skill', { limit: 10 })
+  t.is(page.entries.length, 1)
+  t.is(page.entries[0].payload.requires_approval, true, 'requires_approval round-trips')
 })

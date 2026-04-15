@@ -41,7 +41,7 @@ export function Knowledge() {
 
   const topics = useMemo(() => {
     const set = new Set<string>()
-    for (const e of knowledge.data ?? []) {
+    for (const e of knowledge.data?.entries ?? []) {
       const t = (e as any).payload?.topic
       if (typeof t === 'string' && t) set.add(t)
     }
@@ -51,7 +51,7 @@ export function Knowledge() {
   const filtered = useMemo(() => {
     const recencyMs = RECENCY_OPTIONS.find((o) => o.value === recency)!.ms
     const cutoff = recencyMs === Number.POSITIVE_INFINITY ? 0 : Date.now() - recencyMs
-    return (knowledge.data ?? []).filter((e: any) => {
+    return (knowledge.data?.entries ?? []).filter((e: any) => {
       if (selectedTopic && e.payload?.topic !== selectedTopic) return false
       if (typeof e.payload?.confidence === 'number' && e.payload.confidence < confidence)
         return false
@@ -76,7 +76,7 @@ export function Knowledge() {
         <span class="font-mono text-[12px] text-[var(--color-ink3)]">
           <span class="text-[var(--color-ember)]">{filtered.length}</span>
           {' / '}
-          {knowledge.data?.length ?? 0} entries
+          {knowledge.data?.entries.length ?? 0} entries
         </span>
       </header>
 

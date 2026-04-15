@@ -30,6 +30,13 @@ export class BadRequestError extends OpenPactError {
   }
 }
 
+export class BadCursorError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'BAD_CURSOR' })
+    this.name = 'BadCursorError'
+  }
+}
+
 export class NotFoundError extends OpenPactError {
   constructor(message: string) {
     super(message, { status: 404, code: 'NOT_FOUND' })
@@ -126,6 +133,8 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
   switch (code) {
     case 'BAD_REQUEST':
       return new BadRequestError(message)
+    case 'BAD_CURSOR':
+      return new BadCursorError(message)
     case 'NOT_FOUND':
       return new NotFoundError(message)
     case 'TASK_NOT_OPEN':

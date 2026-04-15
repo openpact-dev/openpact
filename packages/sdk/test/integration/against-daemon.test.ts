@@ -50,7 +50,8 @@ test('SDK end-to-end: knowledge create + list', async (t) => {
   const deadline = Date.now() + 2000
   let entries: any[] = []
   while (Date.now() < deadline) {
-    entries = await pact.knowledge.list({ topic: 'sales' })
+    const page = await pact.knowledge.list({ topic: 'sales' })
+    entries = page.entries
     if (entries.length >= 1) break
     await new Promise((r) => setTimeout(r, 50))
   }
@@ -97,7 +98,7 @@ test('SDK end-to-end: skills create + getContent', async (t) => {
     content,
     checksum,
   })
-  await waitFor(async () => (await pact.skills.list()).length >= 1)
+  await waitFor(async () => (await pact.skills.list()).entries.length >= 1)
   const got = await pact.skills.getContent(id)
   t.is(got.content, content)
   t.is(got.checksum, checksum)
@@ -110,10 +111,25 @@ test('SDK end-to-end: messages send + list with since cursor', async (t) => {
   const cutoff = new Date().toISOString()
   await new Promise((r) => setTimeout(r, 5))
   await pact.messages.send({ to: '*', content: 'second' })
-  await waitFor(async () => (await pact.messages.list()).length >= 2)
+  await waitFor(async () => (await pact.messages.list()).entries.length >= 2)
   const recent = await pact.messages.list({ since: cutoff })
-  t.is(recent.length, 1)
-  t.is(recent[0].payload.content, 'second')
+  t.is(recent.entries.length, 1)
+  t.is(recent.entries[0].payload.content, 'second')
+})
+
+test('SDK end-to-end: knowledge paginates via cursor', async (t) => {
+  const { pact } = await tmpDaemonWithApi(t)
+  for (let i = 0; i < 5; i++) {
+    await pact.knowledge.create({ topic: 't', content: `c${i}` })
+  }
+  await waitFor(async () => (await pact.knowledge.list({ limit: 100 })).entries.length >= 5)
+
+  const seen: string[] = []
+  for await (const entry of pact.knowledge.iterate({ limit: 2 })) {
+    seen.push((entry.payload as any).content)
+  }
+  // Default desc order: newest first.
+  t.alike(seen, ['c4', 'c3', 'c2', 'c1', 'c0'])
 })
 
 test('SDK end-to-end: knowledge.create rejects bad payload with BadRequestError', async (t) => {

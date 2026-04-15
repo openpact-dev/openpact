@@ -8,7 +8,9 @@ test('read_messages: forwards since + to + limit', async (t) => {
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'read_messages')
   await handler({ since: '2026-04-01T00:00:00Z', to: '*', limit: 50 })
-  t.alike(pact.messages.list.calls[0].args, [{ since: '2026-04-01T00:00:00Z', to: '*', limit: 50 }])
+  t.alike(pact.messages.list.calls[0].args, [
+    { since: '2026-04-01T00:00:00Z', to: '*', order: undefined, limit: 50, cursor: undefined },
+  ])
 })
 
 test('send_message: forwards full payload', async (t) => {

@@ -32,8 +32,8 @@ async function waitForListLen(url: string, expected: number, timeoutMs = 3000): 
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const res = await fetch(url)
-    const arr = (await res.json()) as any[]
-    if (arr.length === expected) return arr
+    const body = (await res.json()) as { entries: any[] }
+    if (body.entries.length === expected) return body.entries
     await new Promise((r) => setTimeout(r, 50))
   }
   throw new Error('list length never reached ' + expected)
@@ -59,9 +59,9 @@ test('GET /v1/skills?format=openclaw filters by format', async (t) => {
 
   for (const format of ['openclaw', 'langchain', 'generic'] as const) {
     const res = await fetch(`${url}/v1/pacts/default/skills?format=${format}`)
-    const arr = (await res.json()) as any[]
-    t.is(arr.length, 1, `${format}: one match`)
-    t.is(arr[0].payload.format, format)
+    const body = (await res.json()) as { entries: any[] }
+    t.is(body.entries.length, 1, `${format}: one match`)
+    t.is(body.entries[0].payload.format, format)
   }
 })
 

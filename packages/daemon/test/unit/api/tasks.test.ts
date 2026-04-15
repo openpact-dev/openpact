@@ -42,9 +42,10 @@ test('GET /v1/tasks: returns reduced states', async (t) => {
   await daemon.waitForViewVersion(2, { timeout: 2000 })
 
   const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/tasks' })
-  const tasks = JSON.parse(res.body) as any[]
-  t.is(tasks.length, 2)
-  t.is(tasks[0].status, 'open')
+  const body = JSON.parse(res.body)
+  t.is(body.entries.length, 2)
+  t.is(body.entries[0].status, 'open')
+  t.is(body.has_more, false)
 })
 
 test('GET /v1/tasks?status=open filters', async (t) => {
@@ -59,12 +60,12 @@ test('GET /v1/tasks?status=open filters', async (t) => {
 
   const open = JSON.parse(
     (await app.inject({ method: 'GET', url: '/v1/pacts/default/tasks?status=open' })).body,
-  ) as any[]
+  )
   const claimed = JSON.parse(
     (await app.inject({ method: 'GET', url: '/v1/pacts/default/tasks?status=claimed' })).body,
-  ) as any[]
-  t.is(open.length, 1)
-  t.is(claimed.length, 1)
+  )
+  t.is(open.entries.length, 1)
+  t.is(claimed.entries.length, 1)
 })
 
 test('GET /v1/tasks/:id: 404 on unknown', async (t) => {

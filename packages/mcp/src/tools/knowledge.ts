@@ -15,17 +15,27 @@ export function registerKnowledgeTools(server: McpServer, pact: OpenPact): void 
           .string()
           .optional()
           .describe('Filter by exact topic string, e.g. "routing" or "auth".'),
+        order: z
+          .enum(['asc', 'desc'])
+          .optional()
+          .describe("Sort direction. 'desc' (default) returns newest first."),
         limit: z
           .number()
           .int()
           .min(1)
           .max(1000)
           .optional()
-          .describe('Maximum number of entries to return. Defaults to the daemon default.'),
+          .describe('Maximum entries per page. Defaults to 50.'),
+        cursor: z
+          .string()
+          .optional()
+          .describe('Opaque cursor from a previous call to continue paging.'),
       },
     },
-    async ({ topic, limit }) =>
-      safeHandler(async () => jsonContent(await pact.knowledge.list({ topic, limit }))),
+    async ({ topic, order, limit, cursor }) =>
+      safeHandler(async () =>
+        jsonContent(await pact.knowledge.list({ topic, order, limit, cursor })),
+      ),
   )
 
   registerTool(

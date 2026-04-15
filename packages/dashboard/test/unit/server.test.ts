@@ -75,7 +75,7 @@ test('GET /api/v1/pacts/default/knowledge proxies query strings through to the d
   let arr: any[] = []
   for (let i = 0; i < 60; i++) {
     const res = await fetch(`${dash.url}/api/v1/pacts/default/knowledge?topic=wiring`)
-    arr = (await res.json()) as any[]
+    arr = ((await res.json()) as { entries: any[] }).entries
     if (arr.length >= 1) break
     await new Promise((r) => setTimeout(r, 50))
   }

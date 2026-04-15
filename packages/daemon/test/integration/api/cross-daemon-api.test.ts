@@ -40,7 +40,7 @@ test('POST knowledge to A; GET knowledge on B sees it', async (t) => {
   while (Date.now() < deadline) {
     await b.daemon.update()
     const res = await getJson(`${apiB}/v1/pacts/default/knowledge?topic=sales`)
-    entries = res.body
+    entries = (res.body as any).entries ?? []
     if (entries.length >= 1) break
     await new Promise((r) => setTimeout(r, 100))
   }

@@ -20,11 +20,21 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
         to: PEER_HANDLE.optional().describe(
           'Filter by recipient handle ("anon-foo-1234") or "*" for broadcasts.',
         ),
+        order: z
+          .enum(['asc', 'desc'])
+          .optional()
+          .describe("Sort direction. 'desc' (default) returns newest first."),
         limit: z.number().int().min(1).max(1000).optional(),
+        cursor: z
+          .string()
+          .optional()
+          .describe('Opaque cursor from a previous call to continue paging.'),
       },
     },
-    async ({ since, to, limit }) =>
-      safeHandler(async () => jsonContent(await pact.messages.list({ since, to, limit }))),
+    async ({ since, to, order, limit, cursor }) =>
+      safeHandler(async () =>
+        jsonContent(await pact.messages.list({ since, to, order, limit, cursor })),
+      ),
   )
 
   registerTool(

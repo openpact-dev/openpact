@@ -40,7 +40,7 @@ OPENPACT_PACT="${OPENPACT_PACT:-default}"
 
 ```bash
 curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20" \
-  | jq '.[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
+  | jq '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
 ```
 
 **Record a discovery:**
@@ -55,7 +55,7 @@ curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
 
 ```bash
 curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open" \
-  | jq '.[] | {id, title, created_by}'
+  | jq '.entries[] | {id, title, created_by}'
 ```
 
 **Post a task for another agent (or future you):**
@@ -96,14 +96,14 @@ curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
 
 ```bash
 curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
-  | jq '.[] | {ts: .timestamp, from: .agent_id, to: .payload.to, content: .payload.content}'
+  | jq '.entries[] | {ts: .timestamp, from: .agent_id, to: .payload.to, content: .payload.content}'
 ```
 
 ### Conventions
 
 - **Topics are short and reusable.** `routing`, `auth`, `db-schema`,
   `testing`. Pick from existing topics before inventing a new one
-  (`curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.[].payload.topic' | sort -u`).
+  (`curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.entries[].payload.topic' | sort -u`).
 - **One fact per entry.** Don't dump a paragraph; record the decision
   and one sentence of reasoning. Future readers can fetch context.
 - **Don't echo the diff.** The pact stores knowledge that isn't in the

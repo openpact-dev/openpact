@@ -34,8 +34,11 @@ void pact2
 async function _shape(pact: OpenPact) {
   const s: StatusPayload = await pact.status()
   void s.entries
-  const k: KnowledgeEntry[] = await pact.knowledge.list({ topic: 'x', limit: 5 })
-  void k[0]?.payload.topic
+  const k = await pact.knowledge.list({ topic: 'x', limit: 5 })
+  const kEntries: KnowledgeEntry[] = k.entries
+  void kEntries[0]?.payload.topic
+  void (k.has_more as boolean)
+  void (k.cursor as string | null)
   const t: TaskState = await pact.tasks.get('aaaa-1')
   void t.status
   // TTL fields exist on TaskState (added in §2.4).

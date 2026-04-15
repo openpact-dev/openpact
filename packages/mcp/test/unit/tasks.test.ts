@@ -9,7 +9,9 @@ test('list_tasks: forwards status + limit', async (t) => {
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'list_tasks')
   await handler({ status: 'open', limit: 50 })
-  t.alike(pact.tasks.list.calls[0].args, [{ status: 'open', limit: 50 }])
+  t.alike(pact.tasks.list.calls[0].args, [
+    { status: 'open', order: undefined, limit: 50, cursor: undefined },
+  ])
 })
 
 test('get_task: passes id through', async (t) => {

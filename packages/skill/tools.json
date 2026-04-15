@@ -43,13 +43,15 @@
     },
     {
       "name": "recall_knowledge",
-      "description": "List recent knowledge entries, optionally filtered by topic.",
+      "description": "List recent knowledge entries, optionally filtered by topic. Response is a page envelope { entries, cursor, has_more }.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/knowledge",
       "params": { "pactId": { "type": "string" } },
       "query": {
         "topic": { "type": "string", "optional": true },
-        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
+        "order": { "enum": ["asc", "desc"], "optional": true, "description": "default 'desc' (newest first)" },
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 },
+        "cursor": { "type": "string", "optional": true, "description": "opaque; from a previous response's cursor" }
       }
     },
     {
@@ -67,13 +69,15 @@
     },
     {
       "name": "list_tasks",
-      "description": "List tasks, optionally filtered by status.",
+      "description": "List tasks, optionally filtered by status. Response is a page envelope { entries, cursor, has_more }.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/tasks",
       "params": { "pactId": { "type": "string" } },
       "query": {
         "status": { "enum": ["open", "claimed", "complete"], "optional": true },
-        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
+        "order": { "enum": ["asc", "desc"], "optional": true, "description": "default 'desc' (newest first)" },
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 },
+        "cursor": { "type": "string", "optional": true, "description": "opaque; from a previous response's cursor" }
       }
     },
     {
@@ -150,13 +154,15 @@
     },
     {
       "name": "list_skills",
-      "description": "List skills shared in the pact, optionally filtered by runtime format.",
+      "description": "List skills shared in the pact, optionally filtered by runtime format. Response is a page envelope { entries, cursor, has_more }.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/skills",
       "params": { "pactId": { "type": "string" } },
       "query": {
         "format": { "enum": ["openclaw", "langchain", "generic"], "optional": true },
-        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
+        "order": { "enum": ["asc", "desc"], "optional": true, "description": "default 'desc' (newest first)" },
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 },
+        "cursor": { "type": "string", "optional": true, "description": "opaque; from a previous response's cursor" }
       }
     },
     {
@@ -185,14 +191,16 @@
     },
     {
       "name": "read_messages",
-      "description": "List messages, optionally since a cursor or filtered by recipient.",
+      "description": "List messages, optionally since a timestamp or filtered by recipient. Response is a page envelope { entries, cursor, has_more }.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/messages",
       "params": { "pactId": { "type": "string" } },
       "query": {
-        "since": { "type": "string", "format": "date-time", "optional": true },
+        "since": { "type": "string", "format": "date-time", "optional": true, "description": "semantic filter; distinct from the cursor" },
         "to": { "type": "string", "optional": true },
-        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
+        "order": { "enum": ["asc", "desc"], "optional": true, "description": "default 'desc' (newest first)" },
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 },
+        "cursor": { "type": "string", "optional": true, "description": "opaque; from a previous response's cursor" }
       }
     },
     {
@@ -233,6 +241,7 @@
     "envelope": "{ \"error\": \"<CODE>\", \"message\": \"...\", \"status\": <int> }",
     "codes": [
       { "status": 400, "code": "BAD_REQUEST", "meaning": "malformed payload or query" },
+      { "status": 400, "code": "BAD_CURSOR", "meaning": "pagination cursor is malformed or belongs to a different resource" },
       {
         "status": 400,
         "code": "BAD_SKILL_NAME",

@@ -19,8 +19,9 @@ def main() -> None:
     )
     print(f"Recorded knowledge entry {created['id']} at {created['timestamp']}.")
 
-    entries = client.call("recall_knowledge", topic="wiring", limit=10)
-    print(f"Recall ({len(entries)} entries):")
+    page = client.call("recall_knowledge", topic="wiring", limit=10)
+    entries = page["entries"]
+    print(f"Recall ({len(entries)} entries; has_more={page['has_more']}):")
     for e in entries:
         print(f"  {e['id']}: {e['payload']['content']}")
 

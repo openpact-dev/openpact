@@ -20,10 +20,40 @@ const taskState = {
 }
 
 test('tasks.list: builds URL with status filter', async (t) => {
-  const m = mockFetch({ status: 200, body: [taskState] })
+  const m = mockFetch({
+    status: 200,
+    body: { entries: [taskState], cursor: 'task/a', has_more: false },
+  })
   const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.list({ status: 'open' })
+  const page = await r.list({ status: 'open' })
   t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/tasks?status=open')
+  t.is(page.entries.length, 1)
+  t.is(page.has_more, false)
+})
+
+test('tasks.iterate: walks pages', async (t) => {
+  const m = mockFetch(
+    {
+      status: 200,
+      body: {
+        entries: [{ ...taskState, id: 'b' }],
+        cursor: 'task/b',
+        has_more: true,
+      },
+    },
+    {
+      status: 200,
+      body: {
+        entries: [{ ...taskState, id: 'a' }],
+        cursor: 'task/a',
+        has_more: false,
+      },
+    },
+  )
+  const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
+  const seen: string[] = []
+  for await (const task of r.iterate()) seen.push(task.id)
+  t.alike(seen, ['b', 'a'])
 })
 
 test('tasks.get: encodes id and returns state', async (t) => {

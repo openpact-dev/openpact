@@ -96,7 +96,7 @@ test('MCP end-to-end: record_knowledge then recall_knowledge round-trips', async
   const list = await waitFor(
     async () => {
       const r = await callTool(client, 'recall_knowledge', { topic: 'routing' })
-      return JSON.parse(textOf(r)) as any[]
+      return (JSON.parse(textOf(r)) as { entries: any[] }).entries
     },
     (arr) => Array.isArray(arr) && arr.length >= 1,
   )
@@ -109,7 +109,8 @@ test('MCP end-to-end: tasks lifecycle (create → claim → complete)', async (t
   const id = (JSON.parse(textOf(created).split('\n\n')[1]) as { id: string }).id
 
   await waitFor(
-    async () => JSON.parse(textOf(await callTool(client, 'list_tasks', { status: 'open' }))),
+    async () =>
+      (JSON.parse(textOf(await callTool(client, 'list_tasks', { status: 'open' }))) as any).entries,
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
   const claimed = await callTool(client, 'claim_task', { id })
@@ -124,7 +125,8 @@ test('MCP end-to-end: claiming the same task twice surfaces TASK_NOT_OPEN with i
   const created = await callTool(client, 'create_task', { title: 'once' })
   const id = (JSON.parse(textOf(created).split('\n\n')[1]) as { id: string }).id
   await waitFor(
-    async () => JSON.parse(textOf(await callTool(client, 'list_tasks', { status: 'open' }))),
+    async () =>
+      (JSON.parse(textOf(await callTool(client, 'list_tasks', { status: 'open' }))) as any).entries,
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
   await callTool(client, 'claim_task', { id })
@@ -143,7 +145,7 @@ test('MCP end-to-end: messages send + read with since cursor', async (t) => {
   const recent = await waitFor(
     async () => {
       const r = await callTool(client, 'read_messages', { since: cutoff })
-      return JSON.parse(textOf(r)) as any[]
+      return (JSON.parse(textOf(r)) as { entries: any[] }).entries
     },
     (arr) => arr.length >= 1,
   )

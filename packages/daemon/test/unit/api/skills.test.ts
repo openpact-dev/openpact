@@ -81,9 +81,9 @@ test('GET /v1/skills: filter by format', async (t) => {
   await daemon.waitForViewVersion(2, { timeout: 2000 })
 
   const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/skills?format=openclaw' })
-  const entries = JSON.parse(res.body) as any[]
-  t.is(entries.length, 1)
-  t.is(entries[0].payload.name, 'a')
+  const body = JSON.parse(res.body)
+  t.is(body.entries.length, 1)
+  t.is(body.entries[0].payload.name, 'a')
 })
 
 test('GET /v1/skills: invalid format returns 400', async (t) => {

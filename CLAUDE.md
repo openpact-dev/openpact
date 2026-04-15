@@ -158,30 +158,36 @@ DELETE /v1/pacts/:pactId                      -> body { confirm: alias } (destru
 
 **Per-pact (prefix `/v1/pacts/:pactId`):**
 
+Paginated list endpoints share a common contract:
+
+- Query params: `order=asc|desc` (default `desc`), `limit` (1-1000, default 50), `cursor` (opaque; from a previous response), plus resource-specific filters.
+- Response shape: `{ entries: T[], cursor: string | null, has_more: boolean }`.
+- Pass `cursor` back unmodified on the next call to continue paging. `has_more === false` means the walk is complete.
+
 ```
 GET  /status                                  -> { pact_id, pact_name, pact_purpose, display_name, peers, entries, synced }
-GET  /peers                                   -> [{ id, role, display_name, entries, online }]
+GET  /peers                                   -> [{ id, role, display_name, entries, online }]  (bare array)
 
-GET  /knowledge?topic=&limit=
+GET  /knowledge?topic=&order=&limit=&cursor=  -> ListPage<Entry>
 POST /knowledge
 
-GET  /tasks?status=open|claimed|complete
+GET  /tasks?status=&order=&limit=&cursor=     -> ListPage<TaskState>
 POST /tasks
 GET  /tasks/:id                               -> includes claim history
 PUT  /tasks/:id/claim
 PUT  /tasks/:id/complete
 
-GET  /skills?format=openclaw|langchain|generic
+GET  /skills?format=&order=&limit=&cursor=    -> ListPage<SkillEntry>
 POST /skills
 GET  /skills/:id/content                      -> verifies checksum
 POST /skills/:id/install                      -> body { confirm: true } (creator only)
-GET  /skills/installed                        -> installed-skills.json (per-pact)
+GET  /skills/installed                        -> installed-skills.json (bare array)
 
-GET  /messages?since=TIMESTAMP
+GET  /messages?since=&to=&order=&limit=&cursor= -> ListPage<MessageEntry>
 POST /messages
 
 GET  /entries/:id                             -> full entry across any type
-GET  /entries/:id/referenced-by               -> entries that ref this id
+GET  /entries/:id/referenced-by               -> entries that ref this id (bare array)
 
 PUT  /pact                                    -> body { name?, purpose? } (creator only)
 PUT  /me                                      -> body { display_name? }
@@ -196,6 +202,7 @@ POST /admin/remove                            -> body { key, confirm: true } (cr
 Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
 New codes from §3: `NOT_INDEXER` (409), `BAD_SKILL_NAME` (400), `NOT_CONFIRMED` (400), `SKILL_CHECKSUM_MISMATCH` (409).
 New codes from §4b: `UNKNOWN_PACT` (404), `PACT_ALIAS_TAKEN` (409), `NO_CURRENT_PACT` (409).
+New code from list-envelope refactor: `BAD_CURSOR` (400).
 
 The web dashboard runs on `:7667` by default (localhost only). The
 SPA at `/` talks to the daemon through a Fastify proxy at `/api/*`.

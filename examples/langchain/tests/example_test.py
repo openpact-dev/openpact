@@ -48,7 +48,8 @@ def test_record_then_recall(client: OpenPactClient) -> None:
 
     def has_entry() -> bool:
         nonlocal listed
-        listed = client.call("recall_knowledge", topic="pytest", limit=10)
+        page = client.call("recall_knowledge", topic="pytest", limit=10)
+        listed = page["entries"]
         return any(e["payload"]["content"] == "from python" for e in listed)
 
     wait_for(has_entry)
@@ -60,7 +61,7 @@ def test_task_lifecycle(client: OpenPactClient) -> None:
     wait_for(
         lambda: any(
             t["id"] == task_id
-            for t in client.call("list_tasks", status="open")
+            for t in client.call("list_tasks", status="open")["entries"]
         )
     )
     claimed = client.call("claim_task", id=task_id)
@@ -76,7 +77,7 @@ def test_lost_claim_race_raises(client: OpenPactClient) -> None:
     wait_for(
         lambda: any(
             t["id"] == task_id
-            for t in client.call("list_tasks", status="open")
+            for t in client.call("list_tasks", status="open")["entries"]
         )
     )
     client.call("claim_task", id=task_id)

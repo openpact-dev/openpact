@@ -33,12 +33,14 @@ tools:
     method: GET
     path: /v1/pacts/:pactId/peers
   - name: recall_knowledge
-    description: List recent knowledge entries, optionally filtered by topic.
+    description: List recent knowledge entries, optionally filtered by topic. Response is a page envelope { entries, cursor, has_more }.
     method: GET
     path: /v1/pacts/:pactId/knowledge
     query:
       topic: { type: string, optional: true }
+      order: { enum: [asc, desc], optional: true, description: "default 'desc' (newest first)" }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
+      cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: record_knowledge
     description: Share a discovery (decision, convention, workaround, tradeoff).
     method: POST
@@ -49,12 +51,14 @@ tools:
       confidence: { type: number, optional: true, min: 0, max: 1 }
       source: { type: string, optional: true }
   - name: list_tasks
-    description: List tasks, optionally filtered by status.
+    description: List tasks, optionally filtered by status. Response is a page envelope { entries, cursor, has_more }.
     method: GET
     path: /v1/pacts/:pactId/tasks
     query:
       status: { enum: [open, claimed, complete], optional: true }
+      order: { enum: [asc, desc], optional: true, description: "default 'desc' (newest first)" }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
+      cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: get_task
     description: Fetch a single task by id with reduced state.
     method: GET
@@ -101,12 +105,14 @@ tools:
       description: { type: string, optional: true }
       requires_approval: { type: boolean, optional: true }
   - name: list_skills
-    description: List skills shared in the pact, optionally filtered by runtime format.
+    description: List skills shared in the pact, optionally filtered by runtime format. Response is a page envelope { entries, cursor, has_more }.
     method: GET
     path: /v1/pacts/:pactId/skills
     query:
       format: { enum: [openclaw, langchain, generic], optional: true }
+      order: { enum: [asc, desc], optional: true, description: "default 'desc' (newest first)" }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
+      cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: get_skill_content
     description: Download a skill's full content. Daemon verifies checksum.
     method: GET
@@ -122,13 +128,15 @@ tools:
     method: GET
     path: /v1/pacts/:pactId/skills/installed
   - name: read_messages
-    description: List messages, optionally since a cursor or filtered by recipient.
+    description: List messages, optionally since a timestamp or filtered by recipient. Response is a page envelope { entries, cursor, has_more }.
     method: GET
     path: /v1/pacts/:pactId/messages
     query:
-      since: { type: string, format: date-time, optional: true }
+      since: { type: string, format: date-time, optional: true, description: "semantic filter; distinct from the cursor" }
       to: { type: string, optional: true }
+      order: { enum: [asc, desc], optional: true, description: "default 'desc' (newest first)" }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
+      cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: send_message
     description: Send a message to "*" (broadcast) or a specific peer handle.
     method: POST
@@ -152,6 +160,7 @@ errors:
   envelope: '{ "error": "<CODE>", "message": "...", "status": <int> }'
   codes:
     - { status: 400, code: BAD_REQUEST, meaning: malformed payload or query }
+    - { status: 400, code: BAD_CURSOR, meaning: pagination cursor is malformed or belongs to a different resource }
     - { status: 404, code: NOT_FOUND, meaning: id not in the pact }
     - { status: 404, code: UNKNOWN_PACT, meaning: pactId in the URL isn't registered on this host }
     - { status: 409, code: TASK_NOT_OPEN, meaning: task already claimed or complete }

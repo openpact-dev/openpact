@@ -8,7 +8,9 @@ test('list_skills: forwards format + limit', async (t) => {
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'list_skills')
   await handler({ format: 'openclaw', limit: 10 })
-  t.alike(pact.skills.list.calls[0].args, [{ format: 'openclaw', limit: 10 }])
+  t.alike(pact.skills.list.calls[0].args, [
+    { format: 'openclaw', order: undefined, limit: 10, cursor: undefined },
+  ])
 })
 
 test('share_skill: forwards full payload', async (t) => {

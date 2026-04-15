@@ -1,9 +1,16 @@
 import { buildQuery, type OpenPactClient } from '../client'
-import type { AppendResult, SkillEntry, SkillFormat, SkillPayload } from '../types'
+import type {
+  AppendResult,
+  ListOpts,
+  ListPage,
+  SkillEntry,
+  SkillFormat,
+  SkillPayload,
+} from '../types'
+import { paginate } from './paginate'
 
-export interface SkillsListOpts {
+export interface SkillsListOpts extends ListOpts {
   format?: SkillFormat
-  limit?: number
 }
 
 export interface SkillContent {
@@ -33,11 +40,15 @@ export interface InstallResult {
 }
 
 export function skillsResource(client: OpenPactClient) {
+  const list = (opts: SkillsListOpts = {}): Promise<ListPage<SkillEntry>> =>
+    client.req<ListPage<SkillEntry>>(
+      client.pactPath(`/skills${buildQuery(opts as Record<string, unknown>)}`),
+    )
   return {
-    list(opts: SkillsListOpts = {}): Promise<SkillEntry[]> {
-      return client.req<SkillEntry[]>(
-        client.pactPath(`/skills${buildQuery(opts as Record<string, unknown>)}`),
-      )
+    list,
+    /** Walk every page; stops when `has_more` is false. */
+    iterate(opts: SkillsListOpts = {}): AsyncGenerator<SkillEntry> {
+      return paginate<SkillEntry, SkillsListOpts>(list, opts)
     },
     create(payload: SkillPayload): Promise<AppendResult> {
       return client.json<AppendResult>(client.pactPath('/skills'), 'POST', payload)

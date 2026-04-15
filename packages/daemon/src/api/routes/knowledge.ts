@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
-import { listByType } from '../views'
+import { listByType, BadCursorError } from '../views'
+import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
+import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
 const knowledgePayloadSchema = {
   type: 'object',
@@ -15,9 +17,8 @@ const knowledgePayloadSchema = {
   additionalProperties: true,
 }
 
-interface ListQuery {
+interface ListQuery extends ListPageQuery {
   topic?: string
-  limit?: number
 }
 
 export default async function knowledgeRoute(
@@ -31,19 +32,28 @@ export default async function knowledgeRoute(
         querystring: {
           type: 'object',
           properties: {
+            ...LIST_PAGE_QUERY,
             topic: { type: 'string' },
-            limit: { type: 'integer', minimum: 1, maximum: 1000 },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { topic, limit } = req.query
-      return listByType(pact.view, 'knowledge', {
-        limit,
-        filter: topic ? (v) => v?.payload?.topic === topic : undefined,
-      })
+      const { topic, order, limit, cursor } = req.query
+      try {
+        return await listByType(pact.view, 'knowledge', {
+          order,
+          limit,
+          cursor: cursor ?? null,
+          filter: topic ? (v) => v?.payload?.topic === topic : undefined,
+        })
+      } catch (err) {
+        if (err instanceof BadCursorError) {
+          throw new HttpError(400, 'BAD_CURSOR', err.message)
+        }
+        throw err
+      }
     },
   )
 

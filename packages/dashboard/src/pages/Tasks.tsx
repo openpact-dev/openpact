@@ -35,16 +35,11 @@ export function Tasks() {
   })
 
   const grouped = useMemo(() => {
+    // API returns tasks newest-first already. Bucket by status without
+    // re-sorting — the order inside each column is the stream order.
     const by: Record<TaskStatus, TaskRow[]> = { open: [], claimed: [], complete: [] }
-    for (const t of (tasks.data ?? []) as TaskRow[]) {
+    for (const t of (tasks.data?.entries ?? []) as TaskRow[]) {
       if (by[t.status]) by[t.status].push(t)
-    }
-    for (const k of Object.keys(by) as TaskStatus[]) {
-      by[k].sort((a, b) => {
-        const at = a.history[a.history.length - 1]?.timestamp ?? ''
-        const bt = b.history[b.history.length - 1]?.timestamp ?? ''
-        return at < bt ? 1 : -1
-      })
     }
     return by
   }, [tasks.data])
@@ -56,7 +51,7 @@ export function Tasks() {
           Tasks
         </h1>
         <span class="font-mono text-[12px] text-[var(--color-ink3)]">
-          {tasks.data?.length ?? 0} total
+          {tasks.data?.entries.length ?? 0} total
         </span>
       </header>
 

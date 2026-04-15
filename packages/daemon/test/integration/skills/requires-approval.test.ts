@@ -31,8 +31,8 @@ test('requires_approval flag replicates from A to B', async (t) => {
   })
 
   await b.daemon.waitForViewVersion(2, { timeout: 15000 })
-  const entries = await listByType(b.daemon.view, 'skill', { limit: 10 })
-  t.is(entries.length, 1, 'B sees the skill')
-  t.is(entries[0].payload.requires_approval, true, 'flag preserved across replication')
-  t.is(entries[0].payload.checksum, sha(content), 'checksum preserved')
+  const page = await listByType(b.daemon.view, 'skill', { limit: 10 })
+  t.is(page.entries.length, 1, 'B sees the skill')
+  t.is(page.entries[0].payload.requires_approval, true, 'flag preserved across replication')
+  t.is(page.entries[0].payload.checksum, sha(content), 'checksum preserved')
 })

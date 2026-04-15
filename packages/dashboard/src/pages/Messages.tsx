@@ -51,16 +51,16 @@ export function Messages() {
 
   const [filter, setFilter] = useState<Filter>('all')
 
-  // API returns oldest-first; flip to newest-first for the display.
+  // API returns the page envelope already newest-first (order: 'desc').
   const rows = useMemo<MessageRow[]>(() => {
-    const all = [...((messages.data ?? []) as MessageRow[])].reverse()
+    const all = (messages.data?.entries ?? []) as MessageRow[]
     if (filter === 'broadcast') return all.filter((m) => m.payload?.to === '*')
     if (filter === 'direct') return all.filter((m) => m.payload?.to && m.payload.to !== '*')
     return all
   }, [messages.data, filter])
 
   const counts = useMemo(() => {
-    const all = (messages.data ?? []) as MessageRow[]
+    const all = (messages.data?.entries ?? []) as MessageRow[]
     const broadcast = all.filter((m) => m.payload?.to === '*').length
     const direct = all.length - broadcast
     return { all: all.length, broadcast, direct }

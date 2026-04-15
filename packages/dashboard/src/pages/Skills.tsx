@@ -53,7 +53,7 @@ export function Skills() {
   )
 
   const network = useMemo(
-    () => (skills.data ?? []).filter((s: SkillRow) => !installedIds.has(s.id)),
+    () => (skills.data?.entries ?? []).filter((s: SkillRow) => !installedIds.has(s.id)),
     [skills.data, installedIds],
   )
 

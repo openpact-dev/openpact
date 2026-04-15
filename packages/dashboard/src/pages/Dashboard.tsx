@@ -16,14 +16,29 @@ export function Dashboard() {
 
   const status = useQuery(() => pact.status(), { key: `status:${pact.pactId}`, trigger })
   const peers = useQuery(() => pact.peers(), { key: `peers:${pact.pactId}`, trigger })
-  const knowledge = useQuery(() => pact.knowledge.list({ limit: 20 }), { key: `k:20:${pact.pactId}`, trigger })
-  const tasks = useQuery(() => pact.tasks.list({ limit: 20 }), { key: `t:20:${pact.pactId}`, trigger })
-  const messages = useQuery(() => pact.messages.list({ limit: 20 }), { key: `m:20:${pact.pactId}`, trigger })
+  const knowledge = useQuery(() => pact.knowledge.list({ limit: 20 }), {
+    key: `k:20:${pact.pactId}`,
+    trigger,
+  })
+  const tasks = useQuery(() => pact.tasks.list({ limit: 20 }), {
+    key: `t:20:${pact.pactId}`,
+    trigger,
+  })
+  const messages = useQuery(() => pact.messages.list({ limit: 20 }), {
+    key: `m:20:${pact.pactId}`,
+    trigger,
+  })
+
+  const knowledgeEntries = knowledge.data?.entries ?? []
+  const taskEntries = tasks.data?.entries ?? []
+  const messageEntries = messages.data?.entries ?? []
 
   const feed = useMemo<Entry[]>(() => {
+    // Each list is already newest-first from the API. A one-pass merge
+    // keeps the sort stable — no full re-sort needed for the top-5.
     const merged: Entry[] = []
-    for (const e of knowledge.data ?? []) merged.push(e as Entry)
-    for (const t of tasks.data ?? []) {
+    for (const e of knowledgeEntries) merged.push(e as Entry)
+    for (const t of taskEntries) {
       const last = (t as any).history?.[(t as any).history.length - 1]
       merged.push({
         id: (t as any).id,
@@ -33,18 +48,18 @@ export function Dashboard() {
         payload: { title: (t as any).title, status: (t as any).status },
       })
     }
-    for (const m of messages.data ?? []) merged.push(m as Entry)
+    for (const m of messageEntries) merged.push(m as Entry)
     return merged
       .filter((e) => e.timestamp)
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
       .slice(0, 5)
-  }, [knowledge.data, tasks.data, messages.data])
+  }, [knowledgeEntries, taskEntries, messageEntries])
 
   const peerCount = peers.data?.length ?? 0
   const onlinePeers = (peers.data ?? []).filter((p: any) => p.online).length
-  const knowledgeCount = knowledge.data?.length ?? 0
-  const taskCount = tasks.data?.length ?? 0
-  const openTasks = (tasks.data ?? []).filter((t: any) => t.status === 'open')
+  const knowledgeCount = knowledgeEntries.length
+  const taskCount = taskEntries.length
+  const openTasks = taskEntries.filter((t: any) => t.status === 'open')
   const entryCount = status.data?.entries ?? 0
 
   return (

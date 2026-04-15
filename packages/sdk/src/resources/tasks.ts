@@ -1,9 +1,9 @@
 import { buildQuery, type OpenPactClient } from '../client'
-import type { AppendResult, TaskState, TaskStatus } from '../types'
+import type { AppendResult, ListOpts, ListPage, TaskState, TaskStatus } from '../types'
+import { paginate } from './paginate'
 
-export interface TasksListOpts {
+export interface TasksListOpts extends ListOpts {
   status?: TaskStatus
-  limit?: number
 }
 
 export interface CreateTaskBody {
@@ -16,11 +16,15 @@ export interface CompleteTaskBody {
 }
 
 export function tasksResource(client: OpenPactClient) {
+  const list = (opts: TasksListOpts = {}): Promise<ListPage<TaskState>> =>
+    client.req<ListPage<TaskState>>(
+      client.pactPath(`/tasks${buildQuery(opts as Record<string, unknown>)}`),
+    )
   return {
-    list(opts: TasksListOpts = {}): Promise<TaskState[]> {
-      return client.req<TaskState[]>(
-        client.pactPath(`/tasks${buildQuery(opts as Record<string, unknown>)}`),
-      )
+    list,
+    /** Walk every page; stops when `has_more` is false. */
+    iterate(opts: TasksListOpts = {}): AsyncGenerator<TaskState> {
+      return paginate<TaskState, TasksListOpts>(list, opts)
     },
     get(id: string): Promise<TaskState> {
       return client.req<TaskState>(client.pactPath(`/tasks/${encodeURIComponent(id)}`))

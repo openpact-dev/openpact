@@ -116,3 +116,27 @@ export interface AppendResult {
   id: string
   timestamp: string
 }
+
+/**
+ * Options common to every paginated list call. Per-resource opts types
+ * extend this with their own filters.
+ */
+export interface ListOpts {
+  /** Sort direction. `'desc'` (default) = newest first. */
+  order?: 'asc' | 'desc'
+  /** Max entries in this page. 1-1000; default 50. */
+  limit?: number
+  /** Opaque cursor from the previous page, or null for the first page. */
+  cursor?: string | null
+}
+
+/**
+ * Envelope every paginated list endpoint returns. `cursor` is opaque —
+ * pass it back into the next call to `.list()` to fetch the next page.
+ * When `has_more` is false the walk is complete.
+ */
+export interface ListPage<T> {
+  entries: T[]
+  cursor: string | null
+  has_more: boolean
+}

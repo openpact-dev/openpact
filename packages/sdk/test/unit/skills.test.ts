@@ -6,11 +6,37 @@ import { mockFetch } from '../helpers/mock-fetch'
 
 const SHA = 'sha256:' + 'a'.repeat(64)
 
+const emptyPage = { entries: [], cursor: null, has_more: false }
+
 test('skills.list: filters by format', async (t) => {
-  const m = mockFetch({ status: 200, body: [] })
+  const m = mockFetch({ status: 200, body: emptyPage })
   const r = skillsResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.list({ format: 'openclaw' })
+  const page = await r.list({ format: 'openclaw' })
   t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/skills?format=openclaw')
+  t.is(page.entries.length, 0)
+  t.is(page.has_more, false)
+})
+
+test('skills.iterate: walks pages', async (t) => {
+  const mkEntry = (id: string) => ({
+    id,
+    type: 'skill',
+    payload: { name: id, format: 'generic', checksum: SHA, version: '1', content: 'x' },
+  })
+  const m = mockFetch(
+    {
+      status: 200,
+      body: { entries: [mkEntry('b')], cursor: 'skill/b', has_more: true },
+    },
+    {
+      status: 200,
+      body: { entries: [mkEntry('a')], cursor: 'skill/a', has_more: false },
+    },
+  )
+  const r = skillsResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
+  const seen: string[] = []
+  for await (const s of r.iterate()) seen.push((s as any).id)
+  t.alike(seen, ['b', 'a'])
 })
 
 test('skills.create: POSTs full payload incl. checksum', async (t) => {

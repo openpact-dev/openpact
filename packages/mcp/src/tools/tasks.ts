@@ -14,11 +14,21 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
         'List tasks in the pact, optionally filtered by status. Each task is reduced to its current state (claimer, result, etc.).',
       inputSchema: {
         status: TASK_STATUS.optional().describe('Filter by status.'),
+        order: z
+          .enum(['asc', 'desc'])
+          .optional()
+          .describe("Sort direction. 'desc' (default) returns newest first."),
         limit: z.number().int().min(1).max(1000).optional(),
+        cursor: z
+          .string()
+          .optional()
+          .describe('Opaque cursor from a previous call to continue paging.'),
       },
     },
-    async ({ status, limit }) =>
-      safeHandler(async () => jsonContent(await pact.tasks.list({ status, limit }))),
+    async ({ status, order, limit, cursor }) =>
+      safeHandler(async () =>
+        jsonContent(await pact.tasks.list({ status, order, limit, cursor })),
+      ),
   )
 
   registerTool(

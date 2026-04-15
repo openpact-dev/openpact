@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import type { Pact } from '../../pact'
-import { listByType } from '../views'
+import { listByType, BadCursorError } from '../views'
 import { getTaskState, reduceTaskHistory, type TaskState, type ReduceOpts } from '../tasks-state'
 import { findRefs } from '../views'
 import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
+import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
 const TASK_STATUSES = ['open', 'claimed', 'complete'] as const
 
@@ -31,9 +32,8 @@ const completeSchema = {
   additionalProperties: false,
 }
 
-interface ListQuery {
+interface ListQuery extends ListPageQuery {
   status?: 'open' | 'claimed' | 'complete'
-  limit?: number
 }
 
 interface IdParams {
@@ -52,27 +52,46 @@ export default async function tasksRoute(
         querystring: {
           type: 'object',
           properties: {
+            ...LIST_PAGE_QUERY,
             status: { enum: TASK_STATUSES as unknown as string[] },
-            limit: { type: 'integer', minimum: 1, maximum: 1000 },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { status, limit } = req.query
-      const originals = await listByType(pact.view, 'task', {
-        limit,
-        filter: (v) => !v?.refs?.length,
-      })
+      const { status, order, limit, cursor } = req.query
+      // Paginate over originals (the first-append per task). The
+      // status filter runs after reducing each original's history,
+      // which can only be determined post-reduce. If the status
+      // filter rejects some, `entries` can be smaller than `limit` —
+      // callers follow the page's `cursor` to keep walking.
+      let page
+      try {
+        page = await listByType(pact.view, 'task', {
+          order,
+          limit,
+          cursor: cursor ?? null,
+          filter: (v) => !v?.refs?.length,
+        })
+      } catch (err) {
+        if (err instanceof BadCursorError) {
+          throw new HttpError(400, 'BAD_CURSOR', err.message)
+        }
+        throw err
+      }
       const states: TaskState[] = []
-      for (const original of originals) {
-        const state = await getTaskState(pact.view, original.id)
+      for (const original of page.entries) {
+        const state = await getTaskState(pact.view, (original as any).id, ttlOpts(daemon))
         if (state && (!status || state.status === status)) {
           states.push(state)
         }
       }
-      return states
+      return {
+        entries: states,
+        cursor: page.cursor,
+        has_more: page.has_more,
+      }
     },
   )
 

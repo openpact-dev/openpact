@@ -4,9 +4,10 @@ import path from 'path'
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import type { Pact } from '../../pact'
-import { listByType, getById } from '../views'
+import { listByType, getById, BadCursorError } from '../views'
 import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
+import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
 const SKILL_FORMATS = ['openclaw', 'langchain', 'generic'] as const
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/
@@ -72,9 +73,8 @@ const skillPayloadSchema = {
   additionalProperties: true,
 }
 
-interface ListQuery {
+interface ListQuery extends ListPageQuery {
   format?: string
-  limit?: number
 }
 
 interface IdParams {
@@ -93,19 +93,28 @@ export default async function skillsRoute(
         querystring: {
           type: 'object',
           properties: {
+            ...LIST_PAGE_QUERY,
             format: { enum: SKILL_FORMATS as unknown as string[] },
-            limit: { type: 'integer', minimum: 1, maximum: 1000 },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { format, limit } = req.query
-      return listByType(pact.view, 'skill', {
-        limit,
-        filter: format ? (v) => v?.payload?.format === format : undefined,
-      })
+      const { format, order, limit, cursor } = req.query
+      try {
+        return await listByType(pact.view, 'skill', {
+          order,
+          limit,
+          cursor: cursor ?? null,
+          filter: format ? (v) => v?.payload?.format === format : undefined,
+        })
+      } catch (err) {
+        if (err instanceof BadCursorError) {
+          throw new HttpError(400, 'BAD_CURSOR', err.message)
+        }
+        throw err
+      }
     },
   )
 

@@ -14,11 +14,21 @@ export function registerSkillsTools(server: McpServer, pact: OpenPact): void {
         'List skills shared in the pact, optionally filtered by runtime format. Skills are reusable agent capabilities (tool definitions, prompts, scripts).',
       inputSchema: {
         format: SKILL_FORMAT.optional(),
+        order: z
+          .enum(['asc', 'desc'])
+          .optional()
+          .describe("Sort direction. 'desc' (default) returns newest first."),
         limit: z.number().int().min(1).max(1000).optional(),
+        cursor: z
+          .string()
+          .optional()
+          .describe('Opaque cursor from a previous call to continue paging.'),
       },
     },
-    async ({ format, limit }) =>
-      safeHandler(async () => jsonContent(await pact.skills.list({ format, limit }))),
+    async ({ format, order, limit, cursor }) =>
+      safeHandler(async () =>
+        jsonContent(await pact.skills.list({ format, order, limit, cursor })),
+      ),
   )
 
   registerTool(

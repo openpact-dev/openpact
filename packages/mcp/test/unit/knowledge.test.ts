@@ -8,7 +8,9 @@ test('recall_knowledge: forwards topic + limit to pact.knowledge.list', async (t
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'recall_knowledge')
   const r = await handler({ topic: 'routing', limit: 5 })
-  t.alike(pact.knowledge.list.calls[0].args, [{ topic: 'routing', limit: 5 }])
+  t.alike(pact.knowledge.list.calls[0].args, [
+    { topic: 'routing', order: undefined, limit: 5, cursor: undefined },
+  ])
   t.ok(r.content[0].text.includes('"topic": "routing"'))
 })
 
