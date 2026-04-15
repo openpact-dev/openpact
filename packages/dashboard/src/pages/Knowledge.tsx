@@ -24,7 +24,7 @@ export function Knowledge() {
   const trigger = sse.last?.event === 'entry-applied' ? sse.last.seq : 0
 
   const knowledge = useQuery(() => pact.knowledge.list({ limit: 200 }), {
-    key: 'knowledge:200',
+    key: `knowledge:200:${pact.pactId}`,
     trigger,
   })
 

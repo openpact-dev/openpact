@@ -21,8 +21,8 @@ export function Network() {
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0
 
-  const status = useQuery(() => pact.status(), { key: 'net:status', trigger })
-  const peers = useQuery(() => pact.peers(), { key: 'net:peers', trigger })
+  const status = useQuery(() => pact.status(), { key: `net:status:${pact.pactId}`, trigger })
+  const peers = useQuery(() => pact.peers(), { key: `net:peers:${pact.pactId}`, trigger })
 
   const [pending, setPending] = useState<AdminAction | null>(null)
   const [toast, setToast] = useState<string | null>(null)

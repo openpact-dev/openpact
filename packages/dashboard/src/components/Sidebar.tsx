@@ -8,9 +8,26 @@
 import { useEffect, useState } from 'preact/hooks'
 import { ThemeDial } from './ThemeDial'
 import { WatchingEye } from './Ornament'
+import { PactSwitcher } from './PactSwitcher'
 import { useTheme } from '../hooks/useTheme'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
+
+interface PactSnapshot {
+  alias: string
+  pact_id: string
+  pact_name: string | null
+  is_current: boolean
+}
+
+export interface SidebarProps {
+  /** Currently-selected pact alias (from useCurrentPact at the App root). */
+  current: string | null
+  /** Every pact known to this host. */
+  pacts: PactSnapshot[]
+  /** Switch to a different pact. */
+  onSelect: (alias: string) => void
+}
 
 interface NavLink {
   href: string
@@ -52,7 +69,7 @@ function NavRow({ link, current }: { link: NavLink; current: string }) {
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   useTheme() // re-render when the resolved theme changes
 
   const [path, setPath] = useState<string>(
@@ -74,7 +91,11 @@ export function Sidebar() {
   }, [])
 
   const pact = usePact()
-  const status = useQuery(() => pact.status(), { key: 'sidebar:status' })
+  // Per-pact status — keyed by current alias so the cache invalidates
+  // on switch and re-fetches against the new pact.
+  const status = useQuery(() => pact.status(), {
+    key: `sidebar:status:${current ?? 'none'}`,
+  })
   const peerHandle = status.data?.peer_handle ?? null
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
@@ -96,7 +117,7 @@ export function Sidebar() {
       </div>
 
       {/* Brand block — product name, plus the current pact's name
-          (italic, secondary) if the creator has set one. */}
+          (italic, secondary) when status has loaded. */}
       <div class="px-5 pb-4 pt-6">
         <div class="flex items-center gap-2.5">
           <WatchingEye size={24} />
@@ -117,6 +138,11 @@ export function Sidebar() {
       </div>
 
       <div class="hairline mx-5 mb-3 opacity-60" />
+
+      {/* Pact switcher sits above the nav so it's always reachable. */}
+      <div class="mb-4 px-3">
+        <PactSwitcher current={current} pacts={pacts} onSelect={onSelect} />
+      </div>
 
       <div class="px-2.5">
         {PRIMARY.map((link) => (

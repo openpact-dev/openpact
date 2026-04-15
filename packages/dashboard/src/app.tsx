@@ -6,6 +6,9 @@ import { Tasks } from './pages/Tasks'
 import { Skills } from './pages/Skills'
 import { Network } from './pages/Network'
 import { Trace } from './pages/Trace'
+import { Pacts } from './pages/Pacts'
+import { useCurrentPact } from './hooks/useCurrentPact'
+import { PactContext, pactClient, hostPact } from './hooks/usePact'
 
 function NotFound() {
   return (
@@ -22,22 +25,43 @@ function NotFound() {
 }
 
 export function App() {
+  // The pact switcher state lives at the top so a single context covers
+  // both the sidebar and the page. Switching the pact updates `current`
+  // and, via the keyed PactContext below, every consumer's `usePact()`
+  // call returns the new client (which bumps useQuery cache keys).
+  const { current, pacts, setCurrent, refresh } = useCurrentPact()
+  const client = current ? pactClient(current) : hostPact()
+
   return (
-    <div class="relative z-10 flex min-h-screen">
-      <div class="sticky top-0 h-screen shrink-0">
-        <Sidebar />
+    <PactContext.Provider value={client}>
+      <div class="relative z-10 flex min-h-screen">
+        <div class="sticky top-0 h-screen shrink-0">
+          <Sidebar
+            current={current}
+            pacts={pacts}
+            onSelect={(alias) => {
+              void setCurrent(alias)
+            }}
+          />
+        </div>
+        <main class="min-w-0 flex-1 px-10 py-8" key={current ?? '__no-pact__'}>
+          <Router>
+            <Dashboard path="/" />
+            <Knowledge path="/knowledge" />
+            <Tasks path="/tasks" />
+            <Skills path="/skills" />
+            <Network path="/network" />
+            <Pacts
+              path="/pacts"
+              current={current}
+              pacts={pacts}
+              onChange={() => void refresh()}
+            />
+            <Trace path="/trace/:id" />
+            <NotFound default />
+          </Router>
+        </main>
       </div>
-      <main class="min-w-0 flex-1 px-10 py-8">
-        <Router>
-          <Dashboard path="/" />
-          <Knowledge path="/knowledge" />
-          <Tasks path="/tasks" />
-          <Skills path="/skills" />
-          <Network path="/network" />
-          <Trace path="/trace/:id" />
-          <NotFound default />
-        </Router>
-      </main>
-    </div>
+    </PactContext.Provider>
   )
 }

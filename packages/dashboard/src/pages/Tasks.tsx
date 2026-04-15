@@ -30,7 +30,7 @@ export function Tasks() {
   const trigger = sse.last?.seq ?? 0
 
   const tasks = useQuery(() => pact.tasks.list({ limit: 500 }), {
-    key: 'tasks:all',
+    key: `tasks:all:${pact.pactId}`,
     trigger,
   })
 

@@ -14,11 +14,11 @@ export function Dashboard() {
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0
 
-  const status = useQuery(() => pact.status(), { key: 'status', trigger })
-  const peers = useQuery(() => pact.peers(), { key: 'peers', trigger })
-  const knowledge = useQuery(() => pact.knowledge.list({ limit: 20 }), { key: 'k:20', trigger })
-  const tasks = useQuery(() => pact.tasks.list({ limit: 20 }), { key: 't:20', trigger })
-  const messages = useQuery(() => pact.messages.list({ limit: 20 }), { key: 'm:20', trigger })
+  const status = useQuery(() => pact.status(), { key: `status:${pact.pactId}`, trigger })
+  const peers = useQuery(() => pact.peers(), { key: `peers:${pact.pactId}`, trigger })
+  const knowledge = useQuery(() => pact.knowledge.list({ limit: 20 }), { key: `k:20:${pact.pactId}`, trigger })
+  const tasks = useQuery(() => pact.tasks.list({ limit: 20 }), { key: `t:20:${pact.pactId}`, trigger })
+  const messages = useQuery(() => pact.messages.list({ limit: 20 }), { key: `m:20:${pact.pactId}`, trigger })
 
   const feed = useMemo<Entry[]>(() => {
     const merged: Entry[] = []

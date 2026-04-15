@@ -35,11 +35,11 @@ export function Skills() {
   const trigger = sse.last?.seq ?? 0
 
   const skills = useQuery(() => pact.skills.list({ limit: 200 }), {
-    key: 'skills:all',
+    key: `skills:all:${pact.pactId}`,
     trigger,
   })
   const installed = useQuery(() => pact.skills.installed(), {
-    key: 'skills:installed',
+    key: `skills:installed:${pact.pactId}`,
     trigger,
   })
 
@@ -251,7 +251,7 @@ function InstalledRow({ skill, index }: { skill: InstalledSkill; index: number }
 
 function InspectModal({ skillId, onClose }: { skillId: string; onClose: () => void }) {
   const pact = usePact()
-  const content = useQuery(() => pact.skills.getContent(skillId), { key: `content:${skillId}` })
+  const content = useQuery(() => pact.skills.getContent(skillId), { key: `content:${pact.pactId}:${skillId}` })
 
   return (
     <div

@@ -6,8 +6,8 @@ import { relTime, preferredName } from '../lib/format'
 
 export function Trace({ id }: { id?: string }) {
   const pact = usePact()
-  const entry = useQuery(() => pact.entries.get(id ?? ''), { key: `trace:${id}` })
-  const refs = useQuery(() => pact.entries.referencedBy(id ?? ''), { key: `refs:${id}` })
+  const entry = useQuery(() => pact.entries.get(id ?? ''), { key: `trace:${pact.pactId}:${id}` })
+  const refs = useQuery(() => pact.entries.referencedBy(id ?? ''), { key: `refs:${pact.pactId}:${id}` })
 
   if (!id) {
     return (
