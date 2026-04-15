@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { tmpHome, runWithDir } from './helpers/run-cli'
 
-test('invite prints pact key; join writes config', async (t) => {
+test('invite prints pact key; join registers the pact', async (t) => {
   const a = await tmpHome(t)
   const b = await tmpHome(t)
 
@@ -17,16 +17,19 @@ test('invite prints pact key; join writes config', async (t) => {
   t.is(join.exitCode, 0)
   t.ok(join.stdout.includes('entered the pact'))
 
-  const cfg = JSON.parse(await fs.readFile(path.join(b, 'config.json'), 'utf8'))
-  t.is(cfg.pactKey, key)
-  t.is(cfg.role, 'reader')
+  const daemonCfg = JSON.parse(await fs.readFile(path.join(b, 'daemon.json'), 'utf8'))
+  t.is(daemonCfg.pacts.length, 1)
+  t.is(daemonCfg.pacts[0].pactId, key)
+  const pactDir = daemonCfg.pacts[0].dataDir
+  const pactCfg = JSON.parse(await fs.readFile(path.join(pactDir, 'config.json'), 'utf8'))
+  t.is(pactCfg.role, 'reader')
 })
 
-test('invite: errors when no pact', async (t) => {
+test('invite: errors when no pacts', async (t) => {
   const home = await tmpHome(t)
   const res = await runWithDir(home, ['invite'])
   t.not(res.exitCode, 0)
-  t.ok(res.stderr.includes('no pact at'))
+  t.ok(res.stderr.includes('no pacts at'))
 })
 
 test('join: refuses bad hex', async (t) => {

@@ -80,14 +80,16 @@ export async function startCmd(
   // Match-verify: a prior daemon from a *different* dataDir may already
   // own :port. Our detached child would have failed with EADDRINUSE and
   // died, but waitForReady happily pinged the stranger. Compare the
-  // responding daemon's pact_id with the one we just persisted to this
-  // dataDir; if they differ, the strange daemon is not ours.
-  const cfg = await daemonConfig.loadConfig(dir).catch(() => null)
-  if (cfg?.pactKey) {
+  // responding daemon's current pact_id with the registry we just wrote;
+  // if they differ, the strange daemon is not ours.
+  const registry = await daemonConfig.loadDaemonConfig(dir).catch(() => null)
+  const expectedPactId =
+    registry?.pacts.find((p) => p.alias === registry.currentAlias)?.pactId ?? null
+  if (expectedPactId) {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/v1/status`)
       const status = (await res.json()) as { pact_id?: string | null }
-      if (status.pact_id && status.pact_id !== cfg.pactKey) {
+      if (status.pact_id && status.pact_id !== expectedPactId) {
         sp.fail(
           c.brand(
             `port :${port} is already held by a different pact (${status.pact_id.slice(
@@ -99,9 +101,7 @@ export async function startCmd(
         process.exit(1)
       }
     } catch {
-      // Non-fatal — if the status probe itself fails, keep the
-      // original success path (the daemon is on the port, we just
-      // couldn't double-check identity).
+      // Non-fatal — if the status probe fails, keep the happy path.
     }
   }
   sp.succeed(c.brandBold('The daemon stirs.'))

@@ -37,8 +37,8 @@ test('Daemon.load resumes from disk', async (t) => {
   t.is(resumed.role, 'creator')
 })
 
-test('Daemon.load throws when no pact exists', async (t) => {
+test('Daemon.load throws when no pacts exist', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-empty-'))
   t.teardown(() => fs.rm(dir, { recursive: true, force: true }))
-  await t.exception(() => Daemon.load({ dataDir: dir }), /no pact found/)
+  await t.exception(() => Daemon.load({ dataDir: dir }), /no pacts found/)
 })

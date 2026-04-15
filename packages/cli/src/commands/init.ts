@@ -1,6 +1,5 @@
-import fs from 'fs/promises'
 import open from 'open'
-import { Daemon, config as daemonConfig, dataDir as daemonDataDir } from '@openpact/daemon'
+import { Daemon, config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji, banner } from '../lib/theme'
 import { askText } from '../lib/prompt'
@@ -12,13 +11,14 @@ export interface InitOpts {
   name?: string
   purpose?: string
   displayName?: string
+  /** Optional local alias. Auto-slugged from name if omitted. */
+  alias?: string
   /** Commander maps `--no-interactive` to `interactive: false`. */
   interactive?: boolean
   /** Commander maps `--no-start` to `start: false`. Default: auto-start when interactive. */
   start?: boolean
   /** Commander maps `--no-open` to `open: false`. Default: open the browser when auto-started. */
   open?: boolean
-  /** Optional port overrides forwarded to auto-start. */
   port?: string | number
   dashboardPort?: string | number
 }
@@ -27,25 +27,9 @@ export async function initCmd(
   opts: InitOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
-  const dir = resolveDataDir(cmd.optsWithGlobals())
+  const hostDir = resolveDataDir(cmd.optsWithGlobals())
 
-  const cfg = await daemonConfig.loadConfig(dir).catch(() => daemonConfig.defaults())
-  if (cfg.pactKey && !opts.force) {
-    throw new Error(
-      `pact already sealed at ${dir} (key ${cfg.pactKey.slice(0, 12)}…). Pass --force to break it.`,
-    )
-  }
-
-  if (opts.force) {
-    await fs.rm(daemonDataDir.corestorePath(dir), { recursive: true, force: true })
-  }
-
-  // Commander sets `interactive: false` for `--no-interactive`; leave
-  // undefined (default) to mean "prompt when a TTY is attached."
   const nonInteractive = opts.interactive === false
-
-  // Generate themed defaults once so the same value shows in the
-  // prompt initial and falls through silently in non-TTY mode.
   const pactName = await askText({
     provided: opts.name,
     nonInteractive,
@@ -68,33 +52,52 @@ export async function initCmd(
     max: 64,
   })
 
-  const daemon = await Daemon.create({
-    dataDir: dir,
+  // Load the host registry. If there's already a pact under the
+  // requested alias and --force is set, remove it first; otherwise
+  // refuse. `default` is the fallback when the user gives no alias.
+  const registry = await daemonConfig
+    .loadDaemonConfig(hostDir)
+    .catch(() => daemonConfig.daemonDefaults())
+  const daemon = new Daemon({ dataDir: hostDir })
+
+  // Resolve the alias now so the "force" path has a precise target.
+  // Daemon.createPact will auto-slug if we pass undefined, but we
+  // want --force to work against the same alias it would have created.
+  const existing = new Set(registry.pacts.map((p) => p.alias))
+  const chosenAlias = opts.alias ?? autoSlug(pactName) ?? 'default'
+  if (existing.has(chosenAlias)) {
+    if (!opts.force) {
+      throw new Error(
+        `a pact named ${chosenAlias} already exists at ${hostDir}. Pass --force to break it, or --alias <name> to use a different one.`,
+      )
+    }
+    await daemon.removePact(chosenAlias)
+  }
+
+  const { pact, alias } = await daemon.createPact({
+    alias: chosenAlias,
     pactName,
     pactPurpose,
     displayName,
+    setCurrent: true,
   })
-  const pactKey = daemon.pactKey ?? ''
-  const peerHandle = daemon.peerHandle ?? ''
-  // Stop the init-owned daemon before auto-start tries to spawn a
-  // detached process against the same Corestore.
+  const pactKey = pact.pactKey ?? ''
+  const peerHandle = pact.peerHandle ?? ''
+  // Close the init-owned pact + host before auto-start spawns a
+  // detached process against the same corestore.
   await daemon.stop()
 
   process.stdout.write(banner())
   console.log(`  ${emoji.brand} ${c.brandBold('A pact has been sealed.')}`)
   console.log()
   console.log(`  ${c.brandBold('Pact')}        ${pactName}`)
+  console.log(`  ${c.brandBold('Alias')}       ${c.ash(alias)}`)
   console.log(`  ${c.brandBold('Purpose')}     ${c.ash(pactPurpose)}`)
-  console.log(`  ${c.brandBold('Data dir')}    ${c.ash(dir)}`)
+  console.log(`  ${c.brandBold('Data dir')}    ${c.ash(hostDir)}`)
   console.log(`  ${c.brandBold('Pact key')}    ${c.bone(pactKey)}`)
   console.log(`  ${c.brandBold('Your mark')}   ${displayName} ${c.ash(`(${peerHandle})`)}`)
   console.log()
 
-  // Auto-start: on when stdin is a TTY (interactive run), off otherwise
-  // (CI / piped). `--no-start` always disables regardless. Commander
-  // maps `--no-start` to `start: false` and defaults to `true`, so we
-  // only look for the explicit `false` here — the TTY check decides
-  // the default.
   const shouldAutoStart = opts.start !== false && !!process.stdin.isTTY
   if (!shouldAutoStart) {
     console.log(c.ash('  next:  openpact start'))
@@ -102,13 +105,7 @@ export async function initCmd(
     return
   }
 
-  await startCmd(
-    {
-      port: opts.port,
-      dashboardPort: opts.dashboardPort,
-    },
-    cmd,
-  )
+  await startCmd({ port: opts.port, dashboardPort: opts.dashboardPort }, cmd)
 
   const shouldOpen = opts.open !== false
   if (shouldOpen) {
@@ -119,9 +116,16 @@ export async function initCmd(
       console.log()
       console.log(c.ash(`  opened ${url} in your default browser`))
     } catch {
-      // `open` can fail in headless environments (no DISPLAY, WSL
-      // without wslview, etc.). Fall through silently — the URL
-      // is already in the banner above.
+      // headless fallback — URL already printed above
     }
   }
+}
+
+function autoSlug(name: string): string | null {
+  const s = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return s || null
 }

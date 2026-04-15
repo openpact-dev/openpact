@@ -1,5 +1,7 @@
 export { Daemon } from './daemon'
-export type { DaemonOpts, JoinOpts, WaitOpts } from './daemon'
+export type { DaemonOpts, JoinOpts, WaitOpts, CreatePactOpts, JoinPactOpts } from './daemon'
+export { Pact } from './pact'
+export type { PactOpts, PactCreateOpts, PactJoinOpts } from './pact'
 export { makeApply, INDEXER_PREFIX } from './apply'
 export type {
   ApplyNode,

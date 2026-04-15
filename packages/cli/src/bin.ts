@@ -31,7 +31,8 @@ export function buildProgram(): Command {
   program
     .command('init')
     .description('seal a new pact; auto-starts the daemon when run from a TTY')
-    .option('--force', 'break the existing pact and seal a fresh one')
+    .option('--force', 'break the existing pact at this alias and seal a fresh one')
+    .option('--alias <str>', 'short local alias (default: slug of the pact name)')
     .option('--name <str>', 'pact name (e.g. "The Obsidian Accord")')
     .option('--purpose <str>', 'one-line purpose statement for the pact')
     .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
@@ -45,7 +46,8 @@ export function buildProgram(): Command {
   program
     .command('join <key>')
     .description('enter an existing pact using its hex key')
-    .option('--force', 'break the existing pact and join the new one')
+    .option('--force', 'break the existing pact at this alias and re-join')
+    .option('--alias <str>', 'short local alias (default: joined-<first8hex>)')
     .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .action(joinCmd)

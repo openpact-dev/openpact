@@ -19,64 +19,87 @@ function ctx(dir: string) {
   return { optsWithGlobals: () => ({ dataDir: dir }) }
 }
 
-test('initCmd creates a pact', async (t) => {
+/** Read the current pact's key from the registry. */
+async function currentPactKey(hostDir: string): Promise<string | null> {
+  const cfg = await daemonConfig.loadDaemonConfig(hostDir)
+  const alias = cfg.currentAlias
+  if (!alias) return null
+  const entry = cfg.pacts.find((p) => p.alias === alias)
+  return entry?.pactId ?? null
+}
+
+test('initCmd creates a pact and adds it to the registry', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({}, ctx(dir))
-  const cfg = await daemonConfig.loadConfig(dir)
-  t.ok(typeof cfg.pactKey === 'string' && cfg.pactKey.length > 0)
-  t.is(cfg.role, 'creator')
+  await initCmd({ interactive: false }, ctx(dir))
+  const cfg = await daemonConfig.loadDaemonConfig(dir)
+  t.is(cfg.pacts.length, 1)
+  t.ok(cfg.currentAlias, 'has a current alias')
+  const pact = cfg.pacts[0]
+  t.ok(pact.pactId.length > 0)
+  t.ok(pact.dataDir.includes('pacts'))
 })
 
-test('initCmd: refuses second init without --force', async (t) => {
+test('initCmd: refuses second init at the same alias without --force', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({}, ctx(dir))
-  await t.exception(() => initCmd({}, ctx(dir)), /already sealed/)
+  await initCmd({ interactive: false, alias: 'iron' }, ctx(dir))
+  await t.exception(
+    () => initCmd({ interactive: false, alias: 'iron' }, ctx(dir)),
+    /already exists/,
+  )
 })
 
-test('initCmd: --force overwrites', async (t) => {
+test('initCmd: --force replaces the pact at the same alias', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({}, ctx(dir))
-  const before = (await daemonConfig.loadConfig(dir)).pactKey
-  await initCmd({ force: true }, ctx(dir))
-  const after = (await daemonConfig.loadConfig(dir)).pactKey
+  await initCmd({ interactive: false, alias: 'iron' }, ctx(dir))
+  const before = await currentPactKey(dir)
+  await initCmd({ interactive: false, alias: 'iron', force: true }, ctx(dir))
+  const after = await currentPactKey(dir)
   t.not(before, after, 'new pact key after --force')
 })
 
 test('joinCmd: rejects bad hex', async (t) => {
   const dir = await tmpHome(t)
-  await t.exception(() => joinCmd('not-hex', {}, ctx(dir)), /must be hex/)
+  await t.exception(() => joinCmd('not-hex', { interactive: false }, ctx(dir)), /must be hex/)
 })
 
-test('joinCmd: writes config with given key', async (t) => {
+test('joinCmd: writes a joined pact into the registry', async (t) => {
   const a = await tmpHome(t)
   const b = await tmpHome(t)
-  await initCmd({}, ctx(a))
-  const aKey = (await daemonConfig.loadConfig(a)).pactKey!
+  await initCmd({ interactive: false }, ctx(a))
+  const aKey = await currentPactKey(a)
+  t.ok(aKey, 'creator has a key')
 
-  await joinCmd(aKey, {}, ctx(b))
-  const bCfg = await daemonConfig.loadConfig(b)
-  t.is(bCfg.pactKey, aKey)
-  t.is(bCfg.role, 'reader')
+  await joinCmd(aKey!, { interactive: false }, ctx(b))
+  const bCfg = await daemonConfig.loadDaemonConfig(b)
+  t.is(bCfg.pacts.length, 1)
+  t.is(bCfg.pacts[0].pactId, aKey)
+  // Read the per-pact config to confirm the reader role.
+  const pactDir = bCfg.pacts[0].dataDir
+  const pactCfg = await daemonConfig.loadPactConfig(pactDir)
+  t.is(pactCfg.role, 'reader')
 })
 
-test('joinCmd: refuses second join without --force', async (t) => {
+test('joinCmd: refuses second join at the same alias without --force', async (t) => {
   const a = await tmpHome(t)
   const b = await tmpHome(t)
-  await initCmd({}, ctx(a))
-  const aKey = (await daemonConfig.loadConfig(a)).pactKey!
-  await joinCmd(aKey, {}, ctx(b))
-  await t.exception(() => joinCmd(aKey, {}, ctx(b)), /already sealed/)
+  await initCmd({ interactive: false }, ctx(a))
+  const aKey = await currentPactKey(a)
+  await joinCmd(aKey!, { interactive: false, alias: 'peer' }, ctx(b))
+  await t.exception(
+    () => joinCmd(aKey!, { interactive: false, alias: 'peer' }, ctx(b)),
+    /already exists/,
+  )
 })
 
-test('inviteCmd: errors when no pact', async (t) => {
+test('inviteCmd: errors when no pacts', async (t) => {
   const dir = await tmpHome(t)
-  await t.exception(() => inviteCmd({}, ctx(dir)), /no pact at/)
+  await t.exception(() => inviteCmd({}, ctx(dir)), /no pacts at/)
 })
 
-test('inviteCmd: writes pact key to stdout', async (t) => {
+test('inviteCmd: writes current pact key to stdout', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({}, ctx(dir))
-  const cfg = await daemonConfig.loadConfig(dir)
+  await initCmd({ interactive: false }, ctx(dir))
+  const expected = await currentPactKey(dir)
   let captured = ''
   const orig = process.stdout.write.bind(process.stdout)
   process.stdout.write = (chunk: any) => {
@@ -88,21 +111,19 @@ test('inviteCmd: writes pact key to stdout', async (t) => {
   } finally {
     process.stdout.write = orig
   }
-  t.is(captured.trim(), cfg.pactKey)
+  t.is(captured.trim(), expected)
 })
 
 test('stopCmd: no PID file → no-op', async (t) => {
   const dir = await tmpHome(t)
   await fs.mkdir(dir, { recursive: true })
-  // Should not throw.
   await stopCmd({}, ctx(dir))
   t.pass()
 })
 
 test('stopCmd: stale PID file is cleaned up', async (t) => {
   const dir = await tmpHome(t)
-  await writePidFile(dir, 999_999) // unlikely to exist
+  await writePidFile(dir, 999_999)
   await stopCmd({}, ctx(dir))
-  // PID file should be gone now.
   await t.exception(() => fs.access(path.join(dir, 'pid')))
 })

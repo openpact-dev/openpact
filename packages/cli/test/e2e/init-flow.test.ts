@@ -3,34 +3,40 @@ import fs from 'fs/promises'
 import path from 'path'
 import { tmpHome, runWithDir } from './helpers/run-cli'
 
-test('openpact init creates ~/.openpact/ with config', async (t) => {
+test('openpact init creates ~/.openpact/ with a pact registry', async (t) => {
   const home = await tmpHome(t)
   const res = await runWithDir(home, ['init'])
   t.is(res.exitCode, 0)
   t.ok(res.stdout.includes('pact has been sealed'))
   t.ok(res.stdout.includes('Pact key'))
 
-  const cfg = JSON.parse(await fs.readFile(path.join(home, 'config.json'), 'utf8'))
-  t.ok(typeof cfg.pactKey === 'string')
-  t.is(cfg.role, 'creator')
+  const daemonCfg = JSON.parse(await fs.readFile(path.join(home, 'daemon.json'), 'utf8'))
+  t.is(daemonCfg.pacts.length, 1)
+  t.ok(daemonCfg.currentAlias, 'registry has a currentAlias')
+  const pactDir = daemonCfg.pacts[0].dataDir
+  const pactCfg = JSON.parse(await fs.readFile(path.join(pactDir, 'config.json'), 'utf8'))
+  t.ok(typeof pactCfg.pactKey === 'string')
+  t.is(pactCfg.role, 'creator')
 })
 
-test('openpact init: refuses second init without --force', async (t) => {
+test('openpact init: refuses second init at same alias without --force', async (t) => {
   const home = await tmpHome(t)
-  await runWithDir(home, ['init'])
-  const res = await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'iron'])
+  const res = await runWithDir(home, ['init', '--alias', 'iron'])
   t.not(res.exitCode, 0)
-  t.ok(res.stderr.includes('already sealed'))
+  t.ok(res.stderr.includes('already exists'))
 })
 
-test('openpact init: --force overwrites', async (t) => {
+test('openpact init: --force replaces the same alias', async (t) => {
   const home = await tmpHome(t)
-  await runWithDir(home, ['init'])
-  const before = JSON.parse(await fs.readFile(path.join(home, 'config.json'), 'utf8'))
+  await runWithDir(home, ['init', '--alias', 'iron'])
+  const beforeCfg = JSON.parse(await fs.readFile(path.join(home, 'daemon.json'), 'utf8'))
+  const beforeId = beforeCfg.pacts[0].pactId
 
-  const res = await runWithDir(home, ['init', '--force'])
+  const res = await runWithDir(home, ['init', '--alias', 'iron', '--force'])
   t.is(res.exitCode, 0)
 
-  const after = JSON.parse(await fs.readFile(path.join(home, 'config.json'), 'utf8'))
-  t.not(before.pactKey, after.pactKey, 'new keypair after --force')
+  const afterCfg = JSON.parse(await fs.readFile(path.join(home, 'daemon.json'), 'utf8'))
+  t.is(afterCfg.pacts.length, 1)
+  t.not(beforeId, afterCfg.pacts[0].pactId, 'new pact key after --force')
 })

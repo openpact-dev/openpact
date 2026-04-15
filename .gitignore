@@ -30,3 +30,4 @@ packages/*/dist/
 # Python
 **/.pytest_cache/
 **/__pycache__/
+.playwright-mcp/
