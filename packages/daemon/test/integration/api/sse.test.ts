@@ -75,7 +75,7 @@ async function readUntil(
 }
 
 test('GET /v1/events streams an SSE entry-applied frame after a knowledge POST', async (t) => {
-  const { daemon } = await tmpDaemon(t)
+  const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   const port = nextPort++
   await bind(app, { host: '127.0.0.1', port })

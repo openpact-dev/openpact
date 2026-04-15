@@ -13,7 +13,8 @@ import { tmpDaemon } from '../../helpers/tmp-daemon'
 const KEY_B = 'bb'.repeat(32)
 
 async function bootApi(t: any, opts: any = {}) {
-  const { daemon } = await tmpDaemon(t, opts)
+  // No swarm needed for in-process route tests; skip start to save ~1s/test.
+  const { daemon } = await tmpDaemon(t, { start: false, ...opts })
   const app = createApi(daemon)
   t.teardown(() => app.close())
   return { app, daemon }

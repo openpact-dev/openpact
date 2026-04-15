@@ -23,7 +23,7 @@ interface DaemonHarness {
 async function bootDaemon(t: any): Promise<DaemonHarness> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-dash-'))
   const daemon = await Daemon.create({ dataDir: dir })
-  await daemon.start()
+  // await daemon.start() — skipped: no swarm needed for HTTP-only tests
   const app = createApi(daemon)
   const daemonPort = nextDaemonPort++
   await bind(app, { host: '127.0.0.1', port: daemonPort })

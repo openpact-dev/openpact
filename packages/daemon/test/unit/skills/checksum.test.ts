@@ -13,7 +13,8 @@ function sha(content: string): string {
 }
 
 async function bootApi(t: any) {
-  const { daemon } = await tmpDaemon(t)
+  // No swarm needed for in-process route tests; skip start to save ~1s/test.
+  const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   const url = await bind(app, { host: '127.0.0.1', port: 0 })
   t.teardown(() => app.close())
