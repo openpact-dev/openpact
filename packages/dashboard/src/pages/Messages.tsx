@@ -51,9 +51,9 @@ export function Messages() {
 
   const [filter, setFilter] = useState<Filter>('all')
 
-  // API already returns newest-first. Filter locally.
+  // API returns oldest-first; flip to newest-first for the display.
   const rows = useMemo<MessageRow[]>(() => {
-    const all = (messages.data ?? []) as MessageRow[]
+    const all = [...((messages.data ?? []) as MessageRow[])].reverse()
     if (filter === 'broadcast') return all.filter((m) => m.payload?.to === '*')
     if (filter === 'direct') return all.filter((m) => m.payload?.to && m.payload.to !== '*')
     return all
@@ -318,35 +318,35 @@ function Segmented({
     { key: 'broadcast', label: 'Broadcast', count: counts.broadcast },
     { key: 'direct', label: 'Direct', count: counts.direct },
   ]
+  const BASE =
+    'inline-flex items-baseline gap-1.5 cursor-pointer rounded-full border-[0.5px] border-[var(--color-line)] bg-transparent px-3 py-[5px] font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] transition-colors hover:text-[var(--color-ink)]'
+  const ACTIVE =
+    'border-[var(--color-ember)] bg-[var(--color-ember-soft)] text-[var(--color-ember)]'
   return (
     <div
-      class="mt-4 flex justify-center border-t-[0.5px] border-[var(--color-line)] pt-4"
-      role="tablist"
+      class="mt-4 flex items-center justify-between gap-4 border-t-[0.5px] border-[var(--color-line)] pt-3"
+      role="group"
       aria-label="Filter dispatches"
     >
-      <div class="inline-flex overflow-hidden border-[0.5px] border-[var(--color-ember)]">
-        {opts.map((o, i) => {
+      <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+        Show
+      </span>
+      <div class="flex flex-wrap gap-1.5">
+        {opts.map((o) => {
           const active = filter === o.key
           return (
             <button
               key={o.key}
-              role="tab"
-              aria-selected={active}
               type="button"
+              aria-pressed={active}
               onClick={() => setFilter(o.key)}
               data-testid={`filter-${o.key}`}
-              class={`group relative flex items-baseline gap-2 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
-                i > 0 ? 'border-l-[0.5px] border-l-[var(--color-ember)]' : ''
-              } ${
-                active
-                  ? 'bg-[var(--color-ember)] text-[var(--color-paper)]'
-                  : 'bg-transparent text-[var(--color-ink2)] hover:bg-[var(--color-ember)]/10 hover:text-[var(--color-ember)]'
-              }`}
+              class={active ? `${BASE} ${ACTIVE}` : BASE}
             >
               <span>{o.label}</span>
               <span
-                class={`tabular-nums text-[10px] ${
-                  active ? 'text-[var(--color-paper)]/70' : 'text-[var(--color-ink3)]'
+                class={`tabular-nums ${
+                  active ? 'text-[var(--color-ember)]/80' : 'text-[var(--color-ink3)]'
                 }`}
               >
                 {o.count}
