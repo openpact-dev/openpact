@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './pages/Dashboard'
 import { Knowledge } from './pages/Knowledge'
 import { Tasks } from './pages/Tasks'
+import { Messages } from './pages/Messages'
 import { Skills } from './pages/Skills'
 import { Network } from './pages/Network'
 import { Trace } from './pages/Trace'
@@ -49,6 +50,7 @@ export function App() {
             <Dashboard path="/" />
             <Knowledge path="/knowledge" />
             <Tasks path="/tasks" />
+            <Messages path="/messages" />
             <Skills path="/skills" />
             <Network path="/network" />
             <Pacts

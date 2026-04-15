@@ -39,10 +39,11 @@ const PRIMARY: NavLink[] = [
   { href: '/', label: 'Dashboard', hint: 'I' },
   { href: '/knowledge', label: 'Knowledge', hint: 'II' },
   { href: '/tasks', label: 'Tasks', hint: 'III' },
-  { href: '/skills', label: 'Skills', hint: 'IV' },
+  { href: '/messages', label: 'Messages', hint: 'IV' },
+  { href: '/skills', label: 'Skills', hint: 'V' },
 ]
 
-const NETWORK: NavLink[] = [{ href: '/network', label: 'Network', hint: 'V' }]
+const NETWORK: NavLink[] = [{ href: '/network', label: 'Network', hint: 'VI' }]
 
 function isActive(currentPath: string, href: string): boolean {
   if (href === '/') return currentPath === '/'
