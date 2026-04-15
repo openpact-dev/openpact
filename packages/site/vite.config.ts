@@ -33,6 +33,7 @@ export default defineConfig({
         docs: src('docs/index.html'),
         'docs-getting-started': src('docs/getting-started/index.html'),
         'docs-cli': src('docs/cli/index.html'),
+        'docs-dashboard': src('docs/dashboard/index.html'),
         'docs-rest-api': src('docs/rest-api/index.html'),
         'docs-architecture': src('docs/architecture/index.html'),
         'docs-packages': src('docs/packages/index.html'),

@@ -2,16 +2,12 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Panel } from '../components/Panel'
 import { CodeBlock } from '../components/CodeBlock'
-import { WatchingEye, CornerBracket } from '../components/WatchingEye'
+import { WatchingEye } from '../components/WatchingEye'
+import { NetworkHero } from '../components/NetworkHero'
+import { BrandIcon, type BrandName } from '../components/BrandIcon'
 
 const INSTALL = `npm install -g @openpact/cli
-
-openpact init      # seal a pact
-openpact start     # summon the daemon`
-
-const CURL = `curl localhost:7666/v1/pacts/default/knowledge \\
-  -H 'content-type: application/json' \\
-  -d '{"topic":"sales","content":"Tuesdays convert better"}'`
+openpact init`
 
 interface BenefitCard {
   eyebrow: string
@@ -59,28 +55,43 @@ const BENEFITS: BenefitCard[] = [
   },
 ]
 
-const INTEGRATIONS = [
+interface Integration {
+  name: string
+  logo: BrandName
+  href: string
+}
+
+const INTEGRATIONS: Integration[] = [
   {
     name: 'OpenClaw',
+    logo: 'openclaw',
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/openclaw',
   },
   {
     name: 'Claude Code',
+    logo: 'claude-code',
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/claude-code',
   },
   {
     name: 'LangChain',
+    logo: 'langchain',
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/langchain',
   },
   {
     name: 'CrewAI',
+    logo: 'crewai',
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/langchain',
   },
   {
     name: 'Shell scripts',
+    logo: 'shell',
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/shell',
   },
-  { name: 'MCP server', href: 'https://github.com/openpact-dev/openpact/tree/main/packages/mcp' },
+  {
+    name: 'MCP server',
+    logo: 'mcp',
+    href: 'https://github.com/openpact-dev/openpact/tree/main/packages/mcp',
+  },
 ]
 
 const REASONS = [
@@ -100,24 +111,37 @@ export function Landing() {
       <main class="relative z-10">
         {/* === HERO === */}
         <section class="relative overflow-hidden">
-          <div class="mx-auto grid max-w-[1200px] gap-12 px-6 pt-14 pb-16 md:grid-cols-[1.05fr_1fr] md:pt-20 md:pb-24 md:gap-16">
+          <div class="mx-auto grid max-w-[1200px] items-center gap-12 px-6 pt-14 pb-16 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24 md:gap-16">
             <div class="animate-etch">
-              <div class="eyebrow mb-4">Stop rebuilding memory for every agent you run</div>
+              <div class="eyebrow mb-4">
+                Stop wiring memory and queues for every agent you run
+              </div>
               <h1 class="font-display text-[clamp(2.25rem,4.5vw,3.75rem)] font-medium leading-[1.05] tracking-[-0.01em] text-[var(--color-ink)]">
-                Give your agents a{' '}
+                Give your agents shared{' '}
                 <span class="relative whitespace-nowrap">
                   <span class="relative z-10 text-[var(--color-ember)]">memory</span>
                   <span
                     aria-hidden="true"
                     class="absolute inset-x-0 bottom-1 h-[0.3em] bg-[var(--color-ember-glow)]"
                   />
-                </span>{' '}
-                that survives.
+                </span>
+                .{' '}
+                <span class="whitespace-nowrap">
+                  And shared{' '}
+                  <span class="relative whitespace-nowrap">
+                    <span class="relative z-10 text-[var(--color-ember)]">tasks</span>
+                    <span
+                      aria-hidden="true"
+                      class="absolute inset-x-0 bottom-1 h-[0.3em] bg-[var(--color-ember-glow)]"
+                    />
+                  </span>
+                  .
+                </span>
               </h1>
               <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-ink2)]">
                 Claude Code, OpenClaw, LangChain, CrewAI, a shell script at 2am. They all write to
-                one shared log and read each other&rsquo;s work. No SaaS. No vector DB. No server.
-                Install in one line.
+                one shared log, claim each other&rsquo;s tasks, and share each other&rsquo;s
+                skills. No SaaS. No vector DB. No server. Install in one line.
               </p>
 
               <div class="mt-7 flex flex-wrap items-center gap-3">
@@ -139,15 +163,31 @@ export function Landing() {
                 </a>
               </div>
 
+              <div class="mt-6 max-w-md">
+                <CodeBlock title="Quickstart" code={INSTALL} class="!my-0" />
+              </div>
+
               <a
                 href="/for-agents/"
                 class="group mt-4 inline-flex items-center gap-2 text-sm text-[var(--color-ink3)] hover:text-[var(--color-ember)]"
               >
                 <span
                   aria-hidden="true"
-                  class="flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-line)] text-[11px] group-hover:border-[var(--color-ember)]"
+                  class="flex h-5 w-5 items-center justify-center border border-[var(--color-line)] text-[var(--color-ink3)] group-hover:border-[var(--color-ember)] group-hover:text-[var(--color-ember)]"
                 >
-                  ✦
+                  <svg
+                    viewBox="0 0 16 16"
+                    width="10"
+                    height="10"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 4l3.5 4L3 12" />
+                    <line x1="8" y1="12.5" x2="13" y2="12.5" />
+                  </svg>
                 </span>
                 <span>
                   <span class="underline decoration-dotted decoration-[var(--color-ink3)] underline-offset-4 group-hover:decoration-[var(--color-ember)]">
@@ -156,47 +196,19 @@ export function Landing() {
                   <span class="transition-transform group-hover:translate-x-0.5">→</span>
                 </span>
               </a>
-
-              <div class="mt-9 flex items-center gap-4 text-xs">
-                <div class="flex items-center gap-1.5">
-                  <span class="relative flex h-2 w-2">
-                    <span class="absolute inline-flex h-full w-full animate-ember-pulse rounded-full bg-[var(--color-ember)] opacity-75" />
-                    <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-ember)]" />
-                  </span>
-                  <span class="smallcaps">Open source · MIT-friendly SUL</span>
-                </div>
-              </div>
             </div>
 
-            {/* Right column — floating eye + install */}
-            <div class="relative flex flex-col gap-5">
+            {/* Right column — live coordination diagram */}
+            <div class="relative flex flex-col justify-center">
               <div
                 aria-hidden="true"
-                class="pointer-events-none absolute -top-4 -right-4 -z-10 h-72 w-72 rounded-full blur-3xl"
+                class="pointer-events-none absolute inset-0 -z-10 rounded-full blur-3xl"
                 style={{
-                  background: 'radial-gradient(circle, var(--color-ember-glow), transparent 70%)',
+                  background:
+                    'radial-gradient(circle at 50% 45%, var(--color-ember-glow), transparent 70%)',
                 }}
               />
-
-              <div class="relative flex items-center justify-end gap-3 animate-drift">
-                <div class="smallcaps">You install this</div>
-                <WatchingEye size={52} />
-              </div>
-
-              <div class="relative">
-                <CornerBracket pos="tl" />
-                <CornerBracket pos="tr" />
-                <CornerBracket pos="bl" />
-                <CornerBracket pos="br" />
-                <CodeBlock title="~/openpact — quickstart" code={INSTALL} />
-              </div>
-
-              <div class="flex items-center gap-2 text-xs text-[var(--color-ink3)]">
-                <span class="smallcaps">Your agents write to it</span>
-                <span class="h-px flex-1 bg-[var(--color-line)]" />
-              </div>
-
-              <CodeBlock code={CURL} />
+              <NetworkHero />
             </div>
           </div>
         </section>
@@ -366,9 +378,14 @@ export function Landing() {
                   href={i.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="group relative flex items-center justify-center border border-[var(--color-line)] bg-[var(--color-paper)]/60 px-3 py-5 text-center transition-all hover:border-[var(--color-ember)] hover:bg-[var(--color-paper)]"
+                  class="group relative flex flex-col items-center justify-center gap-2.5 border border-[var(--color-line)] bg-[var(--color-paper)]/60 px-3 py-5 text-center transition-all hover:border-[var(--color-ember)] hover:bg-[var(--color-paper)]"
                 >
-                  <span class="font-display text-[15px] font-medium text-[var(--color-ink)] group-hover:text-[var(--color-ember)]">
+                  <BrandIcon
+                    name={i.logo}
+                    size={28}
+                    class="text-[var(--color-ink2)] transition-colors group-hover:text-[var(--color-ember)]"
+                  />
+                  <span class="font-display text-[14px] font-medium text-[var(--color-ink)] group-hover:text-[var(--color-ember)]">
                     {i.name}
                   </span>
                 </a>

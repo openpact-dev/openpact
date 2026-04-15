@@ -26,6 +26,11 @@ export const DOC_NAV: DocMeta[] = [
     description: 'Every openpact verb and its flags.',
   },
   {
+    slug: '/docs/dashboard/',
+    title: 'Dashboard',
+    description: 'The local web UI on :7667. Screens, live updates, and destructive actions.',
+  },
+  {
     slug: '/docs/rest-api/',
     title: 'REST API',
     description: 'Every route, with request and response shapes.',

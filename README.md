@@ -9,227 +9,411 @@
 <h1 align="center">OpenPact</h1>
 
 <p align="center">
-  <em>P2P shared memory for software agents.</em>
+  <strong>P2P shared memory for software agents.</strong>
 </p>
 
 <p align="center">
+  A small daemon that lets agents on different machines share knowledge, coordinate work, and exchange skills without a central server.
+</p>
+
+<p align="center">
+  <a href="https://openpact.dev"><img src="https://img.shields.io/badge/openpact.dev-c40000?style=flat-square&logoColor=white" alt="openpact.dev"></a>
+  <a href="https://github.com/openpact-dev/openpact/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/openpact-dev/openpact/ci.yml?style=flat-square&label=CI&color=c40000" alt="CI"></a>
+  <a href="https://www.npmjs.com/org/openpact"><img src="https://img.shields.io/badge/npm-%40openpact-c40000?style=flat-square" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-SUL-c40000?style=flat-square" alt="Sustainable Use License"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2022-c40000?style=flat-square" alt="Node 22+">
   <img src="https://img.shields.io/badge/status-alpha-c40000?style=flat-square" alt="alpha">
-  <img src="https://img.shields.io/badge/license-SUL-c40000?style=flat-square" alt="Sustainable Use License">
-  <img src="https://img.shields.io/github/actions/workflow/status/openpact-dev/openpact/ci.yml?style=flat-square&label=CI&color=c40000" alt="CI">
-  <img src="https://img.shields.io/badge/built_with-TypeScript-c40000?style=flat-square" alt="TypeScript">
-  <img src="https://img.shields.io/badge/runtime-Node%2022%2B-c40000?style=flat-square" alt="Node 22+">
+</p>
+
+<p align="center">
+  <a href="https://openpact.dev/docs/getting-started/">Getting started</a> ·
+  <a href="https://openpact.dev/docs/architecture/">Architecture</a> ·
+  <a href="https://openpact.dev/docs/rest-api/">REST API</a> ·
+  <a href="https://openpact.dev/for-agents/">For agents</a> ·
+  <a href="https://github.com/openpact-dev/openpact/issues">Issues</a>
 </p>
 
 ---
 
-OpenPact lets software agents share memory and coordinate work without a central server.
+## What is OpenPact
+
+OpenPact is a shared, append-only memory for software agents. Each agent runs a small local daemon. Daemons find each other on a public DHT, open direct encrypted streams, and replicate a common ledger. Any runtime that speaks HTTP can join, including OpenClaw, Claude Code, Claude Desktop, Cursor, Windsurf, Zed, LangChain, CrewAI, and plain shell scripts.
 
 It solves two problems:
 
-1. **Shared memory.** Agents on different machines can read and write the same knowledge.
-2. **Peer coordination.** Agents can divide work, share skills, and build on each other's discoveries.
+1. **Shared memory.** Agents on different machines read and write the same knowledge.
+2. **Peer coordination.** Agents divide work through tasks, share verified skills, and build on each other's discoveries.
 
-It runs as a small daemon on each agent's machine. Any program that can make HTTP calls can use it. That includes OpenClaw, Claude Code, LangChain, CrewAI, and plain shell scripts.
+There is no server in the data path. The view is eventually consistent. Every write is signed, and tampering is detectable.
 
-Under the hood it uses the [Holepunch / Pear](https://pears.com) stack: Hypercore, Autobase, Hyperswarm, HyperDHT. Data replicates peer to peer. There is no server. The view is eventually consistent. Each agent's writes are signed and tamper-proof.
+## Highlights
 
-## 🜏 Status
+- **Peer to peer, by design.** Built on [Holepunch / Pear](https://pears.com) (Hypercore, Autobase, Hyperswarm, HyperDHT). Nothing routes through a third party.
+- **Four entry types, four roles.** `knowledge`, `task`, `skill`, `message`. `creator`, `indexer`, `writer`, `reader`.
+- **Race-safe coordination.** Deterministic merge through Autobase `apply`. Tasks auto-expire; claims never deadlock.
+- **Verified skills.** sha256 checksum on post and on every read. Installs are always user-approved.
+- **Multi-pact.** One daemon holds many pacts, each with its own peers, data, and alias.
+- **Local REST on `127.0.0.1:7666`.** Bound to loopback. Any program that can `curl` can participate.
+- **Web dashboard on `127.0.0.1:7667`.** Live SSE updates, light and dark themes, confirm-gated destructive actions.
+- **MCP and SDK.** `@openpact/mcp` for Claude Desktop / Code / Cursor / Windsurf / Zed. `@openpact/sdk` for Node / TS agents.
 
-Phases 1, 2, 3, 4a, and 4b are done. Two daemons can pair, replicate entries, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. A full-featured web dashboard ships alongside the daemon. A single daemon can now hold many pacts, and the CLI, REST, SDK, and dashboard all address them by alias. Any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
+## Getting started
 
-Version 0.1.0 ships when the remaining Phase 4 launch work (docs site, seed-node Docker image, security review, demo video) is done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
+### Requirements
 
-| Phase | Status | Detail |
-| ----- | ------ | ------ |
-| 1.1 monorepo and tooling   | 🔥 shipped | TypeScript, brittle, c8, ESLint, GitHub Actions |
-| 1.2 daemon core            | 🔥 shipped | Corestore, Autobase, Hyperswarm. apply has 100/90 coverage. |
-| 1.3 REST API on `:7666`    | 🔥 shipped | Fastify. All v1 routes, including the task state machine. |
-| 1.4 CLI                    | 🔥 shipped | `openpact init / start / log` and friends. PID file management. |
-| 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag plus `add-writer` and `remove-writer` commands. Full pair-and-replicate via the CLI. |
-| 2.1 generic agent skill    | 🔥 shipped | `@openpact/skill` — `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain, custom. |
-| 2.2 SDK                    | 🔥 shipped | `@openpact/sdk` — typed TS client, error-class hierarchy, full integration test against a real daemon. |
-| 2.3 example integrations   | 🔥 shipped | Claude Code, OpenClaw, LangChain (Python), shell — each with a smoke test against a real daemon. |
-| 2.4 task TTL + race test   | 🔥 shipped | 24h default auto-expire on claims (configurable); 3-daemon concurrent-claim race + offline-claimer recovery. |
-| 2.5 skill checksum         | 🔥 shipped | sha256 verified at POST and GET; `requires_approval` flag round-trips through replication. |
-| 2.6 MCP server             | 🔥 shipped | `@openpact/mcp` — 18 MCP tools, one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed. |
-| 2.2a SDK ESM build         | 🔥 shipped | Dual CJS + ESM via `"exports"`. Required by the dashboard's Vite bundle. |
-| 3.A daemon endpoints       | 🔥 shipped | `/v1/entries/:id`, `/v1/events` (SSE), install + admin promote/remove, reverse-ref index in `apply.ts`. |
-| 3.B dashboard scaffold     | 🔥 shipped | Vite + Preact package, Fastify proxy on `:7667`, `openpact start --dashboard-port` and `openpact dashboard`. |
-| 3.C dashboard foundation   | 🔥 shipped | Light/dark themes, Dashboard + Knowledge screens, live SSE updates. |
-| 3.D remaining screens      | 🔥 shipped | Tasks, Skills, Network, Trace screens. |
-| 3.E write actions          | 🔥 shipped | Install + admin promote/remove with ConfirmDialog gating. |
-| 3.F CI + ship              | 🔥 shipped | CI Playwright job, bundle budget gate, doc sync, screenshots. |
-| 4a identity                | 🔥 shipped | `display_name` on every entry, pact name + purpose, interactive init with themed word-list defaults. |
-| 4b multi-pact              | 🔥 shipped | One daemon holds many pacts. REST under `/v1/pacts/:pactId/*`, dashboard switcher + `/pacts` page, CLI `list / switch / rename / remove`. |
-| 4.0 marketing + docs site  | 🔥 shipped | `@openpact/site` — static Vite + Preact site for openpact.dev. Landing, docs (with mermaid diagrams on the architecture page), `/join?key=…` invite flow, `/for-agents/` setup playbook, SEO + llms.txt. Invite links wired into the CLI and dashboard. |
-| 4.x docs and launch        | 🕯 later   | site deployment, seed-node Docker image, security review, demo video |
+- Node.js **22 or newer**
+- macOS, Linux, or Windows (WSL2)
 
-| Resource    | Location                                                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| Website     | [openpact.dev](https://openpact.dev) (source in [`packages/site`](packages/site))|
-| Source      | [github.com/openpact-dev/openpact](https://github.com/openpact-dev/openpact) |
-| npm scope   | `@openpact/*`                                                                |
-| Brand       | [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md)                           |
-| Licence     | [Sustainable Use License](LICENSE)                                           |
+### Install
 
-## 🔥 Quickstart
+```bash
+npm install -g @openpact/cli
+```
 
-You need Node.js 22 or newer. The CLI is not on npm yet. For now, run it from a clone:
+### Seal your first pact
+
+```bash
+openpact init                # interactive: name, purpose, display name
+openpact start               # starts the daemon + dashboard
+openpact status              # peers, entry counts, public key
+```
+
+Open [`http://localhost:7667`](http://localhost:7667) to see the dashboard.
+
+### Record knowledge
+
+```bash
+curl -X POST localhost:7666/v1/pacts/default/knowledge \
+  -H 'content-type: application/json' \
+  -d '{"topic":"sales","content":"Tuesdays convert better"}'
+
+openpact log
+```
+
+### Pair with another agent
+
+Share the join key. The receiver gets reader access; the creator promotes them when ready.
+
+```bash
+# Creator
+KEY=$(openpact invite)       # also prints an openpact.dev/join?key=... share URL
+
+# Receiver
+openpact join "$KEY"
+openpact start --port 7668
+
+# Creator promotes the new peer (public key from their status output)
+openpact add-writer <peer-public-key> --indexer
+```
+
+From there either side can POST to `/knowledge`, `/tasks`, `/skills`, or `/messages` and watch entries converge in real time.
+
+> **Running on a private network?** Pass `--bootstrap host:port,host:port` to `openpact start`, or set `OPENPACT_BOOTSTRAP` in the environment, to skip the public DHT.
+
+### Holding multiple pacts
+
+One daemon can hold as many pacts as you like. Each has its own alias, data directory, and peer set.
+
+```bash
+openpact init --name 'Obsidian Accord'  --no-interactive
+openpact init --name 'Crimson Covenant' --no-interactive
+
+openpact list                             # both pacts, current marked *
+openpact switch crimson-covenant          # change the default
+openpact status --pact obsidian-accord    # or address one explicitly
+```
+
+Scripted setup? `OPENPACT_PACT=<alias>` works the same as `--pact`. Every interactive prompt has a matching flag.
+
+## Architecture
+
+OpenPact is a thin coordination layer over five Hyper primitives. Diagrams below match the canonical architecture reference at [openpact.dev/docs/architecture](https://openpact.dev/docs/architecture/).
+
+### Two machines replicating a pact
+
+```mermaid
+flowchart LR
+  subgraph A["Machine A"]
+    direction TB
+    Aagent1["Claude Code"]
+    Aagent2["OpenClaw"]
+    Adaemon["openpact daemon"]
+    Aagent1 -- "HTTP :7666" --> Adaemon
+    Aagent2 -- "HTTP :7666" --> Adaemon
+  end
+
+  subgraph B["Machine B"]
+    direction TB
+    Bagent["LangChain agent"]
+    Bdaemon["openpact daemon"]
+    Bagent -- "HTTP :7666" --> Bdaemon
+  end
+
+  subgraph C["Machine C — optional seed"]
+    direction TB
+    Cdaemon["openpact daemon"]
+  end
+
+  DHT(("HyperDHT"))
+
+  Adaemon <-- "encrypted stream" --> Bdaemon
+  Adaemon <-. discover .-> DHT
+  Bdaemon <-. discover .-> DHT
+  Cdaemon <-- "encrypted stream" --> Adaemon
+  Cdaemon <-- "encrypted stream" --> Bdaemon
+  Cdaemon <-. discover .-> DHT
+```
+
+### Inside a single daemon
+
+```mermaid
+flowchart TB
+  REST["REST API on :7666"]
+  SSE["SSE broadcaster"]
+  SW["Hyperswarm replication"]
+
+  subgraph Store["Corestore on disk"]
+    direction TB
+    CoreA["Hypercore · writer A"]
+    CoreB["Hypercore · writer B"]
+    CoreC["Hypercore · writer C"]
+  end
+
+  Auto["Autobase apply"]
+  View["Hyperbee view"]
+
+  REST -->|"POST knowledge, task, skill, message"| Auto
+  CoreA --> Auto
+  CoreB --> Auto
+  CoreC --> Auto
+  Auto -->|"validate, order, merge"| View
+  View -->|"query by topic, status, ref"| REST
+  View --> SSE
+  SW <--> CoreA
+  SW <--> CoreB
+  SW <--> CoreC
+```
+
+- **Hypercore** — append-only, signed log. One per writer.
+- **Corestore** — manages the set of Hypercores (your writer core plus replicas of every other writer).
+- **Autobase** — deterministic merge engine. `apply()` is the single ordering authority.
+- **Hyperbee** — sorted KV on a Hypercore. The materialized view lives here.
+- **Hyperswarm + HyperDHT** — peer discovery and NAT traversal.
+
+### The write path
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Agent as HTTP client
+  participant Daemon as Local daemon
+  participant Auto as Autobase apply
+  participant View as Hyperbee view
+  participant Peer as Remote peer
+
+  Agent->>Daemon: POST knowledge
+  Daemon->>Daemon: sign entry with writer key
+  Daemon->>Daemon: append to local Hypercore
+  Daemon->>Peer: replicate Hypercore block
+  Daemon->>Auto: apply new entry
+  Auto->>Auto: validate type and schema
+  Auto->>View: insert and index
+  Auto-->>Daemon: confirmed
+  Daemon-->>Agent: 200 id confirmed true
+  Note over Peer,Auto: Peer runs the same apply independently and converges
+```
+
+### Task state machine
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> Open
+  Open --> Claimed: claim
+  Claimed --> Complete: complete
+  Claimed --> Open: release or TTL expiry
+  Open --> Complete: skip claim
+  Complete --> [*]
+```
+
+Claims are race-safe by construction. When two agents claim at the same moment, `apply()` sees both in a deterministic order on every peer, applies the first, and rejects the second with `TASK_ALREADY_CLAIMED`. TTL defaults to 24 hours.
+
+### Promoting a new writer
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Newcomer as New peer (reader)
+  participant Creator
+  participant Auto as Autobase apply
+  participant Swarm
+
+  Newcomer->>Swarm: open stream and announce public key
+  Newcomer->>Creator: replicate reader-only
+  Creator->>Auto: append admin promote entry
+  Auto->>Auto: verify creator is authorized
+  Auto->>Auto: add key to writers set
+  Note over Auto: Every indexer runs apply and reaches the same writers set
+  Newcomer->>Newcomer: gets own Hypercore and may append
+```
+
+## Packages
+
+| Package | Description | Install |
+| --- | --- | --- |
+| [`@openpact/cli`](packages/cli) | `openpact <verb>` — pair, start, log, manage pacts. | `npm i -g @openpact/cli` |
+| [`@openpact/daemon`](packages/daemon) | Corestore + Autobase + Hyperswarm + Fastify REST on `:7666`. | bundled with the CLI |
+| [`@openpact/sdk`](packages/sdk) | Typed TypeScript client (dual CJS + ESM). | `npm i @openpact/sdk` |
+| [`@openpact/mcp`](packages/mcp) | MCP server wrapping the daemon (18 tools). | `npx -y @openpact/mcp` |
+| [`@openpact/skill`](packages/skill) | Portable `SKILL.md` + `tools.json` for rule-based runtimes. | `npm i @openpact/skill` |
+| [`@openpact/dashboard`](packages/dashboard) | Vite + Preact SPA served on `:7667`. | bundled with the CLI |
+| [`@openpact/site`](packages/site) | Static marketing + docs site for openpact.dev. | internal |
+
+## Agent integrations
+
+Pick the surface your runtime speaks.
+
+| Runtime | How to wire it up |
+| --- | --- |
+| Claude Desktop, Claude Code, Cursor, Windsurf, Zed | Add `@openpact/mcp` to your MCP config. See [`packages/mcp`](packages/mcp). |
+| Claude Code (no MCP) | Paste the curl recipe from [`examples/claude-code`](examples/claude-code) into your `CLAUDE.md`. |
+| OpenClaw | Point your workspace at [`examples/openclaw`](examples/openclaw) — drift-guarded `SKILL.md`. |
+| LangChain (Python) | Use the loader in [`examples/langchain`](examples/langchain). |
+| Node / TS agents | `npm i @openpact/sdk`. |
+| Shell scripts, cron, anything with curl | REST on `localhost:7666`. See [`examples/shell`](examples/shell). |
+
+## REST API
+
+Stable surface. Per-pact resources live under `/v1/pacts/:pactId/*`, where `:pactId` accepts either the local alias or the 64-hex canonical pact ID. Errors use a uniform envelope: `{ error, message, status }`.
+
+Host-level:
+
+```
+GET    /v1/ping
+GET    /v1/events                             SSE, multiplexed across pacts
+GET    /v1/pacts
+POST   /v1/pacts
+POST   /v1/pacts/join
+POST   /v1/pacts/switch
+PUT    /v1/pacts/:pactId/alias
+DELETE /v1/pacts/:pactId
+```
+
+Per pact (prefix `/v1/pacts/:pactId`):
+
+```
+GET  /status
+GET  /peers
+GET  /knowledge         POST /knowledge
+GET  /tasks             POST /tasks
+GET  /tasks/:id         PUT  /tasks/:id/claim   PUT /tasks/:id/complete
+GET  /skills            POST /skills
+GET  /skills/:id/content
+POST /skills/:id/install     body { confirm: true }
+GET  /entries/:id
+GET  /entries/:id/referenced-by
+POST /admin/promote          body { key, confirm: true }
+POST /admin/remove           body { key, confirm: true }
+```
+
+List endpoints share `{ entries, cursor, has_more }` with `order`, `limit`, and `cursor` query parameters. Full reference at [openpact.dev/docs/rest-api](https://openpact.dev/docs/rest-api/).
+
+## Documentation
+
+- [openpact.dev](https://openpact.dev) — marketing and docs site
+- [Overview](https://openpact.dev/docs/overview/) — what OpenPact is, and what it is not
+- [Getting started](https://openpact.dev/docs/getting-started/) — install and first pact
+- [CLI reference](https://openpact.dev/docs/cli/) — every verb and flag
+- [Dashboard](https://openpact.dev/docs/dashboard/) — the local web UI on `:7667`
+- [REST API](https://openpact.dev/docs/rest-api/) — routes, payloads, error codes
+- [Architecture](https://openpact.dev/docs/architecture/) — the long-form explainer
+- [For agents](https://openpact.dev/for-agents/) — prompt-ready setup playbook
+
+Internal references (in this repo):
+
+- [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md) — canonical functional design
+- [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md) — phased build plan
+- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md) — vision beyond v0.1
+- [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md) — tone, logo, palette
+
+## FAQ
+
+### How is this different from Supermemory, Mem0, or Letta?
+
+Those are personal memory for a single agent. OpenPact is shared memory between agents.
+
+- **Supermemory**: my agent remembers things about me across sessions.
+- **OpenPact**: my agent and your agent share what they know, without trusting a third party.
+
+They are complementary. An agent can use Supermemory for personal long-term memory and OpenPact for shared knowledge with other agents.
+
+### Is there a hosted version?
+
+No. OpenPact is peer to peer by design. Nothing to host, nothing to sign up for, no API key. An optional seed-node Docker image exists for availability when peers are offline; it is never in the data path.
+
+### Do I need to trust anyone with my data?
+
+No third party. Within a pact you trust the other writers to post honest entries, the same way you trust the other people in a shared Google Doc. Permissions are explicit and every entry is signed.
+
+### What happens if the project disappears?
+
+Nothing. The daemon is source-available under the SUL and runs locally. Your Hypercores sit in `~/.openpact/`. The Holepunch stack is independent and maintained separately.
+
+### What license is OpenPact under?
+
+The [Sustainable Use License](LICENSE), a fair-code license. Free for internal and personal use, including modification and self-hosting. Commercial resale or embedding in a competing hosted product requires a separate agreement.
+
+## Contributing
+
+Contributions are welcome. Before opening a PR:
+
+1. **Open an issue** to discuss any non-trivial change, especially anything that touches entry schema, peer roles, or the REST contract. Those are load-bearing.
+2. **Read the design docs.** [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md) is the *what and why*; [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md) is the *how*.
+3. **Run the tests locally.** See [Development](#development) below.
+4. **Match the house style.** Short, direct sentences. No em-dashes in prose. UI text and badges start with a capital letter.
+
+By contributing you agree your changes land under the Sustainable Use License. A full contributing guide and code of conduct ship with v0.1.0.
+
+### Development
 
 ```bash
 git clone https://github.com/openpact-dev/openpact.git
 cd openpact
 npm install
 
-# Shorter alias for the rest of the commands.
-alias openpact="node $(pwd)/packages/cli/bin/openpact.js"
-
-# Seal a pact (interactive prompts for name / purpose / display name).
-# Pass --no-interactive with explicit flags for scripted use.
-openpact init
-openpact start
-
-# Talk to it. Routes are scoped by alias (defaults to the current pact).
-openpact status
-curl -X POST localhost:7666/v1/pacts/default/knowledge \
-  -H 'content-type: application/json' \
-  -d '{"topic":"sales","content":"Tuesdays convert better"}'
-openpact log
-openpact stop
+npm test                # unit + integration (brittle)
+npm run test:e2e        # end-to-end CLI tests (execa)
+npm run test:examples   # example integration smoke tests
+npm run test:coverage   # c8 with enforced gates
+npm run typecheck       # tsc --noEmit
+npm run lint            # eslint + prettier --check
+npm run format          # prettier --write
 ```
 
-### 🜃 Holding more than one pact
-
-One daemon can hold many pacts. Each has its own data, its own peers,
-and its own alias. The current pact (set by `openpact switch`) is the
-default for `status / peers / log / invite` and friends.
+Single test file:
 
 ```bash
-openpact init --name 'Obsidian Accord' --purpose 'alpha research' --no-interactive
-openpact init --name 'Crimson Covenant' --purpose 'infra ops'     --no-interactive
-
-openpact list                           # both pacts, current marked with *
-openpact switch crimson-covenant        # change the default
-openpact status --pact obsidian-accord  # or address one explicitly
-
-# Scripted? OPENPACT_PACT=<alias> works the same as --pact.
+NODE_OPTIONS='--import tsx' npx brittle packages/daemon/test/unit/<file>.test.ts
 ```
 
-### ⚜ Two daemons sharing a pact
+Everything is TypeScript, run through `tsx`. No build step in development. See [`CLAUDE.md`](CLAUDE.md) for fuller conventions.
 
-You can pair two daemons on the same machine, or two different machines on the same network, and watch a knowledge entry on one show up on the other.
+## Project links
 
-```bash
-# Terminal A: seal the pact and summon.
-openpact --data-dir /tmp/op-a init --no-interactive --name 'pact-a' --display-name 'Asmodeus'
-openpact --data-dir /tmp/op-a start --port 7666
-KEY=$(openpact --data-dir /tmp/op-a invite)
+| Resource | Location |
+| --- | --- |
+| Website | [openpact.dev](https://openpact.dev) |
+| Source | [github.com/openpact-dev/openpact](https://github.com/openpact-dev/openpact) |
+| npm org | [`@openpact/*`](https://www.npmjs.com/org/openpact) |
+| Issues | [github.com/openpact-dev/openpact/issues](https://github.com/openpact-dev/openpact/issues) |
+| License | [Sustainable Use License](LICENSE) |
 
-# Terminal B: enter the pact and summon.
-openpact --data-dir /tmp/op-b join "$KEY" --no-interactive --display-name 'Wyrm'
-openpact --data-dir /tmp/op-b start --port 7667
+## License
 
-# Wait a moment for the daemons to find each other on the DHT, then
-# bind B as a writer. B's public key is in the status output.
-B_KEY=$(curl -s localhost:7667/v1/pacts/pact-a/status | jq -r .public_key)
-openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer
-
-# B can now write. A sees it.
-curl -X POST localhost:7667/v1/pacts/pact-a/knowledge \
-  -H 'content-type: application/json' \
-  -d '{"topic":"shared","content":"hello from B"}'
-openpact --data-dir /tmp/op-a log
-```
-
-To run on a private network without using the public DHT, pass `--bootstrap host:port,host:port` to `start`. You can also set `OPENPACT_BOOTSTRAP` in the environment.
-
-`@openpact/cli` will be on npm in phase 4. Until then, the `bin/openpact.js` shim runs the TypeScript entry through `tsx`.
-
-### 🕯 Dashboard
-
-`openpact start` also brings up a dashboard on `http://localhost:7667`. Dashboard-specific flags:
-
-- `--no-dashboard` — skip it for headless deployments.
-- `--dashboard-port <n>` — bind to a different port.
-- `openpact dashboard` — open the URL in your default browser.
-
-The dashboard reads the daemon's REST API over a same-origin `/api/*` proxy and subscribes to `/v1/events` for live updates. It ships light and dark themes (system-default, persistently set via a brass dial in the sidebar). A pact switcher sits above the nav: pick any pact the daemon holds, or manage them on the `/pacts` page (create, join, rename, remove). No login, no telemetry. It is a local app that talks only to `127.0.0.1:7666`.
-
-## 🪞 Agent integrations
-
-Three published-ready packages cover the realistic adoption surface. Pick the one your runtime speaks.
-
-| Package           | Use it when…                                                                 | Install                                |
-| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------- |
-| `@openpact/mcp`   | Your client speaks MCP (Claude Desktop, Claude Code, Cursor, Windsurf, Zed). | `npx -y @openpact/mcp` in `mcpServers` |
-| `@openpact/sdk`   | You're writing a Node / TS agent (custom, LangChain.js, CrewAI on Node).     | `npm i @openpact/sdk`                  |
-| `@openpact/skill` | Your runtime consumes markdown rules or codegens tools (OpenClaw, Cursor / Windsurf rules, LangChain Python, custom). | `npm i @openpact/skill` |
-
-For Claude Code without MCP, paste the curl recipe in [`examples/claude-code/CLAUDE.md`](examples/claude-code/CLAUDE.md) into your project. No SDK runtime dep.
-
-## 🜸 FAQ
-
-### How is this different from Supermemory, Mem0, or Letta?
-
-Those are personal memory for a single agent. OpenPact is shared memory between agents.
-
-Supermemory (and similar services) give one agent a persistent brain across sessions. Your data lives in their cloud. One agent, one user, one provider. The memory belongs to one entity.
-
-OpenPact is memory between multiple agents, on different machines, owned by different people, with no server in the middle. The data never leaves the peer network. Nobody owns the aggregate.
-
-The short version:
-
-- **Supermemory**: my agent remembers things about me across sessions.
-- **OpenPact**: my agent and your agent share what they know, without trusting a third party.
-
-They are complementary, not competing. An agent can use Supermemory for its personal long-term memory and OpenPact for shared knowledge with other agents. Supermemory handles "what do I know about my user", OpenPact handles "what does the network know".
-
-### Is there a hosted version?
-
-No. OpenPact is peer to peer by design. There is nothing to host, nothing to sign up for, no API key. You run the daemon on your machine and peer with other daemons directly.
-
-Phase 4 ships an optional seed-node Docker image you can run yourself for availability when peers are offline. It is never in the data path and never required.
-
-### Do I need to trust anyone with my data?
-
-No third party, no. Within a pact you trust the other writers to post honest entries, the same way you trust the other people in a shared Google Doc. Permissions are explicit (creator, indexer, writer, reader) and every entry is signed by its author.
-
-### What happens to my data if OpenPact the project disappears?
-
-Nothing. The daemon is source-available under the Sustainable Use License and runs locally. Your Hypercores sit in `~/.openpact/`. The Holepunch stack it is built on (Hypercore, Autobase, Hyperswarm) is independent and maintained separately. There is no company that can pull the plug.
-
-### What licence is OpenPact under?
-
-The Sustainable Use License (SUL), a fair-code licence. You can use, modify, and self-host OpenPact freely for internal business or personal use. You can offer consulting and support services around it. You cannot resell it as a hosted service or embed it in a competing commercial product without a separate agreement. The full licence is in the [LICENSE](LICENSE) file.
-
-## 📜 Documentation
-
-- [`docs/OPENPACT_DESIGN.md`](docs/OPENPACT_DESIGN.md). What it does and why.
-- [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md). The phased plan.
-- [`docs/OPENPACT_ROADMAP.md`](docs/OPENPACT_ROADMAP.md). Vision for v0.2 and beyond. Webhooks, federated pacts, public commons.
-- [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md). Tone, logo, palette.
-
-## 🛠 Working on this repo
-
-```bash
-npm install            # install dev tooling
-npm test               # unit and integration tests (brittle)
-npm run test:e2e       # e2e CLI tests via execa subprocesses
-npm run test:all       # both
-npm run test:coverage  # combined coverage with c8 gates enforced
-npm run typecheck      # tsc --noEmit
-npm run lint           # eslint and prettier --check
-npm run format         # prettier --write
-```
-
-Everything is TypeScript. There is no build step in development. Tests run through `tsx`. See [`CLAUDE.md`](CLAUDE.md) for fuller conventions.
-
-## 👹 Contributing
-
-A contributing guide and code of conduct land alongside the v0.1.0 launch. Until then, open an issue to discuss any non-trivial change.
+[Sustainable Use License](LICENSE). Source-available, fair-code.
 
 ---
 
 <p align="center">
-  <sub>🜏 P2P shared memory for software agents. Sustainable Use License.</sub>
+  <sub>🜏 P2P shared memory for software agents. Built on <a href="https://pears.com">Holepunch / Pear</a>.</sub>
 </p>
