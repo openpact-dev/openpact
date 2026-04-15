@@ -1343,6 +1343,46 @@ matrix; one slot is enough for the v0.1 surface.
 
 ---
 
+## Phase 4c: Invite tokens ✅
+
+**Goal:** Replace the "share the pact's discovery key, land as reader, wait for manual promotion" model with one-step redemption of one-time, time-limited, signed-free bearer tokens.
+
+**Motivation:** The old flow required two out-of-band exchanges (creator → joiner: join key; joiner → creator: writer pubkey). For small teams and agent-to-agent scenarios that friction is unacceptable. Join should mean full participation. A misbehaving writer can still be demoted after the fact.
+
+**Status:** Shipped in 5 commits on `main`.
+
+**Scope:**
+
+- [x] Schema: new `invite-redeemed` entry type added to `packages/daemon/src/schemas/` and registered in `ENTRY_TYPES`.
+- [x] Apply: `_invites/<nonce>` view key enforces single-use across indexers; non-indexer redeems rejected with `invite-from-non-indexer`; double-spend rejected with `invite-already-spent`.
+- [x] `invites.ts` module: token codec (base64url JSON carrying `{v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`), `InviteDecodeError` with typed codes, per-pact `invites.json` storage with atomic tmp+rename.
+- [x] Pact methods: `createInvite`, `listInvites`, `revokeInvite`, `redeemInvite` with a per-Pact promise-chain lock that serialises all mutations.
+- [x] Protomux channel `openpact/invites/v1`: joiner presents token + writer_key; any indexer peer validates and appends the `invite-redeemed` + `admin.addWriter` pair; correlated responses via 8-byte nonces.
+- [x] REST: `POST /invites` (creator-only), `GET /invites`, `DELETE /invites/:nonce`, `POST /invites/redeem` (local indexer path if we are one, else forwards via protomux).
+- [x] CLI: `openpact invite [--ttl|--list|--revoke|--pact]` and `openpact join <token>` orchestrating swarm-join + peer-wait + redeem + writer-poll. Removed the hex-key path entirely — no backwards compat.
+- [x] SDK: `invitesResource` on `@openpact/sdk` with `create/list/revoke/redeem`. Nine new typed error classes (`NotCreatorError`, `InviteBadShapeError`, `InviteWrongPactError`, `UnknownInviteError`, `InviteRevokedError`, `InviteSpentError`, `InviteNotIndexerError`, `InviteExpiredError`, `NoIndexerReachableError`). `mapHttpError` wired.
+- [x] Site: `/join/?invite=<token>` client-side decoder; valid / expired / malformed states; ember-highlighted share URL + `openpact join <token>` command; nonce + relative expiry surfaced.
+- [x] Dashboard: `InviteDialog` rewritten around `pact.invites.create/list/revoke`. TTL picker (1h / 24h / 7d / 30d), mint → share-URL + command view, outstanding-invites list with inline revoke.
+- [x] Docs: `/docs/cli/` has a new "Invite tokens" section; `/docs/architecture/` Figure 4 is a new sequenceDiagram showing mint → swarm → protomux → admin pair → confirmed; `/docs/getting-started/` "Pair two daemons" rewritten with the token flow; README Highlights + Pair-with-another-agent + mermaid redrawn.
+- [x] CLAUDE.md: invariant 4 bumped to six entry types (adds `admin`, `invite-redeemed`); new invariant 6 on invite tokens; REST surface + error envelope list updated.
+- [x] Design doc: new §5.4.1 "Invite-based admission" under Peer roles covering the full flow + threat model.
+
+**Tests (469/469 green):**
+
+- [x] Unit: apply.ts invite-redeemed (valid, non-indexer, double-spend, schema); invites.ts token codec (encode/decode/error branches); file storage round-trip; `isDead` / `summarise` edge cases.
+- [x] REST: 14 cases covering confirm gates, role gates, ttl clamp, list shape, revoke-then-redeem, double-redeem, expired, wrong-pact, garbage token.
+- [x] Integration: two daemons on a `hyperdht/testnet`, creator mints → joiner redeems → joiner's `is_writer` flips true. Second-redeem returns `INVITE_SPENT`. Proof the protomux channel forwarding works end-to-end over real Noise streams.
+- [x] SDK: 9 cases covering happy paths + `NOT_CREATOR` + `INVITE_SPENT` + `INVITE_EXPIRED` + `NO_INDEXER_REACHABLE`.
+- [x] CLI: client-side token validation (bad base64url + expired token short-circuits before hitting the daemon) + daemon-not-running exit-code tests. Full two-daemon happy path lives in the daemon integration suite.
+
+**Known limitations (phase-1 tradeoffs):**
+
+- Revocation is creator-local. A revoked nonce still works if presented to a different indexer that doesn't have the revoked-list. Phase-2 will add a replicated `invite-revoked` entry.
+- The pact's discovery key is derivable from the token, so it remains a durable read capability. Same property as the pre-token model. Not a regression; documented in the threat model.
+- Creator must be online to mint and revoke, since `invites.json` lives on the creator's disk. Any indexer can _redeem_ once a token exists.
+
+---
+
 ## Phase 4: Polish and launch
 
 **Goal:** Documentation, security review, demo content, public launch — and a chaos/resilience suite that proves the network behaves under stress.

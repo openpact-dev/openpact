@@ -97,20 +97,24 @@ const TASK_STATES = `stateDiagram-v2
   Complete --> [*]
 `
 
-const WRITER_PROMOTION = `sequenceDiagram
+const INVITE_REDEEM = `sequenceDiagram
   autonumber
-  participant Newcomer as New peer (reader)
-  participant Creator
+  participant Joiner as Joiner daemon
+  participant Creator as Indexer daemon
   participant Auto as Autobase apply
-  participant Swarm
 
-  Newcomer->>Swarm: open stream and announce public key
-  Newcomer->>Creator: replicate reader-only
-  Creator->>Auto: append admin promote entry
-  Auto->>Auto: verify creator is authorized
-  Auto->>Auto: add key to writers set
-  Note over Auto: Every indexer runs apply and reaches the same writers set
-  Newcomer->>Newcomer: gets own Hypercore and may append
+  Creator->>Creator: mint token { pactId, nonce, expiresAt, ... }
+  Creator-->>Joiner: token sent out of band (URL)
+  Joiner->>Creator: join swarm on pactId
+  Joiner->>Creator: openpact/invites/v1 · redeem-request { token, writerKey }
+  Creator->>Creator: verify expiry + nonce unspent
+  Creator->>Auto: append invite-redeemed { nonce, redeemed_by }
+  Creator->>Auto: append admin.addWriter { key: writerKey }
+  Auto->>Auto: write _invites/<nonce> (locks out replays)
+  Auto->>Auto: add writerKey to writers set
+  Note over Auto: Every indexer applies deterministically
+  Creator-->>Joiner: redeem-response { ok: true, nonce }
+  Joiner->>Joiner: sees admin.addWriter for self → becomes writer
 `
 
 const DATA_LAYOUT = `~/.openpact/
@@ -120,10 +124,12 @@ const DATA_LAYOUT = `~/.openpact/
     obsidian-accord/
       config.json                # pact key, keypair, role, name, purpose, display_name
       data/                      # Corestore (Hypercores + Autobase state)
+      invites.json               # live + dead invite tokens (creator only)
       installed-skills.json      # sha256-verified skills approved by this agent
     crimson-covenant/
       config.json
       data/
+      invites.json
       installed-skills.json`
 
 export function Architecture() {
@@ -206,7 +212,8 @@ export function Architecture() {
       <div class="my-6 border border-[var(--color-line)] bg-[var(--color-paper)]/60 p-5">
         <pre class="m-0 font-mono text-[13px] leading-relaxed text-[var(--color-ink)]">
           {`{
-  type:         'knowledge' | 'task' | 'skill' | 'message',
+  type:         'knowledge' | 'task' | 'skill' | 'message'
+                | 'admin' | 'invite-redeemed',
   timestamp:    number,
   agent_id:     string,       // verified peer handle (from pubkey)
   display_name: string | null, // advisory label, no authority
@@ -216,6 +223,13 @@ export function Architecture() {
 }`}
         </pre>
       </div>
+      <p>
+        The first four types are user-facing. <code>admin</code> and{' '}
+        <code>invite-redeemed</code> are infrastructure entries written only by indexers:{' '}
+        <code>admin</code> carries <code>addWriter</code> / <code>removeWriter</code> actions,
+        and <code>invite-redeemed</code> records the spent nonce so a token can only ever
+        promote one peer.
+      </p>
       <p>
         Adding a new top-level type is a design-doc-level change. Optional fields on existing types
         are a lighter bar but still land with a doc update, because the schema is part of the
@@ -239,18 +253,43 @@ export function Architecture() {
           <strong>Writer</strong> — can append entries. Granted by <code>POST /admin/promote</code>.
         </li>
         <li>
-          <strong>Reader</strong> — replicates the log, can query, cannot write. New joiners land
-          here.
+          <strong>Reader</strong> — replicates the log, can query, cannot write. A new joiner
+          sits here for the seconds between swarm-connect and invite redemption, or after a
+          <code>remove-writer</code> demotion.
         </li>
       </ul>
 
-      <h3>Promoting a new writer</h3>
-      <Mermaid chart={WRITER_PROMOTION} caption="Figure 4 · A reader becomes a writer" />
+      <h3>Promoting a new writer via invite token</h3>
+      <Mermaid chart={INVITE_REDEEM} caption="Figure 4 · Redeeming a one-time invite token" />
       <p>
-        The creator runs <code>openpact add-writer &lt;peer-key&gt;</code> (or the dashboard
-        equivalent). That produces an admin entry that every indexer validates deterministically.
-        After it lands on the confirmed frontier, the new writer can append to their own Hypercore,
-        and every peer accepts their entries.
+        The creator mints a bearer token with <code>openpact invite</code>. The token is a
+        base64url JSON blob: <code>{`{v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`}</code>.
+        No signature — the nonce <em>is</em> the secret, and single-use is enforced at
+        apply-time by the <code>_invites/&lt;nonce&gt;</code> view key. TTL defaults to 7 days.
+      </p>
+      <p>
+        A joiner daemon can&rsquo;t append entries until it&rsquo;s a writer, so the redemption
+        travels over a dedicated protomux channel
+        (<code>openpact/invites/v1</code>) that rides the same Noise stream Corestore uses for
+        replication. The indexer receiving the request validates, appends the{' '}
+        <code>invite-redeemed</code> + <code>admin.addWriter</code> pair from its own writer
+        core, and responds with the outcome. Every peer&rsquo;s <code>apply()</code> sees both
+        entries in the same deterministic order, so two indexers redeeming the same nonce
+        concurrently end in a single winner with <code>INVITE_SPENT</code> for the loser.
+      </p>
+      <p>
+        The creator can still manually admit or demote peers via{' '}
+        <code>openpact add-writer</code> and <code>openpact remove-writer</code> (or the
+        dashboard&rsquo;s Network screen). Demotion is how bad actors are handled after
+        promotion — historical entries stay on the log (they&rsquo;re signed) but future writes
+        from that key are rejected.
+      </p>
+      <p>
+        <strong>Threat model.</strong> The join URL is a bearer credential. Whoever holds the
+        token can become a writer, once. Short TTLs and explicit revocation bound the damage
+        from a leaked URL. The raw discovery key (derivable from the token) remains a durable
+        read capability for the pact&rsquo;s lifetime — the same property the old
+        reader-by-default model had, not a regression.
       </p>
 
       <h2>Task lifecycle</h2>
@@ -303,7 +342,14 @@ export function Architecture() {
           permissions, and view shape.
         </li>
         <li>
-          Entry schema is fixed at four types: <code>knowledge · task · skill · message</code>.
+          Entry schema is fixed at six types:{' '}
+          <code>knowledge · task · skill · message · admin · invite-redeemed</code>. The first
+          four are user-facing; the last two are indexer-only infrastructure.
+        </li>
+        <li>
+          New peers are admitted by redeeming a one-time, time-limited invite token. The
+          creator mints tokens with <code>openpact invite</code> and can demote a misbehaving
+          writer with <code>openpact remove-writer</code>.
         </li>
         <li>
           Source-available under the Sustainable Use License. No proprietary modules in the daemon

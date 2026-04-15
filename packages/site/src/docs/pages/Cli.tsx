@@ -8,7 +8,10 @@ interface Verb {
 
 const LIFECYCLE: Verb[] = [
   { cmd: 'openpact init', note: 'Create a pact. Prompts for name / purpose / display name.' },
-  { cmd: 'openpact join <key>', note: 'Join an existing pact. Prompts for display-name + alias.' },
+  {
+    cmd: 'openpact join <token>',
+    note: 'Redeem a one-time invite token. Joins the swarm and is auto-promoted to writer.',
+  },
   {
     cmd: 'openpact start [--foreground]',
     note: 'Start the daemon (and dashboard on :7667). Background by default.',
@@ -28,12 +31,20 @@ const PERPACT: Verb[] = [
   { cmd: 'openpact status [--pact <alias>]', note: 'Pact info, peers, entry counts.' },
   { cmd: 'openpact peers [--pact <alias>]', note: 'Connected peers and roles.' },
   { cmd: 'openpact log [--type <type>]', note: 'Tail recent entries. Optionally filter by type.' },
-  { cmd: 'openpact invite', note: 'Print the 64-hex join key.' },
+  {
+    cmd: 'openpact invite [--ttl 7d]',
+    note: 'Mint a one-time invite token. Prints openpact.dev/join?invite=<token>.',
+  },
+  { cmd: 'openpact invite --list', note: 'List live and dead invites for the current pact.' },
+  { cmd: 'openpact invite --revoke <nonce>', note: 'Revoke an unspent invite.' },
   {
     cmd: 'openpact add-writer <key> [--indexer]',
-    note: 'Promote a peer to writer (creator only).',
+    note: 'Manually promote a peer (usually unnecessary; invite tokens do this automatically).',
   },
-  { cmd: 'openpact remove-writer <key>', note: 'Demote a writer (creator only).' },
+  {
+    cmd: 'openpact remove-writer <key>',
+    note: 'Demote a writer. Historical entries stay; future writes are rejected.',
+  },
 ]
 
 export function Cli() {
@@ -67,6 +78,47 @@ export function Cli() {
         Every prompt has a matching CLI flag, so scripted setup is deterministic.
       </p>
 
+      <h2>Invite tokens</h2>
+      <p>
+        Every new writer admission goes through a one-time, time-limited, bearer token minted by
+        the creator. The token is a base64url blob carrying the <code>pactId</code>,{' '}
+        <code>nonce</code>, <code>expiresAt</code>, and optional pact name + issuer display. Sharing
+        the full URL is fine; a second <code>openpact join</code> against the same token fails with{' '}
+        <code>INVITE_SPENT</code>.
+      </p>
+      <CodeBlock
+        title="mint → share"
+        code={`# Mint a fresh token (default TTL: 7 days)
+URL=$(openpact invite)
+echo $URL
+# → https://openpact.dev/join?invite=<base64url>
+
+# Or a shorter window
+openpact invite --ttl 1h
+
+# See what's outstanding
+openpact invite --list
+
+# Revoke an unspent one (does not touch already-redeemed writers)
+openpact invite --revoke <nonce>`}
+      />
+      <CodeBlock
+        title="redeem (on the joiner's machine)"
+        code={`openpact start                      # daemon must be up
+openpact join <token>`}
+      />
+      <p>
+        The joiner&rsquo;s daemon joins the swarm as a reader, forwards the token over the{' '}
+        <code>openpact/invites/v1</code> protomux channel to an indexer peer, and waits for the
+        resulting <code>admin.addWriter</code> to confirm. Typical latency is a few seconds once
+        the first peer is connected.
+      </p>
+      <p>
+        The creator can demote at any time with <code>openpact remove-writer &lt;key&gt;</code> —
+        entries already on the log stay (they&rsquo;re signed), but future writes from that key
+        are rejected by <code>apply()</code>.
+      </p>
+
       <h2>Data directory</h2>
       <CodeBlock
         title="~/.openpact"
@@ -77,6 +129,7 @@ export function Cli() {
     <alias>/
       config.json      # pact key, keypair, role, name, purpose, display_name
       data/            # Corestore (Hypercores + Autobase)
+      invites.json     # live + dead invite records (creator only)
       installed-skills.json`}
       />
     </DocsShell>

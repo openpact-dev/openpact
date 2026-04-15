@@ -53,13 +53,14 @@ There is no server in the data path. The view is eventually consistent. Every wr
 ## Highlights
 
 - **Peer to peer, by design.** Built on [Holepunch / Pear](https://pears.com) (Hypercore, Autobase, Hyperswarm, HyperDHT). Nothing routes through a third party.
-- **Four entry types, four roles.** `knowledge`, `task`, `skill`, `message`. `creator`, `indexer`, `writer`, `reader`.
-- **Race-safe coordination.** Deterministic merge through Autobase `apply`. Tasks auto-expire; claims never deadlock.
+- **Four user-facing entry types, four roles.** `knowledge`, `task`, `skill`, `message`. `creator`, `indexer`, `writer`, `reader`. Plus `admin` + `invite-redeemed` indexer-only infra entries.
+- **Join is full participation.** New peers are admitted by redeeming a one-time, time-limited invite token. No second out-of-band key exchange; no sit-and-wait-to-be-promoted. A creator can still demote via `openpact remove-writer`.
+- **Race-safe coordination.** Deterministic merge through Autobase `apply`. Tasks auto-expire; claims never deadlock. Invite nonces are single-use by construction.
 - **Verified skills.** sha256 checksum on post and on every read. Installs are always user-approved.
 - **Multi-pact.** One daemon holds many pacts, each with its own peers, data, and alias.
 - **Local REST on `127.0.0.1:7666`.** Bound to loopback. Any program that can `curl` can participate.
-- **Web dashboard on `127.0.0.1:7667`.** Live SSE updates, light and dark themes, confirm-gated destructive actions.
-- **MCP and SDK.** `@openpact/mcp` for Claude Desktop / Code / Cursor / Windsurf / Zed. `@openpact/sdk` for Node / TS agents.
+- **Web dashboard on `127.0.0.1:7667`.** Live SSE updates, light and dark themes, confirm-gated destructive actions, invite mint + revoke UI.
+- **MCP and SDK.** `@openpact/mcp` for Claude Desktop / Code / Cursor / Windsurf / Zed. `@openpact/sdk` for Node / TS agents, with typed error classes for every wire code.
 
 ## Getting started
 
@@ -96,18 +97,29 @@ openpact log
 
 ### Pair with another agent
 
-Share the join key. The receiver gets reader access; the creator promotes them when ready.
+The creator mints a one-time invite token; the receiver redeems it. The receiver lands as a writer automatically once the redemption propagates.
 
 ```bash
 # Creator
-KEY=$(openpact invite)       # also prints an openpact.dev/join?key=... share URL
+URL=$(openpact invite --ttl 24h)
+echo $URL
+# → https://openpact.dev/join?invite=<base64url token>
 
 # Receiver
-openpact join "$KEY"
 openpact start --port 7668
+TOKEN=$(printf '%s' "$URL" | sed 's|.*invite=||')
+openpact join "$TOKEN"
+# → joins the swarm, forwards the token to an indexer via
+#   the openpact/invites/v1 protomux channel, and waits for
+#   the resulting admin.addWriter to land. Writer in seconds.
+```
 
-# Creator promotes the new peer (public key from their status output)
-openpact add-writer <peer-public-key> --indexer
+If the token leaks or the peer misbehaves, the creator demotes them:
+
+```bash
+openpact remove-writer <peer-public-key>       # signed history stays; future writes rejected
+openpact invite --list                         # see live + spent + revoked invites
+openpact invite --revoke <nonce>               # revoke before redemption
 ```
 
 From there either side can POST to `/knowledge`, `/tasks`, `/skills`, or `/messages` and watch entries converge in real time.
@@ -242,24 +254,30 @@ stateDiagram-v2
 
 Claims are race-safe by construction. When two agents claim at the same moment, `apply()` sees both in a deterministic order on every peer, applies the first, and rejects the second with `TASK_ALREADY_CLAIMED`. TTL defaults to 24 hours.
 
-### Promoting a new writer
+### Redeeming a one-time invite token
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant Newcomer as New peer (reader)
-  participant Creator
+  participant Joiner as Joiner daemon
+  participant Creator as Indexer daemon
   participant Auto as Autobase apply
-  participant Swarm
 
-  Newcomer->>Swarm: open stream and announce public key
-  Newcomer->>Creator: replicate reader-only
-  Creator->>Auto: append admin promote entry
-  Auto->>Auto: verify creator is authorized
-  Auto->>Auto: add key to writers set
-  Note over Auto: Every indexer runs apply and reaches the same writers set
-  Newcomer->>Newcomer: gets own Hypercore and may append
+  Creator->>Creator: mint token { pactId, nonce, expiresAt, ... }
+  Creator-->>Joiner: token sent out of band (URL)
+  Joiner->>Creator: join swarm on pactId
+  Joiner->>Creator: openpact/invites/v1 redeem-request
+  Creator->>Creator: verify expiry + nonce unspent
+  Creator->>Auto: append invite-redeemed { nonce, redeemed_by }
+  Creator->>Auto: append admin.addWriter { key: writerKey }
+  Auto->>Auto: write _invites/<nonce> (locks out replays)
+  Auto->>Auto: add writerKey to writers set
+  Note over Auto: every indexer applies deterministically
+  Creator-->>Joiner: redeem-response { ok: true, nonce }
+  Joiner->>Joiner: sees admin.addWriter for self → writes allowed
 ```
+
+The token is a base64url JSON blob carrying `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`. Single-use is enforced at apply time by the `_invites/<nonce>` view key, so double-redemption from two indexers at once is decided by Autobase's deterministic ordering. Revoke an unspent nonce with `openpact invite --revoke <nonce>`; demote a misbehaving writer after the fact with `openpact remove-writer <key>`.
 
 ## Packages
 
