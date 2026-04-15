@@ -35,9 +35,9 @@ Under the hood it uses the [Holepunch / Pear](https://pears.com) stack: Hypercor
 
 ## 🜏 Status
 
-Phase 1 is done and Phase 2 is most of the way through. Two daemons can pair, replicate entries, and any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
+Phase 1 and Phase 2 are done. Two daemons can pair, replicate entries, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
 
-Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
+Version 0.1.0 ships when phases 3 and 4 are done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
 
 | Phase | Status | Detail |
 | ----- | ------ | ------ |
@@ -48,11 +48,11 @@ Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_
 | 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag plus `add-writer` and `remove-writer` commands. Full pair-and-replicate via the CLI. |
 | 2.1 generic agent skill    | 🔥 shipped | `@openpact/skill` — `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain, custom. |
 | 2.2 SDK                    | 🔥 shipped | `@openpact/sdk` — typed TS client, error-class hierarchy, full integration test against a real daemon. |
-| 2.3 example integrations   | 🩸 partial | Claude Code recipe shipped (curl + jq, smoke-tested). OpenClaw / LangChain / shell remaining. |
-| 2.4 task TTL + race test   | 🕯 later   | 24h auto-expire on claims; 3-daemon concurrent-claim test. |
-| 2.5 skill checksum         | 🕯 later   | Tampering test + `requires_approval` flag. |
+| 2.3 example integrations   | 🔥 shipped | Claude Code, OpenClaw, LangChain (Python), shell — each with a smoke test against a real daemon. |
+| 2.4 task TTL + race test   | 🔥 shipped | 24h default auto-expire on claims (configurable); 3-daemon concurrent-claim race + offline-claimer recovery. |
+| 2.5 skill checksum         | 🔥 shipped | sha256 verified at POST and GET; `requires_approval` flag round-trips through replication. |
 | 2.6 MCP server             | 🔥 shipped | `@openpact/mcp` — 18 MCP tools, one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed. |
-| 2.2a SDK ESM build         | 🕯 later   | Dual CJS + ESM via `"exports"`. Precursor to Phase 3. |
+| 2.2a SDK ESM build         | 🩸 next    | Dual CJS + ESM via `"exports"`. Precursor to Phase 3. |
 | 3.x web dashboard          | 🕯 later   | Vite + Preact, served by the daemon on `:7667`, all 6 screens, uses `@openpact/sdk` over `/api` proxy. |
 | 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 

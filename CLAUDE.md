@@ -10,23 +10,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-**Phase 1 complete + Phase 2 mostly shipped.** Two daemons pair via the CLI, replicate entries through testnet, and three published-ready agent-integration packages cover the realistic adoption surface.
+**Phase 1 + Phase 2 complete.** Two daemons pair via the CLI, replicate entries through testnet, coordinate work via tasks (with TTL + race-safe claim semantics), and share verified skills. Three published-ready agent-integration packages plus four worked example integrations cover the realistic adoption surface.
 
 Shipped:
 
 - **Phase 1.1–1.5** — daemon (Corestore + Autobase + Hyperswarm), REST on `:7666`, CLI (`init / start / log / add-writer / ...`), full pair-and-replicate flow.
 - **§2.1 `@openpact/skill`** — portable `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain Python, custom runtimes.
 - **§2.2 `@openpact/sdk`** — typed TypeScript client (CJS-only build), full error-class hierarchy, integration test against a real daemon.
-- **§2.3 partial** — Claude Code curl recipe at `examples/claude-code/CLAUDE.md` with a smoke test that runs every documented recipe against an in-process daemon.
+- **§2.3 examples** — Claude Code curl recipe, full OpenClaw workspace (drift-guarded), LangChain Python loader (with pytest), and shell scripts. Each smoke-tested against a real daemon.
+- **§2.4 task TTL + race tests** — configurable TTL (default 24h); deterministic per-peer expiry via timestamp-on-entry in the reducer; 3-daemon concurrent-claim race; offline-claimer recovery.
+- **§2.5 skill checksum** — sha256 verified at POST and at GET `/:id/content`; tampering test; `requires_approval` flag round-trips through replication; new `SkillChecksumMismatchError` in the SDK error hierarchy.
 - **§2.6 `@openpact/mcp`** — MCP server (18 tools) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed.
 
-Remaining for Phase 2: §2.3 (OpenClaw / LangChain / shell examples), §2.4 (task TTL + 3-daemon claim race), §2.5 (skill checksum + `requires_approval`).
+Up next:
+
+- **§2.2a — SDK ESM build** (precursor to Phase 3). `@openpact/sdk` adds `dist/esm/` alongside `dist/cjs/` and a dual-condition `"exports"` map. Hard prerequisite for the dashboard, which imports the SDK into a browser bundle.
+- **Phase 3 — web dashboard** (`packages/dashboard/`, Vite + Preact, served by the daemon on `:7667`, all 6 screens, SSE for live updates, `--no-dashboard` for headless deployments). Plan + tradeoffs in `docs/OPENPACT_BUILD_PLAN.md` §3.
 
 Source of truth for what to build:
 
 - `docs/OPENPACT_DESIGN.md` — canonical functional design (product scope, architecture, data model, UX).
 - `docs/OPENPACT_BUILD_PLAN.md` — phased build plan with concrete tech picks, endpoints, CLI verbs, conventions, and the v0.1.0 definition of done. Per-section ✅ marks reflect what's actually shipped.
-- `docs/0*.html` — static HTML mockups of planned UI screens.
+- `docs/mockups/0*.html` — static HTML mockups of planned UI screens.
 
 When asked to implement anything, **read both docs first**. Design doc is the *what/why*; build plan is the *how*. If a request contradicts either, raise it before writing code.
 
@@ -54,7 +59,9 @@ openpact/
     dashboard/       # web dashboard (Vite + Preact) served on :7667       [later]
   examples/
     claude-code/     # paste-into-CLAUDE.md curl + jq recipe              [shipped]
-    # openclaw/, langchain/, shell/                                       [Phase 2 remaining]
+    openclaw/        # OpenClaw workspace (drift-guarded SKILL.md copy)   [shipped]
+    langchain/       # Python loader + pytest                             [shipped]
+    shell/           # plain bash scripts (recall/record/tasks/send)      [shipped]
   docs/
 ```
 
@@ -163,7 +170,7 @@ The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`)
 Don't pull later-phase work forward until the current phase's test checkpoints pass.
 
 - **Phase 1** ✅ — daemon, REST, CLI; two daemons sync entries P2P. Test checkpoint: post via curl on machine A, see it via `openpact log` on machine B.
-- **Phase 2** 🩸 mostly shipped — `@openpact/skill`, `@openpact/sdk`, `@openpact/mcp`, Claude Code curl recipe all done. Remaining: OpenClaw / LangChain / shell examples, task claim TTL + 3-daemon race test, skill checksum + `requires_approval`.
+- **Phase 2** ✅ — `@openpact/skill`, `@openpact/sdk`, `@openpact/mcp`, four worked examples (Claude Code, OpenClaw, LangChain, shell), task TTL + 3-daemon race tests, skill checksum verification + `requires_approval` round-trip.
 - **Phase 3** — web dashboard (Vite + Preact) served by the daemon on `:7667`, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), SSE for live updates. The dashboard uses `@openpact/sdk` against `baseUrl: '/api'`; both Vite (dev) and Fastify (prod) proxy `/api/*` to the daemon on `:7666`. No parallel `api.ts` in the dashboard package. **Precursor §2.2a**: SDK must ship dual CJS + ESM before Phase 3 starts.
 - **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch.
 
