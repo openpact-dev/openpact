@@ -1,0 +1,419 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'tailwindcss';
+
+/*
+ * Codex of the Watching Daemon — site edition.
+ *
+ * Tokens, typography, and atmospherics are lifted verbatim from the
+ * dashboard (packages/dashboard/src/style.css). The dashboard is the
+ * canonical design system; this file must not drift from it.
+ */
+
+@theme {
+  /* === LIGHT THEME (parchment / vellum) === */
+  --color-paper: #fbf8f0;
+  --color-canvas: #f3eee2;
+  --color-mist: #e8e0cd;
+  --color-deckle: #d8ccab;
+
+  --color-line: rgb(38 28 12 / 14%);
+  --color-line-h: rgb(127 29 29 / 35%);
+
+  --color-ink: #1c1408;
+  --color-ink2: #5a4828;
+  --color-ink3: #8a7a5c;
+
+  --color-ember: #b3331a;
+  --color-ember-soft: #f1d6c8;
+  --color-ember-deep: #7f1d1d;
+  --color-ember-glow: rgb(179 51 26 / 22%);
+
+  --color-sigil-knowledge: #4a6b3a;
+  --color-sigil-task: #ad7e1f;
+  --color-sigil-skill: #6c3aa1;
+  --color-sigil-message: #2a5577;
+
+  --color-online: #4a7a3a;
+  --color-offline: #8a7a5c;
+
+  --font-display: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-sans: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  --grain-paper: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.08  0 0 0 0 0.04  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-forge: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.95  0 0 0 0 0.92  0 0 0 0.025 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+}
+
+/* === DARK THEME (forge / ember chamber) === */
+.dark {
+  --color-paper: #14100f;
+  --color-canvas: #0e0a09;
+  --color-mist: #1f1815;
+  --color-deckle: #2a201c;
+
+  --color-line: rgb(254 226 226 / 8%);
+  --color-line-h: rgb(239 68 68 / 32%);
+
+  --color-ink: #f0e1d8;
+  --color-ink2: #c8a89c;
+  --color-ink3: #7a5e54;
+
+  --color-ember: #ef4444;
+  --color-ember-soft: rgb(239 68 68 / 12%);
+  --color-ember-deep: #fca5a5;
+  --color-ember-glow: rgb(239 68 68 / 25%);
+
+  --color-sigil-knowledge: #7eb368;
+  --color-sigil-task: #e8b04a;
+  --color-sigil-skill: #b48bdb;
+  --color-sigil-message: #6fa0c8;
+
+  --color-online: #6dd49a;
+  --color-offline: #7a5e54;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+}
+
+#app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--grain-paper);
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+.dark #app::before {
+  background-image: var(--grain-forge);
+  mix-blend-mode: screen;
+  opacity: 0.4;
+}
+
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, var(--color-ember-glow) 0%, transparent 38%),
+    radial-gradient(circle at 88% 92%, var(--color-ember-glow) 0%, transparent 42%);
+  opacity: 0.55;
+}
+.dark #app::after {
+  opacity: 1;
+}
+
+::selection {
+  background: var(--color-ember);
+  color: var(--color-paper);
+}
+
+:focus-visible {
+  outline: 1px solid var(--color-ember);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* === Typography utilities === */
+
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings:
+    'liga' 1,
+    'kern' 1;
+}
+
+.tabular {
+  font-feature-settings:
+    'tnum' 1,
+    'kern' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.smallcaps {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  color: var(--color-ink3);
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--color-ember);
+  letter-spacing: 0.02em;
+}
+
+.hairline {
+  height: 1px;
+  background: var(--color-line);
+  width: 100%;
+}
+
+.ledger-rule {
+  position: relative;
+  width: 1px;
+  background: var(--color-line);
+}
+.ledger-rule::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--color-paper);
+  border: 1px solid var(--color-ember);
+}
+
+/* === Animations === */
+
+@keyframes etch {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ember-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--color-ember-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@keyframes ember-flicker {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--color-ember-glow));
+  }
+  50% {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 8px var(--color-ember-glow));
+  }
+}
+
+@keyframes count-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    letter-spacing: 0.05em;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+.animate-etch {
+  animation: etch 0.45s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.animate-ember-pulse {
+  animation: ember-pulse 2.4s ease-in-out infinite;
+}
+.animate-flicker {
+  animation: ember-flicker 5.2s ease-in-out infinite;
+}
+.animate-count-in {
+  animation: count-in 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.animate-drift {
+  animation: drift 6s ease-in-out infinite alternate;
+}
+
+.ember-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.3s ease;
+}
+.group:hover .ember-underline {
+  background-size: 100% 1px;
+}
+
+/* Links inside prose */
+.prose a {
+  color: var(--color-ember);
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.3s ease;
+}
+.prose a:hover {
+  background-size: 100% 1px;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+.prose h1 {
+  font-size: clamp(2.4rem, 3.6vw, 3.2rem);
+  line-height: 1.05;
+  margin: 0 0 0.75rem;
+}
+.prose h2 {
+  font-size: 1.75rem;
+  margin: 2.25rem 0 0.6rem;
+}
+.prose h3 {
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.4rem;
+}
+.prose p,
+.prose li {
+  color: var(--color-ink2);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+.dark .prose p,
+.dark .prose li {
+  color: var(--color-ink);
+}
+.prose p {
+  margin: 1rem 0;
+}
+.prose p:first-child {
+  margin-top: 0;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.25rem;
+  margin: 1rem 0 1.25rem;
+}
+.prose ul li,
+.prose ol li {
+  margin: 0.25rem 0;
+}
+.prose ul li {
+  list-style: disc;
+}
+.prose ol li {
+  list-style: decimal;
+}
+.prose strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.prose code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 0.8125em;
+  color: var(--color-ember);
+  background: var(--color-ember-soft);
+  padding: 0.1rem 0.35rem;
+  border-radius: 2px;
+  border: 1px solid var(--color-line);
+}
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  margin: 1rem 0;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.prose th {
+  color: var(--color-ink3);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-deckle) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-deckle);
+  border-radius: 4px;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-etch,
+  .animate-ember-pulse,
+  .animate-flicker,
+  .animate-count-in,
+  .animate-drift {
+    animation: none !important;
+  }
+  * {
+    transition: none !important;
+  }
+}

@@ -5,7 +5,7 @@
   "description": "LangChain (Python) example loading @openpact/skill tools.json at boot",
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/**/*.test.ts'"

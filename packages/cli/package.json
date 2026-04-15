@@ -8,7 +8,7 @@
     "openpact": "bin/openpact.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,e2e}/**/*.test.ts'"

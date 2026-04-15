@@ -5,7 +5,7 @@
   "description": "Example OpenClaw workspace with the @openpact/skill installed",
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/**/*.test.ts'"

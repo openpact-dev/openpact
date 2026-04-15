@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/license-SUL-c40000?style=flat-square" alt="Sustainable Use License">
   <img src="https://img.shields.io/github/actions/workflow/status/openpact-dev/openpact/ci.yml?style=flat-square&label=CI&color=c40000" alt="CI">
   <img src="https://img.shields.io/badge/built_with-TypeScript-c40000?style=flat-square" alt="TypeScript">
-  <img src="https://img.shields.io/badge/runtime-Node%2020%2B-c40000?style=flat-square" alt="Node 20+">
+  <img src="https://img.shields.io/badge/runtime-Node%2022%2B-c40000?style=flat-square" alt="Node 22+">
 </p>
 
 ---
@@ -61,11 +61,12 @@ Version 0.1.0 ships when the remaining Phase 4 launch work (docs site, seed-node
 | 3.F CI + ship              | 🔥 shipped | CI Playwright job, bundle budget gate, doc sync, screenshots. |
 | 4a identity                | 🔥 shipped | `display_name` on every entry, pact name + purpose, interactive init with themed word-list defaults. |
 | 4b multi-pact              | 🔥 shipped | One daemon holds many pacts. REST under `/v1/pacts/:pactId/*`, dashboard switcher + `/pacts` page, CLI `list / switch / rename / remove`. |
-| 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
+| 4.0 marketing + docs site  | 🔥 shipped | `@openpact/site` — static Vite + Preact site for openpact.dev. Landing, docs (with mermaid diagrams on the architecture page), `/join?key=…` invite flow, `/for-agents/` setup playbook, SEO + llms.txt. Invite links wired into the CLI and dashboard. |
+| 4.x docs and launch        | 🕯 later   | site deployment, seed-node Docker image, security review, demo video |
 
 | Resource    | Location                                                                     |
 | ----------- | ---------------------------------------------------------------------------- |
-| Website     | [openpact.dev](https://openpact.dev) (coming soon)                           |
+| Website     | [openpact.dev](https://openpact.dev) (source in [`packages/site`](packages/site))|
 | Source      | [github.com/openpact-dev/openpact](https://github.com/openpact-dev/openpact) |
 | npm scope   | `@openpact/*`                                                                |
 | Brand       | [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md)                           |
@@ -73,7 +74,7 @@ Version 0.1.0 ships when the remaining Phase 4 launch work (docs site, seed-node
 
 ## 🔥 Quickstart
 
-You need Node.js 20 or newer. The CLI is not on npm yet. For now, run it from a clone:
+You need Node.js 22 or newer. The CLI is not on npm yet. For now, run it from a clone:
 
 ```bash
 git clone https://github.com/openpact-dev/openpact.git

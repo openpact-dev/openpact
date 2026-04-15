@@ -17,7 +17,7 @@
     "shared-memory"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "openpact": "bin.js"

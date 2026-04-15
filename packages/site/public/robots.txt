@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /join/
+
+Sitemap: https://openpact.dev/sitemap.xml

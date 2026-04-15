@@ -15,7 +15,7 @@ export interface ClientOpts {
    * never silently writes to the "wrong" pact.
    */
   pactId?: string
-  /** Custom fetch implementation. Default: globalThis.fetch (Node 20+). */
+  /** Custom fetch implementation. Default: globalThis.fetch (Node 22+). */
   fetch?: typeof globalThis.fetch
 }
 

@@ -1,5 +1,5 @@
 // Tiny fetch mock for SDK unit tests. Records every call and returns
-// scripted responses in order. Matches Node 20+ fetch signature.
+// scripted responses in order. Matches Node 22+ fetch signature.
 
 export interface MockResponse {
   status?: number

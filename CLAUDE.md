@@ -25,10 +25,11 @@ Shipped:
 - **§3 slices A–F** — daemon entries/SSE/install/admin endpoints + reverse-ref index, dashboard scaffold (Vite + Preact + Tailwind v4), all six screens, install + admin write actions gated by ConfirmDialog, CI `dashboard` job with bundle budget gate (JS ≤ 100KB / CSS ≤ 20KB gzipped). Logos regenerated from the dashboard's WatchingEye mark.
 - **§4a identity** — `display_name` on every entry (advisory; `agent_id` stays canonical), pact name + purpose, interactive `openpact init` + `join` with themed word-list defaults. `@inquirer/prompts` respects `--no-interactive` for CI.
 - **§4b multi-pact** — one daemon holds many pacts. Data layout is `~/.openpact/{daemon.json, pacts/<alias>/{config.json, data/}}`. REST moved under `/v1/pacts/:pactId/*`; host-level surface adds `/v1/pacts` (list/create/join/switch) and `/v1/pacts/:pactId` (rename/remove). SDK takes an optional `pactId`. CLI adds `openpact list / switch / rename / remove` and a `--pact <alias>` flag on every per-pact verb. Dashboard gets a sidebar PactSwitcher and a `/pacts` management page.
+- **§4.0 marketing + docs site** — `@openpact/site` at `packages/site/`. Benefit-led landing, five curated docs pages (overview / getting-started / cli / rest-api / architecture with mermaid diagrams), `/join/?key=…` invite flow, `/for-agents/` setup playbook for AI coding agents, SEO assets (robots/sitemap/og-image) plus an `llms.txt`. Invite plumbing landed in the CLI and dashboard: both surface the full `openpact.dev/join?key=…` share URL next to the raw key. Project-wide Node minimum bumped to 22.
 
 Up next:
 
-- **Phase 4 launch polish** — docs site on `openpact.dev`, seed-node Docker image, security review, demo video, v0.1.0 tag. Plan in `docs/OPENPACT_BUILD_PLAN.md` §4.
+- **Phase 4 launch polish** — deploy `openpact.dev`, seed-node Docker image, security review, demo video, v0.1.0 tag. Plan in `docs/OPENPACT_BUILD_PLAN.md` §4.
 
 Source of truth for what to build:
 
@@ -60,6 +61,7 @@ openpact/
     mcp/             # @openpact/mcp — MCP server wrapping the daemon     [shipped]
     skill/           # @openpact/skill — portable SKILL.md + tools.json   [shipped]
     dashboard/       # Vite + Preact SPA + Fastify proxy on :7667          [slices A–C shipped]
+    site/            # @openpact/site — static Vite + Preact marketing site for openpact.dev  [shipped]
   examples/
     claude-code/     # paste-into-CLAUDE.md curl + jq recipe              [shipped]
     openclaw/        # OpenClaw workspace (drift-guarded SKILL.md copy)   [shipped]
@@ -84,6 +86,56 @@ Load-bearing. Don't violate without explicit user sign-off:
 4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, display_name?, payload, refs, ttl}`. `agent_id` is the canonical, verified peer handle; `display_name` is a nullable advisory label with no authority. Adding a new top-level *type* requires a design-doc update first. Adding an optional field to the existing four types is a lighter bar but must still land alongside a design-doc update (see §5.2).
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
 6. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
+
+## Site conventions
+
+`@openpact/site` lives in `packages/site/`. Pure static, client-side-only
+Vite MPA for openpact.dev. No daemon, no SDK dependency, no Fastify.
+Each route is a real HTML entry in `src/` (landing, `/join/`,
+`/docs/<page>/`, `/404.html`); each one has a small Preact bootstrap
+under `src/entries/*.tsx`. The dashboard is still the canonical design
+system, so `src/style.css` is copied verbatim from the dashboard and
+must not drift. Bundle budget is implicit (landing currently ~20KB
+gzipped including shared runtime + styles).
+
+Pages:
+
+- `/` — benefit-led landing. Copy is about what the user gets ("give your
+  agents a memory that survives"), not what the daemon is technically.
+- `/docs/<overview|getting-started|cli|rest-api|architecture>/` —
+  curated docs, authored as JSX. The architecture page renders five
+  Mermaid diagrams via a dynamic `import('mermaid')` so the heavy chunks
+  only load on that one route. If doc volume grows, swap in a markdown
+  pipeline later.
+- `/join/?key=<64-hex>&pact=<name>&from=<display_name>` — URL-parameter
+  invite flow that renders copy-pasteable install + `openpact join`
+  commands. The client-side key regex mirrors `packages/cli/src/commands/join.ts:19`
+  (`^[0-9a-f]{64}$`). Safe in a URL because the join key grants Reader
+  only (`packages/daemon/src/pact.ts:78`); creator must still run
+  `add-writer` to promote.
+- `/for-agents/` — agent-oriented setup playbook. A user pastes the
+  prompt at the top into Claude Code / Cursor / Windsurf / OpenClaw /
+  LangChain / an MCP client / a shell agent, and the agent reads the
+  page to install OpenPact and wire it into its own runtime. Also
+  linked from `llms.txt` so LLMs crawling the site surface it first.
+
+SEO assets in `public/`: `favicon.svg`, `robots.txt`, `sitemap.xml`,
+`llms.txt`, `og-image.png`. Per-page `<title>` / meta / canonical / OG /
+Twitter / JSON-LD baked into each HTML entry. Install copy across the
+site assumes `@openpact/cli` is on npm (`npm install -g @openpact/cli`);
+the root README keeps the git-clone fudge as the honest story until
+the first publish.
+
+Invite plumbing: `openpact invite` on the CLI and the dashboard's
+`InviteDialog` both emit the full share URL
+`https://openpact.dev/join?key=…&pact=…&from=…` (populated from the
+creator's current display name) alongside the raw key. The CLI writes
+the key to stdout (`KEY=$(openpact invite)` unchanged) and the share
+URL + hint to stderr on TTY only.
+
+Same gotchas as the dashboard: **do not install `@preact/preset-vite`**
+(zimmerframe breaks Vite's loader). JSX goes through esbuild's automatic
+transform.
 
 ## Dashboard conventions
 
@@ -299,7 +351,7 @@ For Pear runtime, CLI, config, or P2P primitive APIs — invoke the `/pears` ski
 
 ## Commands
 
-Run from the repo root unless noted. Requires Node.js ≥ 20.
+Run from the repo root unless noted. Requires Node.js ≥ 22.
 
 | Command                     | What it does                                                  |
 | --------------------------- | ------------------------------------------------------------- |

@@ -27,7 +27,7 @@ read the error and react.
 
 - A running OpenPact daemon on `127.0.0.1:7666` (or set `OPENPACT_URL`
   to a different address).
-- Node.js 20 or newer, available on the path.
+- Node.js 22 or newer, available on the path.
 
 Quick start the daemon if you don't have one:
 

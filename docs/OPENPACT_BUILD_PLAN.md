@@ -1349,6 +1349,35 @@ matrix; one slot is enough for the v0.1 surface.
 
 **Duration:** ~2 weeks
 
+### 4.0 Marketing + docs site ✅
+
+- [x] `@openpact/site` package — static Vite + Preact + Tailwind v4 multi-page build for openpact.dev
+- [x] **Benefit-led landing page** — hero headline is a promise ("Give your agents a memory that survives."), not a feature list. Sections: benefits (shared memory / peer coordination), "no strings" reassurance, a live-feed preview, integrations, CTA
+- [x] `/docs/` — curated docs authored as JSX under a shared TOC shell with prev/next nav. Five pages: `overview`, `getting-started`, `cli`, `rest-api`, `architecture`. (Earlier `brand` doc removed; brand lives in `docs/OPENPACT_BRAND.md` on GitHub.)
+- [x] **Mermaid diagrams on `/docs/architecture/`** — five figures (system overview, inside-a-daemon, write path sequence, task state machine, writer promotion sequence). Mermaid is dynamic-imported so it only loads on that one page. Diagrams re-render on theme change
+- [x] `/join/?key=<64-hex>&pact=<name>&from=<display_name>` — URL-parameter invite flow that renders copy-pasteable install + `openpact join` commands; client-side key regex mirrors `packages/cli/src/commands/join.ts:19`
+- [x] `/for-agents/` — a setup playbook aimed at AI coding agents. Paste the prompt at the top into any agent (Claude Code, Cursor, Windsurf, OpenClaw, LangChain, MCP clients, shell) and it will install OpenPact and wire it into its own runtime. Numbered steps, per-framework wiring blocks, machine-readable reference links
+- [x] Themed 404 page
+- [x] Design language copied verbatim from the dashboard (style.css, WatchingEye, Panel, ThemeDial, `openpact:theme` localStorage key); light + dark themes
+- [x] SEO: per-page `<title>` / meta / canonical / OpenGraph / Twitter Card, JSON-LD `SoftwareApplication` on the landing, `favicon.svg`, `robots.txt`, `sitemap.xml`, 1200×630 `og-image.png`
+- [x] LLM-readable: `llms.txt` per llmstxt.org, summarising OpenPact and surfacing `/for-agents/` first so agents visiting the site land on their own playbook
+- [x] Root convenience scripts `npm run site:dev` and `npm run site:build`
+- [x] CI `site` job (builds the site on every PR and verifies `robots.txt` / `sitemap.xml` / `llms.txt` / `favicon.svg` make it into `dist/`)
+- [x] Gotchas baked in: no `@preact/preset-vite` (zimmerframe), no server proxy in `vite.config.ts`, MPA entries under `src/entries/*.tsx`
+- [x] Install copy across the site assumes `@openpact/cli` is on npm (`npm install -g @openpact/cli`). The git-clone fudge is still in the root README as the honest story until the first publish
+
+#### 4.0 Invite plumbing ✅
+
+- [x] CLI `openpact invite` prints the raw key on stdout (scripts unchanged) and, when stdout is a TTY, writes the full share URL `https://openpact.dev/join?key=…&pact=…&from=…` to stderr with a short hint
+- [x] Dashboard `InviteDialog` surfaces the full share URL above the raw key, with its own copy button. Pulls `from` from the creator's current display name
+
+#### 4.0 Open follow-ups
+
+- [ ] Pick a host (Vercel / Netlify / Cloudflare Pages / GitHub Pages) and wire deployment
+- [ ] Capture curated dashboard screenshots into `packages/site/public/screens/`
+- [ ] Render a bespoke 1200×630 `og-image.png` (currently a placeholder)
+- [ ] Swap doc authoring to a markdown pipeline if doc volume grows
+
 ### 4.1 Documentation
 
 - [ ] Documentation site (markdown on GitHub Pages or `docs/` folder)
@@ -1526,4 +1555,4 @@ The following must all be true before tagging v0.1.0:
 - [ ] The repo has a Sustainable Use License, contributing guide, and code of conduct
 - [ ] **Full test suite is green**: unit, integration, e2e, UI, security, chaos, examples
 - [ ] **Coverage gates met** across all packages (daemon 80/75, cli 70/65, sdk 90/85, dashboard server 80/75, `apply` 95/90)
-- [ ] **CI matrix passes** on Node 20 + 22 × Ubuntu + macOS for every commit on `main`
+- [ ] **CI matrix passes** on Node 22 × Ubuntu + macOS for every commit on `main`
