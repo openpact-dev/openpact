@@ -1,7 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { HttpError } from '../errors'
-import { DISPLAY_NAME_MAX, PACT_NAME_MAX, PACT_PURPOSE_MAX } from '../../config'
+import {
+  DISPLAY_NAME_MAX,
+  PACT_NAME_MAX,
+  PACT_PURPOSE_MAX,
+  loadPactConfig,
+} from '../../config'
 
 const createSchema = {
   type: 'object',
@@ -76,10 +81,9 @@ export default async function pactsRoute(
             data_dir: entry.dataDir,
             is_current: entry.alias === currentAlias,
           }
-          // Try to read the pact's config for name/purpose without
-          // forcing the corestore open — every call has to be fast.
+          // Read the pact's config for name/purpose without forcing the
+          // corestore open — every call has to be fast.
           try {
-            const { loadPactConfig } = await import('../../config')
             const cfg = await loadPactConfig(entry.dataDir)
             return {
               ...base,
@@ -88,7 +92,8 @@ export default async function pactsRoute(
               display_name: cfg.displayName,
               role: cfg.role,
             }
-          } catch {
+          } catch (err) {
+            app.log.warn({ err, alias: entry.alias }, 'failed to read pact config')
             return {
               ...base,
               pact_name: null,
