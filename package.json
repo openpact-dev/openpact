@@ -22,7 +22,7 @@
     "test:e2e": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/e2e/**/*.test.ts'",
     "test:examples": "NODE_OPTIONS='--import tsx' brittle 'examples/*/test/**/*.test.ts'",
     "test:watch": "NODE_OPTIONS='--import tsx' brittle --watch 'packages/*/test/unit/**/*.test.ts'",
-    "test:all": "npm test && npm run test:e2e && npm run test:examples && npm run -w @openpact/sdk build && npm run -w @openpact/mcp build",
+    "test:all": "npm run -w @openpact/sdk build && npm run -w @openpact/sdk validate && npm run -w @openpact/mcp build && npm test && npm run test:e2e && npm run test:examples",
     "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:all && node scripts/check-apply-coverage.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint packages examples && prettier --check packages examples",

@@ -572,7 +572,23 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   tsconfig.cjs.json` pass. ESM was scoped out — the surface is small and
   modern Node consumers can `require()` fine. Daemon and CLI follow the
   same pattern in Phase 4.
-- [ ] **§2.2a — ESM build (precursor to Phase 3).** Add `dist/esm/` alongside `dist/cjs/` via a second `tsc -p tsconfig.esm.json` pass. Wire a dual-condition `"exports"` map in `package.json` (`{"import": "./dist/esm/index.js", "require": "./dist/cjs/index.js", "types": "./dist/types/index.d.ts"}`). Keep `main` pointing at CJS for older tools. This is a hard prerequisite for Phase 3: the dashboard imports the SDK into a browser bundle, and shipping dual output now avoids a later migration. `publint` in CI verifies both conditions resolve to real files.
+- [x] **§2.2a — ESM build (precursor to Phase 3).** `dist/esm/` is
+  emitted by a second `tsc -p tsconfig.esm.json` pass, then a small
+  `scripts/finalise-esm.mjs` post-processor adds `.js` extensions to
+  every relative import/export in the ESM `.js` and `.d.ts` files
+  (Node ESM requires explicit extensions; we keep `src/` clean of
+  them) and drops a `dist/esm/package.json` shim with
+  `{"type":"module"}` so Node treats the .js files as ESM even though
+  the package itself is `"type":"commonjs"`. `package.json` ships a
+  per-condition `"exports"` map with `import.types`/`import.default`
+  and `require.types`/`require.default`, plus types co-located in
+  each `dist/{esm,cjs}/` folder. `publint --strict` runs in CI as
+  `npm run -w @openpact/sdk validate` (folded into `test:all`) and
+  catches a broken exports map before publish. A new
+  `test/integration/dual-build.test.ts` spawns Node twice — once
+  with `require(...)` against the CJS entry, once with `import`
+  against the ESM entry — to prove both conditions resolve to
+  runnable files.
 - [x] Publish-ready as `@openpact/sdk` with `main`, `types`, and `exports`
   set. (Not yet `npm publish`d — that's a manual step the maintainer
   takes when ready.)

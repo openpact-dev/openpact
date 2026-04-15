@@ -6,7 +6,7 @@
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/openpact-dev/openpact.git",
+    "url": "git+https://github.com/openpact-dev/openpact.git",
     "directory": "packages/sdk"
   },
   "engines": {
@@ -14,11 +14,18 @@
   },
   "type": "commonjs",
   "main": "dist/cjs/index.js",
-  "types": "dist/types/index.d.ts",
+  "module": "dist/esm/index.js",
+  "types": "dist/cjs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "require": "./dist/cjs/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     }
   },
   "files": [
@@ -26,11 +33,13 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.cjs.json",
-    "prepublishOnly": "npm run build",
+    "build": "rm -rf dist && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && node scripts/finalise-esm.mjs",
+    "validate": "publint --strict",
+    "prepublishOnly": "npm run build && npm run validate",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'"
   },
   "devDependencies": {
-    "@openpact/daemon": "*"
+    "@openpact/daemon": "*",
+    "publint": "^0.2.12"
   }
 }
