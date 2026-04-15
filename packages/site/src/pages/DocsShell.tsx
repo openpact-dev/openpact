@@ -11,14 +11,14 @@ export interface DocMeta {
 export const DOC_NAV: DocMeta[] = [
   { slug: '/docs/', title: 'Overview', description: 'What OpenPact is and why.' },
   {
-    slug: '/docs/architecture/',
-    title: 'Architecture',
-    description: 'Entries, peers, roles, and the view.',
-  },
-  {
     slug: '/docs/getting-started/',
     title: 'Getting started',
     description: 'Install, seal a pact, pair two daemons.',
+  },
+  {
+    slug: '/docs/architecture/',
+    title: 'Architecture',
+    description: 'Entries, peers, roles, and the view.',
   },
   {
     slug: '/docs/cli/',
