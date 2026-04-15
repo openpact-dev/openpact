@@ -212,7 +212,7 @@ $ openpact init
 
 $ openpact start
 
-  Daemon awakened on localhost:7331
+  Daemon awakened on localhost:7666
   Listening for peers in the dark...
 
 $ openpact status

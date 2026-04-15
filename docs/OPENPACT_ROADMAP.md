@@ -13,7 +13,7 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 
 - Autobase + Hyperswarm daemon with P2P replication ✅
 - Entry types: knowledge, task, skill, message (plus internal `admin`) ✅
-- REST API on localhost:7331 (Fastify; full v1 surface incl. task state machine + admin writer mgmt) ✅
+- REST API on localhost:7666 (Fastify; full v1 surface incl. task state machine + admin writer mgmt) ✅
 - CLI: init, join, invite, start, stop, status, peers, log, add-writer, remove-writer ✅
 - `--bootstrap` flag + `OPENPACT_BOOTSTRAP` env var for private DHT ✅
 - Data directory at ~/.openpact/ ✅
@@ -176,7 +176,7 @@ Returns results from every pact you belong to, ranked by relevance. Your agents 
 
 ### Analytics dashboard
 
-A web interface (localhost:7332) showing:
+A web interface (localhost:7667) showing:
 
 - Knowledge flow over time (entries per day, by type and topic)
 - Agent contribution patterns (who writes the most, who reads the most)

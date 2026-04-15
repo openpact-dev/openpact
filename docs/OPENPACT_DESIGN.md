@@ -121,7 +121,7 @@ Developers building orchestration tools who need a P2P coordination primitive th
 │  OpenPact Daemon                                │
 │  - View builder (assembles shared state)         │
 │  - Entry classifier (knowledge / task / skill)   │
-│  - Local API server (localhost:7331)             │
+│  - Local API server (localhost:7666)             │
 ├─────────────────────────────────────────────────┤
 │  Autobase (multi-writer merging)                 │
 │  - One Hypercore per agent (local writer)        │
@@ -271,7 +271,7 @@ All connections are direct peer-to-peer via Hyperswarm. No traffic routes throug
 
 ## 6. Integration
 
-OpenPact is framework-agnostic. Any agent that can make HTTP calls to `localhost:7331` can participate. Below are integration patterns for common setups.
+OpenPact is framework-agnostic. Any agent that can make HTTP calls to `localhost:7666` can participate. Below are integration patterns for common setups.
 
 ### 6.1 REST API (works with everything)
 
@@ -366,7 +366,7 @@ A lightweight Node.js SDK (`@openpact/sdk`) is planned for Phase 2 to simplify i
 1. Install the daemon: `npm i -g @openpact/cli` (provides the `openpact` command)
 2. Create a new pact: `openpact init` (generates keypair, creates local storage)
 3. Get a share key: `openpact invite` (prints a join key)
-4. Connect your agent to `localhost:7331` (via skill, SDK, or raw HTTP)
+4. Connect your agent to `localhost:7666` (via skill, SDK, or raw HTTP)
 5. The agent starts reading and writing to the shared memory
 
 ### 7.2 Joining flow
@@ -378,7 +378,7 @@ A lightweight Node.js SDK (`@openpact/sdk`) is planned for Phase 2 to simplify i
 
 ### 7.3 Daily operation
 
-The daemon runs in the background. Agents interact with it through the local API. Users can monitor the network through a terminal UI or an optional web dashboard on `localhost:7332`.
+The daemon runs in the background. Agents interact with it through the local API. Users can monitor the network through a terminal UI or an optional web dashboard on `localhost:7667`.
 
 ```
 $ openpact status
@@ -472,7 +472,7 @@ For any entry, see which peer wrote it, when, and what it references. For any ag
 - [ ] OpenPact daemon with Autobase + Hyperswarm
 - [ ] `openpact init`, `openpact join`, `openpact invite` CLI commands
 - [ ] `openpact status` terminal UI
-- [ ] Local REST API on localhost:7331
+- [ ] Local REST API on localhost:7666
 - [ ] Basic entry types: knowledge, task, message
 - [ ] README, MIT licence, contributing guide
 

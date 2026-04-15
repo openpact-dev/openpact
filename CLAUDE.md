@@ -29,14 +29,14 @@ A P2P daemon giving software agents (OpenClaw, Claude Code, LangChain, CrewAI, s
 - **Hyperswarm + HyperDHT** — peer discovery, NAT traversal, encrypted streams
 - **Hyperbee** — sorted KV on top of the view for indexed queries
 
-No central server. Eventually consistent. Tamper-proof. The daemon exposes a local REST API on `localhost:7331`.
+No central server. Eventually consistent. Tamper-proof. The daemon exposes a local REST API on `localhost:7666`.
 
 ## Planned monorepo layout
 
 ```
 openpact/
   packages/
-    daemon/          # Autobase + Hyperswarm + fastify REST on :7331
+    daemon/          # Autobase + Hyperswarm + fastify REST on :7666
     cli/             # commander-based openpact <verb>
     sdk/             # @openpact/sdk (Phase 2)
     skill-openclaw/  # OpenClaw SKILL.md (Phase 2)
@@ -56,7 +56,7 @@ Daemon class. Don't propose another language without strong justification.
 Load-bearing. Don't violate without explicit user sign-off:
 
 1. **No central server in the data path.** DHT bootstrap nodes and optional seed nodes for availability are fine; nothing else routes user data.
-2. **REST on `localhost:7331` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK and OpenClaw skill are conveniences that wrap it, not the only way in.
+2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK and OpenClaw skill are conveniences that wrap it, not the only way in.
 3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
 4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, payload, refs, ttl}`. Adding a new top-level type requires a design-doc update first.
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
@@ -108,7 +108,7 @@ POST /v1/messages
 ```
 Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
 
-Optional dashboard runs on `:7332` (localhost only).
+Optional dashboard runs on `:7667` (localhost only).
 
 ## CLI surface
 

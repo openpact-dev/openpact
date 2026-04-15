@@ -14,22 +14,22 @@ async function tmpDir(t: any): Promise<string> {
 test('loadConfig: missing file returns defaults', async (t) => {
   const dir = await tmpDir(t)
   const c = await config.loadConfig(dir)
-  t.alike(c, { pactKey: null, role: null, port: 7331 })
+  t.alike(c, { pactKey: null, role: null, port: 7666 })
 })
 
 test('saveConfig + loadConfig round-trip', async (t) => {
   const dir = await tmpDir(t)
-  await config.saveConfig(dir, { pactKey: 'abc123', role: 'creator', port: 7331 })
+  await config.saveConfig(dir, { pactKey: 'abc123', role: 'creator', port: 7666 })
   const c = await config.loadConfig(dir)
   t.is(c.pactKey, 'abc123')
   t.is(c.role, 'creator')
-  t.is(c.port, 7331)
+  t.is(c.port, 7666)
 })
 
 test('saveConfig: creates dataDir if missing', async (t) => {
   const dir = await tmpDir(t)
   const nested = path.join(dir, 'nested', 'deep')
-  await config.saveConfig(nested, { pactKey: null, role: 'reader', port: 7331 })
+  await config.saveConfig(nested, { pactKey: null, role: 'reader', port: 7666 })
   const stat = await fs.stat(configPath(nested))
   t.ok(stat.isFile())
 })
@@ -50,7 +50,7 @@ test('loadConfig: non-object JSON throws', async (t) => {
 
 test('validate: invalid role rejects', (t) => {
   t.exception(
-    () => config.validate({ pactKey: null, role: 'admin' as any, port: 7331 }),
+    () => config.validate({ pactKey: null, role: 'admin' as any, port: 7666 }),
     /invalid role/,
   )
 })
@@ -61,16 +61,16 @@ test('validate: bad port rejects', (t) => {
 })
 
 test('validate: malformed pactKey rejects', (t) => {
-  t.exception(() => config.validate({ pactKey: 'not-hex', role: null, port: 7331 }))
+  t.exception(() => config.validate({ pactKey: 'not-hex', role: null, port: 7666 }))
 })
 
 test('validate: null pactKey allowed', (t) => {
-  t.execution(() => config.validate({ pactKey: null, role: null, port: 7331 }))
+  t.execution(() => config.validate({ pactKey: null, role: null, port: 7666 }))
 })
 
 test('saveConfig: invalid config rejects', async (t) => {
   const dir = await tmpDir(t)
-  await t.exception.all(() => config.saveConfig(dir, { role: 'x' as any, port: 7331 } as any))
+  await t.exception.all(() => config.saveConfig(dir, { role: 'x' as any, port: 7666 } as any))
 })
 
 test('loadConfig: partial file fills with defaults', async (t) => {
@@ -79,6 +79,6 @@ test('loadConfig: partial file fills with defaults', async (t) => {
   await fs.writeFile(configPath(dir), JSON.stringify({ pactKey: 'deadbeef' }), 'utf8')
   const c = await config.loadConfig(dir)
   t.is(c.pactKey, 'deadbeef')
-  t.is(c.port, 7331)
+  t.is(c.port, 7666)
   t.is(c.role, null)
 })

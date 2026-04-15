@@ -12,7 +12,7 @@ export interface LogOpts {
 }
 
 export async function logCmd(opts: LogOpts): Promise<void> {
-  const api = new ApiClient({ port: Number(opts.port ?? 7331) })
+  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
   const limit = Number(opts.limit ?? 20)
 
   let types: readonly EntryType[]

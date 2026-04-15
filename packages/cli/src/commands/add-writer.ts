@@ -10,7 +10,7 @@ export async function addWriterCmd(key: string, opts: AddWriterOpts): Promise<vo
   if (!/^[0-9a-f]{64}$/i.test(key)) {
     throw new Error(`writer key must be 64 hex chars (got ${key.length})`)
   }
-  const api = new ApiClient({ port: Number(opts.port ?? 7331) })
+  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
   try {
     await api.addWriter(key, !!opts.indexer)
     const role = opts.indexer ? 'indexer' : 'writer'

@@ -43,7 +43,7 @@ Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_
 | ----- | ------ | ------ |
 | 1.1 monorepo and tooling   | 🔥 shipped | TypeScript, brittle, c8, ESLint, GitHub Actions |
 | 1.2 daemon core            | 🔥 shipped | Corestore, Autobase, Hyperswarm. apply has 100/90 coverage. |
-| 1.3 REST API on `:7331`    | 🔥 shipped | Fastify. All v1 routes, including the task state machine. |
+| 1.3 REST API on `:7666`    | 🔥 shipped | Fastify. All v1 routes, including the task state machine. |
 | 1.4 CLI                    | 🔥 shipped | `openpact init / start / log` and friends. PID file management. |
 | 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag plus `add-writer` and `remove-writer` commands. Full pair-and-replicate via the CLI. |
 | 2.x agent integrations     | 🩸 next    | `@openpact/sdk`, OpenClaw skill, framework examples |
@@ -76,7 +76,7 @@ openpact --data-dir /tmp/op start --daemon
 
 # Talk to it.
 openpact --data-dir /tmp/op status
-curl -X POST localhost:7331/v1/knowledge \
+curl -X POST localhost:7666/v1/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"sales","content":"Tuesdays convert better"}'
 openpact --data-dir /tmp/op log
@@ -90,20 +90,20 @@ You can pair two daemons on the same machine, or two different machines on the s
 ```bash
 # Terminal A: seal the pact and summon.
 openpact --data-dir /tmp/op-a init
-openpact --data-dir /tmp/op-a start --daemon --port 7331
+openpact --data-dir /tmp/op-a start --daemon --port 7666
 KEY=$(openpact --data-dir /tmp/op-a invite)
 
 # Terminal B: enter the pact and summon.
 openpact --data-dir /tmp/op-b join "$KEY"
-openpact --data-dir /tmp/op-b start --daemon --port 7332
+openpact --data-dir /tmp/op-b start --daemon --port 7667
 
 # Wait a moment for the daemons to find each other on the DHT, then
 # bind B as a writer. B's public key is in the status output.
-B_KEY=$(curl -s localhost:7332/v1/status | jq -r .public_key)
+B_KEY=$(curl -s localhost:7667/v1/status | jq -r .public_key)
 openpact --data-dir /tmp/op-a add-writer "$B_KEY" --indexer
 
 # B can now write. A sees it.
-curl -X POST localhost:7332/v1/knowledge \
+curl -X POST localhost:7667/v1/knowledge \
   -H 'content-type: application/json' \
   -d '{"topic":"shared","content":"hello from B"}'
 openpact --data-dir /tmp/op-a log

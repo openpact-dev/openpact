@@ -10,7 +10,7 @@ test('parseBootstrap: empty / null / undefined → null', (t) => {
 })
 
 test('parseBootstrap: single host:port', (t) => {
-  t.alike(parseBootstrap('127.0.0.1:7331'), [{ host: '127.0.0.1', port: 7331 }])
+  t.alike(parseBootstrap('127.0.0.1:7666'), [{ host: '127.0.0.1', port: 7666 }])
 })
 
 test('parseBootstrap: multiple comma-separated entries', (t) => {
@@ -29,7 +29,7 @@ test('parseBootstrap: trims whitespace around entries', (t) => {
 })
 
 test('parseBootstrap: IPv6-style host (last colon wins)', (t) => {
-  t.alike(parseBootstrap('::1:7331'), [{ host: '::1', port: 7331 }])
+  t.alike(parseBootstrap('::1:7666'), [{ host: '::1', port: 7666 }])
 })
 
 test('parseBootstrap: rejects entry without colon', (t) => {
@@ -37,7 +37,7 @@ test('parseBootstrap: rejects entry without colon', (t) => {
 })
 
 test('parseBootstrap: rejects empty host', (t) => {
-  t.exception(() => parseBootstrap(':7331'), /invalid bootstrap entry/)
+  t.exception(() => parseBootstrap(':7666'), /invalid bootstrap entry/)
 })
 
 test('parseBootstrap: rejects non-numeric port', (t) => {

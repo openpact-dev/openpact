@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 
 const ALLOWED_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
 
-export const DEFAULT_PORT = 7331
+export const DEFAULT_PORT = 7666
 
 export interface BindOpts {
   port?: number

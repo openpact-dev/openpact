@@ -63,7 +63,7 @@ export async function startCmd(
   // Wait for the API to actually answer ping — confirms the daemon bound
   // its port. If it dies before binding, surface that immediately rather
   // than leaving the user with a stale "started" message.
-  const port = Number(opts.port ?? 7331)
+  const port = Number(opts.port ?? 7666)
   const sp = spinner(`summoning the daemon on :${port}…`).start()
   const ready = await waitForReady(child.pid, port)
   if (!ready) {

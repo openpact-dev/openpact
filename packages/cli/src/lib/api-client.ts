@@ -13,7 +13,7 @@ export class DaemonNotRunningError extends Error {
 export class ApiClient {
   base: string
 
-  constructor({ port = 7331, host = '127.0.0.1' }: ApiClientOpts = {}) {
+  constructor({ port = 7666, host = '127.0.0.1' }: ApiClientOpts = {}) {
     this.base = `http://${host}:${port}`
   }
 

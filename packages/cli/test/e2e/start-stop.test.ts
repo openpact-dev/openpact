@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import { tmpHome, runWithDir } from './helpers/run-cli'
 import { readPidFile, isAlive, pidPath } from '../../src/lib/pid'
 
-let nextPort = 17331
+let nextPort = 17666
 
 test('start --daemon writes PID; stop removes it', async (t) => {
   const home = await tmpHome(t)

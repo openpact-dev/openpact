@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import { configPath } from './data-dir'
 
-export const DEFAULT_PORT = 7331
+export const DEFAULT_PORT = 7666
 
 export const ROLES = ['creator', 'indexer', 'writer', 'reader'] as const
 export type Role = (typeof ROLES)[number]

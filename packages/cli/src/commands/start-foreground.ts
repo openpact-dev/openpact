@@ -21,7 +21,7 @@ export async function startForegroundCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
-  const port = Number(opts.port ?? 7331)
+  const port = Number(opts.port ?? 7666)
   const bootstrap = resolveBootstrap(opts.bootstrap)
 
   const swarm = bootstrap ? { bootstrap } : undefined

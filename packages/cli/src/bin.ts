@@ -46,9 +46,9 @@ export function buildProgram(): Command {
 
   program
     .command('start')
-    .description('summon the daemon (REST API on :7331)')
+    .description('summon the daemon (REST API on :7666)')
     .option('--daemon', 'detach and run in the background')
-    .option('--port <n>', 'REST API port', '7331')
+    .option('--port <n>', 'REST API port', '7666')
     .option(
       '--bootstrap <list>',
       'comma-separated host:port DHT bootstrap (advanced; default: public DHT)',
@@ -57,7 +57,7 @@ export function buildProgram(): Command {
 
   program
     .command('start-foreground', { hidden: true })
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .option('--bootstrap <list>', '')
     .action(startForegroundCmd)
 
@@ -70,26 +70,26 @@ export function buildProgram(): Command {
   program
     .command('status')
     .description('show pact status')
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .action(statusCmd)
 
   program
     .command('peers')
     .description('list peers bound to the pact')
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .action(peersCmd)
 
   program
     .command('add-writer <key>')
     .description('bind a peer (by hex public key) as a writer or indexer')
     .option('--indexer', 'bind as indexer (participates in consensus)')
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .action(addWriterCmd)
 
   program
     .command('remove-writer <key>')
     .description('sever a peer from the writer set')
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .action(removeWriterCmd)
 
   program
@@ -97,7 +97,7 @@ export function buildProgram(): Command {
     .description('print recent entries from the pact')
     .option('--type <t>', 'filter by entry type (knowledge|task|skill|message)')
     .option('--limit <n>', 'maximum entries to print', '20')
-    .option('--port <n>', '', '7331')
+    .option('--port <n>', '', '7666')
     .action(logCmd)
 
   return program

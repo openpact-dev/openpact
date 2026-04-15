@@ -12,7 +12,7 @@ export async function statusCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
-  const api = new ApiClient({ port: Number(opts.port ?? 7331) })
+  const api = new ApiClient({ port: Number(opts.port ?? 7666) })
   try {
     const status = await api.status()
     console.log(formatStatus(status))

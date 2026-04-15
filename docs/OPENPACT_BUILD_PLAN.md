@@ -299,7 +299,7 @@ This is the heart of the project. Get this right before touching anything else.
 ### 1.3 REST API ✅ (commit `8455243`)
 
 - [x] Add `fastify` ^5.8.5 as the HTTP server
-- [x] Bind to `127.0.0.1:7331` only (`bind()` helper accepts `127.0.0.1` /
+- [x] Bind to `127.0.0.1:7666` only (`bind()` helper accepts `127.0.0.1` /
   `::1` / `localhost`; refuses everything else)
 - [x] Implement endpoints:
   ```
@@ -343,7 +343,7 @@ This is the heart of the project. Get this right before touching anything else.
 - [x] **Coverage gate**: API routes ≥ 85% lines
   - Achieved: API routes 92.81% lines / 85% branches; api folder overall 98.58% / 85%; daemon-wide 95.84 / 83.78; apply.ts 100 / 90.48
 
-**Test checkpoint:** All API tests green (139 tests, 269 asserts). Manual sanity: write a tiny `examples/` script that spins up createApi(daemon) + bind() and curl `localhost:7331/v1/{ping,status,knowledge}` works. (Formal e2e CLI tests land in 1.4.)
+**Test checkpoint:** All API tests green (139 tests, 269 asserts). Manual sanity: write a tiny `examples/` script that spins up createApi(daemon) + bind() and curl `localhost:7666/v1/{ping,status,knowledge}` works. (Formal e2e CLI tests land in 1.4.)
 
 **Deviations from the original plan, accepted during 1.3:**
 
@@ -503,7 +503,7 @@ This is the heart of the project. Get this right before touching anything else.
   - `openpact-write`: post knowledge, with guidance on what to share
   - `openpact-tasks`: list, claim, complete tasks
   - `openpact-skills`: discover and publish skills
-- [ ] Each tool wraps a `curl` call to `localhost:7331`
+- [ ] Each tool wraps a `curl` call to `localhost:7666`
 - [ ] Write installation instructions (copy skill dir to OpenClaw workspace)
 
 #### 2.1 Tests
@@ -524,7 +524,7 @@ This is the heart of the project. Get this right before touching anything else.
   ```typescript
   import { OpenPact } from '@openpact/sdk'
 
-  const pact = new OpenPact({ port: 7331 })
+  const pact = new OpenPact({ port: 7666 })
 
   // Read
   const knowledge = await pact.knowledge.list({ topic: 'sales', limit: 10 })
@@ -835,8 +835,8 @@ This is the heart of the project. Get this right before touching anything else.
 
 ### Port allocation
 
-- `7331` : REST API (localhost only)
-- `7332` : Web dashboard (optional, localhost only)
+- `7666` : REST API (localhost only)
+- `7667` : Web dashboard (optional, localhost only)
 
 ### Naming conventions
 
