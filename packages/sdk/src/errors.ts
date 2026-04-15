@@ -1,0 +1,135 @@
+// Error class hierarchy. Every server error code maps to a typed subclass
+// so callers can `instanceof`-check rather than string-match.
+
+export class OpenPactError extends Error {
+  status?: number
+  code?: string
+
+  constructor(message: string, opts: { status?: number; code?: string } = {}) {
+    super(message)
+    this.name = 'OpenPactError'
+    this.status = opts.status
+    this.code = opts.code
+  }
+}
+
+export class DaemonNotRunningError extends OpenPactError {
+  baseUrl: string
+
+  constructor(baseUrl: string) {
+    super(`could not reach openpact daemon at ${baseUrl}`)
+    this.name = 'DaemonNotRunningError'
+    this.baseUrl = baseUrl
+  }
+}
+
+export class BadRequestError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'BAD_REQUEST' })
+    this.name = 'BadRequestError'
+  }
+}
+
+export class NotFoundError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 404, code: 'NOT_FOUND' })
+    this.name = 'NotFoundError'
+  }
+}
+
+export class TaskNotOpenError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'TASK_NOT_OPEN' })
+    this.name = 'TaskNotOpenError'
+  }
+}
+
+export class TaskAlreadyClaimedError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'TASK_ALREADY_CLAIMED' })
+    this.name = 'TaskAlreadyClaimedError'
+  }
+}
+
+export class TaskAlreadyCompleteError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'TASK_ALREADY_COMPLETE' })
+    this.name = 'TaskAlreadyCompleteError'
+  }
+}
+
+export class NotClaimerError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_CLAIMER' })
+    this.name = 'NotClaimerError'
+  }
+}
+
+export class NotClaimedError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_CLAIMED' })
+    this.name = 'NotClaimedError'
+  }
+}
+
+export class NotAWriterError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_A_WRITER' })
+    this.name = 'NotAWriterError'
+  }
+}
+
+export class DaemonError extends OpenPactError {
+  constructor(message: string, status: number, code = 'INTERNAL') {
+    super(message, { status, code })
+    this.name = 'DaemonError'
+  }
+}
+
+/**
+ * Map a daemon error envelope to a typed error subclass. Falls back to the
+ * generic DaemonError for unknown codes so forward-compat additions don't
+ * crash older SDK versions.
+ */
+export function mapHttpError(status: number, body: unknown): OpenPactError {
+  const envelope = (body ?? {}) as { error?: string; message?: string }
+  const code = envelope.error ?? 'UNKNOWN'
+  const message = envelope.message ?? `HTTP ${status}`
+  switch (code) {
+    case 'BAD_REQUEST':
+      return new BadRequestError(message)
+    case 'NOT_FOUND':
+      return new NotFoundError(message)
+    case 'TASK_NOT_OPEN':
+      return new TaskNotOpenError(message)
+    case 'TASK_ALREADY_CLAIMED':
+      return new TaskAlreadyClaimedError(message)
+    case 'TASK_ALREADY_COMPLETE':
+      return new TaskAlreadyCompleteError(message)
+    case 'NOT_CLAIMER':
+      return new NotClaimerError(message)
+    case 'NOT_CLAIMED':
+      return new NotClaimedError(message)
+    case 'NOT_A_WRITER':
+      return new NotAWriterError(message)
+    case 'INTERNAL':
+      return new DaemonError(message, status, code)
+    default:
+      return new DaemonError(message, status, code)
+  }
+}
+
+/**
+ * Detect Node fetch's "wrapped network error" pattern and convert
+ * ECONNREFUSED to DaemonNotRunningError. Other network errors pass through.
+ */
+export function mapNetworkError(err: unknown, baseUrl: string): unknown {
+  const e = err as { cause?: NodeJS.ErrnoException; message?: string; code?: string }
+  const code = e?.cause?.code ?? e?.code
+  const causeMsg = e?.cause?.message ?? ''
+  const errMsg = e?.message ?? ''
+  if (code === 'ECONNREFUSED' || /ECONNREFUSED/.test(causeMsg) || /ECONNREFUSED/.test(errMsg)) {
+    return new DaemonNotRunningError(baseUrl)
+  }
+  return err
+}

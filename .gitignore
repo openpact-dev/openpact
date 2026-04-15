@@ -23,3 +23,6 @@ Thumbs.db
 
 # Local daemon data (in case anyone runs from a clone)
 .openpact/
+
+# SDK build output
+packages/*/dist/

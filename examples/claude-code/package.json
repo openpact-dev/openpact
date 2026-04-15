@@ -1,0 +1,16 @@
+{
+  "name": "examples-claude-code",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Smoke test for the OpenPact recipe in examples/claude-code/CLAUDE.md",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*"
+  }
+}

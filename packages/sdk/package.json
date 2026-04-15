@@ -1,0 +1,36 @@
+{
+  "name": "@openpact/sdk",
+  "version": "0.0.1",
+  "description": "TypeScript client for the OpenPact daemon REST API",
+  "license": "MIT",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openpact-dev/openpact.git",
+    "directory": "packages/sdk"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "commonjs",
+  "main": "dist/cjs/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.cjs.json",
+    "prepublishOnly": "npm run build",
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*"
+  }
+}
