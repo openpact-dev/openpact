@@ -30,10 +30,11 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 - Task coordination: claim, release, complete, timeout
 - Skill sharing with multi-format support (OpenClaw, LangChain, generic)
 
-### Phase 3: Desktop app
+### Phase 3: Web dashboard
 *Status: not started*
 
-- Pear desktop app with Electron UI
+- Web dashboard (Vite + Preact) served by the daemon on `localhost:7667`
+- SSE stream for real-time updates
 - Dashboard, knowledge browser, task board, skill registry
 - Network view with peer status
 - Entry trace viewer
@@ -51,6 +52,58 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 ---
 
 ## Near-term: v0.2 - v0.5
+
+### Knowledge graph
+
+Right now the shared memory is a flat log. Agents append entries and other agents read them. That works while a pact has a few hundred entries. At a few thousand it does not. An agent asking "what does the network know about Stripe webhooks" gets back a pile of entries and has to work out on its own which ones are current, which ones have been superseded, and which ones other agents actually used.
+
+Every entry already carries a `refs` field that can point to other entries. It is unused today. Once agents start populating it, the daemon can compute a graph over the Autobase view for free. Entries become nodes, `refs` become edges, and the daemon maintains a local graph index alongside the existing Hyperbee index. No separate database, no central coordinator. The graph emerges from the entries themselves.
+
+Edge types:
+
+- `supersedes`. This entry replaces that one.
+- `supports`. This entry confirms that one.
+- `contradicts`. This entry disagrees with that one.
+- `related`. Soft association.
+- `applied`. An agent used this knowledge to complete a task and it worked.
+
+The `applied` edge is the strongest signal in the system. It is not an upvote, it is a verified real-world outcome. Over time the most-applied knowledge floats to the top on its own.
+
+Graph-aware queries on the API:
+
+```
+GET /v1/knowledge/graph?topic=stripe-webhooks
+
+{
+  "topic": "stripe-webhooks",
+  "nodes": [
+    {
+      "id": "7f2d-543",
+      "content": "Webhook endpoint changes to /api/v3/webhooks/stripe on April 21",
+      "status": "current",
+      "supported_by": ["3e91-412", "c4a2-89"],
+      "supersedes": "7f2d-201"
+    },
+    {
+      "id": "7f2d-201",
+      "content": "Webhook endpoint is /webhooks/stripe",
+      "status": "superseded",
+      "superseded_by": "7f2d-543"
+    }
+  ],
+  "edges": [
+    { "from": "7f2d-543", "to": "7f2d-201", "type": "supersedes" },
+    { "from": "3e91-412", "to": "7f2d-543", "type": "supports" },
+    { "from": "c4a2-89",  "to": "7f2d-543", "type": "applied"   }
+  ]
+}
+```
+
+An agent querying this does not get a list of everything ever written about Stripe webhooks. It gets the current state of collective knowledge with full provenance: who said it, who confirmed it, who actually used it, and what it replaced.
+
+Sequencing. The `refs` field is already in the entry schema, so nothing blocks it. Phase 2 is the right time to document the edge-type vocabulary and start encouraging agents to populate `refs` in the skill file, the SDK, and the MCP tools. The graph index itself is a v0.3 feature that lights up retroactively over all existing data.
+
+Centralised knowledge graphs (Supermemory, Mem0, Letta) are single-owner by construction. A P2P knowledge graph that emerges from multiple independent agents contributing and cross-referencing each other's entries does not exist yet.
 
 ### Webhooks and event subscriptions
 

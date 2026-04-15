@@ -806,9 +806,16 @@ openpact daemon process
                                (avoids CORS between two ports)
 ```
 
-The `/api/*` proxy is the cleanest approach. The frontend makes all requests to the same origin (`localhost:7667/api/knowledge?topic=sales`) and Fastify forwards them to the daemon API on :7666. No CORS headers, no cross-origin complexity, no separate fetch configuration.
+The `/api/*` same-origin proxy means the frontend makes every request against `localhost:7667/api/...` and Fastify forwards to the daemon API on :7666. The browser never sees a cross-origin request, so we don't have to think about CORS preflights or `Access-Control-*` headers.
 
-An alternative: mount the dashboard routes directly on the :7666 Fastify instance under a `/dashboard` prefix. This avoids the second port entirely. The tradeoff is mixing agent API traffic with browser traffic on one server. For v0.1, separate ports are cleaner. The dashboard port can be disabled with `--no-dashboard` for headless/production seed nodes.
+We're picking two ports over a single-port `/dashboard` prefix on :7666 for two real reasons:
+
+- **Resource isolation.** The browser can spam SSE reconnects, hot-reload bursts in dev, and devtools-driven request floods. Keeping that traffic off the agent API port means a bad dashboard session can't degrade the SDK / MCP / curl callers running on :7666.
+- **Trivial `--no-dashboard`.** Seed nodes and CI runners just don't bind :7667. With a single-port mount we'd still bind it; we'd be selectively unmounting routes, which is a worse default for headless deployments.
+
+The cost is one extra hop in production (browser → :7667 proxy → :7666). For a local dashboard that's negligible. The dashboard port is opt-out with `--no-dashboard`.
+
+(*Same-origin* still applies cross-port — the proxy is what gives us same-origin, not the choice of port. Earlier wording on this was misleading; the rationale above is the real reason for two ports.)
 
 #### Frontend tech
 
@@ -821,11 +828,25 @@ Dependencies (runtime):
 - `preact` (runtime, 3KB gzipped)
 - `preact-router` (client-side routing, tiny)
 - `@openpact/sdk` (typed API client — see §3.1.1)
+- `@fastify/static` (server-side static-file serving in production)
+- `@fastify/http-proxy` (server-side `/api/*` → `:7666/v1/*` proxy in production)
 
 Dev-time:
 
 - `vite` (dev server + bundler)
 - `@preact/preset-vite` (JSX transform, Preact-specific optimisations)
+- `@playwright/test` (UI tests; see §3.5 for CI gating)
+- `size-limit` + `@size-limit/preset-app` (bundle budget; see below)
+
+We deliberately don't pull in `@fastify/sse`. The SSE endpoint is one
+short raw-response-stream handler (set headers, write
+`event:`/`data:` lines, flush). One file, no dep.
+
+**Bundle budget.** `size-limit` enforces `dist/assets/*.js` ≤ 100KB
+gzipped, `*.css` ≤ 20KB. A future "let's add lodash" PR fails the
+budget instead of slipping through. Tracked in
+`packages/dashboard/.size-limit.json`; CI runs `npm run -w
+@openpact/dashboard size` after `vite build`.
 
 No Tailwind. The brand palette from `OPENPACT_BRAND.md` is a small set of CSS custom properties. A single `style.css` with the brand tokens and component styles is cleaner for 6 screens than a utility framework.
 
@@ -880,7 +901,9 @@ event: peer-remove
 data: {"remoteKey":"3e91..."}
 ```
 
-Fallback: if SSE proves tricky with Fastify (it shouldn't, `@fastify/sse` or raw response streaming works), fall back to polling `/v1/status` every 3 seconds. The SSE approach is better because the dashboard updates the instant something happens, not 3 seconds later.
+Fallback: if SSE proves tricky, fall back to polling `/v1/status` every 3 seconds. The SSE approach is better because the dashboard updates the instant something happens, not 3 seconds later.
+
+The endpoint sets a `retry:` field on the first frame so the browser's `EventSource` reconnects on a known cadence after a daemon restart (default 1000ms; without it, browsers fall back to ~3s). The handler also sends a periodic comment line (`: keepalive`) every 25 seconds so intermediate proxies don't half-close the stream.
 
 ---
 
@@ -921,7 +944,10 @@ packages/dashboard/
     sse.ts               # SSE endpoint wired to daemon events
   dist/                  # vite build output (gitignored, shipped in npm tarball)
   vite.config.ts
-  tsconfig.json
+  .size-limit.json       # bundle budget (see §3.1 Frontend tech)
+  tsconfig.json          # references-only root, points at server + browser
+  tsconfig.server.json   # server/: commonjs, node types, no DOM lib
+  tsconfig.browser.json  # src/: esnext, dom + dom.iterable lib, jsx: react-jsx
   test/
     unit/
       api-proxy.test.ts
@@ -938,6 +964,8 @@ packages/dashboard/
 ```
 
 The `server/` directory holds the Fastify code that runs inside the daemon process. The `src/` directory is the Vite-managed frontend. They're separate concerns: `server/` is Node, `src/` is browser.
+
+These two halves cannot share one `tsconfig.json` — they need different `lib`, `module`, and `jsx` settings. The package ships three configs: a references-only root that points at `tsconfig.server.json` (commonjs, `lib: ["ES2022"]`, `types: ["node"]`) and `tsconfig.browser.json` (`module: esnext`, `lib: ["ES2022", "DOM", "DOM.Iterable"]`, `jsx: "react-jsx"`, `jsxImportSource: "preact"`, `types: []`). Test files belong to whichever half they exercise.
 
 Scripts in `package.json`:
 
@@ -984,6 +1012,8 @@ openpact dashboard                    # opens localhost:7667 in default browser
 ```
 
 Uses `open` (the npm package) or `xdg-open` / `open` system command to launch the browser.
+
+**Doc sync (load-bearing — easy to forget):** when this CLI surface lands, also update `docs/OPENPACT_DESIGN.md` §6 (CLI surface) and `CLAUDE.md` `## CLI surface` table in the same commit. The new verbs (`openpact dashboard`) and flags (`--no-dashboard`, `--dashboard-port`) need to appear there or future contributors will assume they don't exist. Same rule for the new daemon endpoints (§3.4) — the REST API contract section in CLAUDE.md should grow to mention them.
 
 #### Vite config
 
@@ -1070,17 +1100,31 @@ No drag-and-drop for v0.1. Tasks are managed by agents through the API, not by h
 - Two sections: "New from network" (skills not yet installed locally) and "Installed"
 - Skill cards: name, version pill, description, format badge (openclaw/langchain/generic), tags, source peer, age
 - Inspect button: opens a modal/panel showing the full skill content in a code viewer (pre-formatted, read-only)
-- Install button: calls a new endpoint `POST /api/skills/:id/install` that copies the skill content to a configurable local directory. Requires user confirmation (the button says "Install" and a confirmation dialog appears). Skills are never auto-installed.
+- Install button: calls `POST /api/skills/:id/install`. Requires explicit user confirmation in a modal, and the request body must include `{ confirm: true }` so a CSRF-style accidental click can't trigger an install. Skills are never auto-installed.
 
-Data source: `GET /api/skills` for all shared skills. Local install state tracked by the daemon (a simple JSON file listing installed skill IDs and their local paths).
+**Install path constraints (load-bearing — these are the security boundary):**
+
+- Install root is fixed at `<dataDir>/skills/` (no user-configurable destination, no path traversal surface). Per-pact, not global, so a skill installed in your work pact can't appear in your personal pact.
+- The on-disk filename is derived from `${entry.payload.name}@${entry.payload.version}.${ext}` where `name` and `version` are validated against `^[a-z0-9][a-z0-9._-]*$` server-side before any file write. Anything else returns `400 BAD_SKILL_NAME`.
+- File extension picked by `format` (openclaw → `.md`, langchain → `.py`, generic → `.txt`). Never derived from peer-supplied data.
+- Daemon recomputes `sha256(content)` against the entry's recorded checksum *before* writing (the §2.5 download check, applied again at install time). Mismatch → `500 SKILL_CHECKSUM_MISMATCH`, no file written.
+- Files are written with mode `0644`. Never `0755`. The dashboard never executes installed skills; the agent runtime that consumes them is responsible for that.
+
+Data source: `GET /api/skills` for all shared skills. Local install
+state lives at `<dataDir>/installed-skills.json` (per-pact) — a small
+file mapping `<entry-id>` → `{ path, installed_at, checksum }`. The
+daemon owns this file; the dashboard reads it via
+`GET /api/skills/installed`.
 
 #### 3.3.5 Network view (route: `/network`)
 
 - Peer list table: handle, role badge, entry count, online/offline, last seen timestamp
 - Invite section: displays the pact join key with a "Copy" button
-- Admin controls (visible to creator only):
+- Admin controls (visible only when **`daemon.role === 'creator'`**):
   - Promote writer to indexer: button per peer row, calls `POST /api/admin/promote` (wraps the addWriter admin entry with indexer=true)
   - Remove writer: button per peer row, calls `POST /api/admin/remove` (wraps removeWriter admin entry). Confirmation dialog required.
+
+Note on "creator only": there is no per-user auth between the browser and the daemon. The daemon binds to `127.0.0.1` and trusts every local request — the trust boundary is the loopback interface, not the dashboard UI. "Creator only" is shorthand for "the daemon's own role is creator." The route checks `daemon.role` and returns `409 NOT_INDEXER` (admin entries from non-indexer writers are silently dropped by the apply layer anyway, but the route fails fast with a clean error code so the dashboard can disable the button instead of letting the click no-op). A future multi-user scenario would need a real auth layer; that's out of v0.1 scope.
 
 Data source: `GET /api/peers` for the list. `GET /api/status` for the join key. SSE for online/offline transitions.
 
@@ -1091,7 +1135,9 @@ Data source: `GET /api/peers` for the list. `GET /api/status` for the join key. 
 - For task entries: show the full lifecycle as a vertical timeline (created, claimed, released, re-claimed, completed)
 - For knowledge entries: show which other entries reference this one ("referenced by") in addition to what it references ("builds on")
 
-Data source: `GET /api/entries/:id` (new endpoint) returns the full entry with resolved refs. For the "referenced by" reverse lookup, the daemon indexes incoming refs in the Hyperbee view (key: `ref/<target_id>/<source_id>`).
+Data source: `GET /api/entries/:id` (new endpoint) returns the full entry with resolved refs. For the "referenced by" reverse lookup, the daemon maintains a reverse-ref index in the Hyperbee view at key `ref/<target_id>/<source_id>` (value: the source entry).
+
+**Implementation note:** this is a new write-side branch in `packages/daemon/src/apply.ts`. For every applied entry with `refs.length > 0`, apply also writes one `ref/...` key per ref. apply.ts has the strictest coverage gate in the repo (`scripts/check-apply-coverage.js` enforces ≥95% lines / 90% branches per-file) — the reverse-ref branch needs its own `ref-index.test.ts` under `packages/daemon/test/unit/apply/` covering: entries with no refs (no extra writes); entries with one ref; entries with multiple refs; refs that point at not-yet-applied entries (the reverse key still gets written; resolution is read-side); entries that get re-applied (idempotent — same key, same value).
 
 ---
 
@@ -1103,13 +1149,21 @@ The dashboard needs a few endpoints that don't exist yet:
 GET  /v1/entries/:id                # Full entry by ID with resolved refs
 GET  /v1/entries/:id/referenced-by  # Entries that reference this one
 GET  /v1/events                     # SSE stream of real-time events
-POST /v1/skills/:id/install         # Install a skill to local directory
+POST /v1/skills/:id/install         # Install a skill (body: { confirm: true })
 GET  /v1/skills/installed           # List locally installed skills
-POST /v1/admin/promote              # Promote writer to indexer (creator only)
-POST /v1/admin/remove               # Remove a writer (creator only)
+POST /v1/admin/promote              # addWriter(indexer=true); requires daemon.role === 'creator'
+POST /v1/admin/remove               # removeWriter; requires daemon.role === 'creator'
 ```
 
-The `/v1/events` SSE endpoint is the most significant addition. The admin endpoints are thin wrappers around the existing `addWriter` and `removeWriter` methods with role checking.
+The `/v1/events` SSE endpoint is the most significant addition. The admin endpoints are thin wrappers around the existing `addWriter` and `removeWriter` methods with the daemon-role check from §3.3.5.
+
+**New error envelope codes (must be added to `@openpact/sdk` errors and `@openpact/skill` `tools.json` errors block):**
+
+- `409 NOT_INDEXER` — admin endpoint called when `daemon.role !== 'creator'`
+- `400 BAD_SKILL_NAME` — skill `name`/`version` doesn't match `^[a-z0-9][a-z0-9._-]*$`
+- `400 NOT_CONFIRMED` — destructive endpoint called without `{ confirm: true }`
+
+Each gets a typed subclass in `packages/sdk/src/errors.ts` (`NotIndexerError`, `BadSkillNameError`, `NotConfirmedError`) wired into `mapHttpError`.
 
 ---
 
@@ -1118,14 +1172,28 @@ The `/v1/events` SSE endpoint is the most significant addition. The admin endpoi
 #### Unit tests (`packages/dashboard/test/unit/`)
 
 - [ ] `api-proxy.test.ts`: proxy routes forward requests to :7666 correctly; handles :7666 being down (returns 502); preserves query params and request bodies
-- [ ] `sse.test.ts`: SSE endpoint emits events when daemon emits them; client reconnection works (EventSource auto-reconnects); events have correct format (event type + JSON data)
+- [ ] `sse.test.ts`: SSE endpoint emits events when daemon emits them; first frame includes `retry: 1000`; keepalive comment fires every 25s; client reconnection works (EventSource auto-reconnects); events have correct format (event type + JSON data)
 - [ ] `entries-endpoint.test.ts`: `/v1/entries/:id` returns full entry; 404 for missing ID; refs resolved to entry summaries; referenced-by reverse lookup works
-- [ ] `admin-endpoints.test.ts`: promote calls addWriter with indexer=true; remove calls removeWriter; non-creator gets 403; confirmation required (request must include `confirm: true`)
-- [ ] `skill-install.test.ts`: install writes to configurable directory; checksum verified before install; never auto-executes; installed list tracks state
+- [ ] `admin-endpoints.test.ts`: promote calls addWriter with indexer=true; remove calls removeWriter; non-creator daemon gets `409 NOT_INDEXER`; missing `{ confirm: true }` body returns `400 NOT_CONFIRMED`
+- [ ] `skill-install.test.ts`: install writes to `<dataDir>/skills/<name>@<version>.<ext>` with mode `0644`; bad name (path traversal, uppercase, spaces) returns `400 BAD_SKILL_NAME`; checksum mismatch at install time returns `500 SKILL_CHECKSUM_MISMATCH` and writes nothing; never auto-executes; `installed-skills.json` updated atomically (write-tmp-then-rename)
+- [ ] `apply/ref-index.test.ts` (in `packages/daemon/test/unit/`, not the dashboard package): apply writes one `ref/<target>/<source>` key per entry ref; entries with no refs add no extra keys; re-applying the same entry is idempotent; targets that don't exist yet still get the reverse key
 
 #### UI tests (`packages/dashboard/test/ui/`)
 
-Playwright against a real daemon (started in the test fixture, using a testnet DHT, seeded with fixture data).
+Playwright against a real daemon. The fixture reuses
+`packages/daemon/test/helpers/pair.ts` (`pair`, `swarmOf`) and
+`tmp-daemon.ts` rather than re-implementing testnet bootstrap — that's
+the proven path for spinning daemons up in tests.
+
+**CI gating.** Playwright pulls ~200MB of browser binaries per matrix
+slot. Running it on the full Ubuntu+macOS × Node 20+22 grid would
+quadruple CI time and disk for marginal coverage value (the UI doesn't
+care which Node version the daemon runs under). The UI suite runs
+once, on the existing `e2e` job (Ubuntu, Node 22), behind a
+`browser: chromium` config. Add a separate `dashboard-ui` job in
+`.github/workflows/ci.yml` that does `npx playwright install --with-deps
+chromium` then `npm run -w @openpact/dashboard test:ui`. Skip the
+matrix; one slot is enough for the v0.1 surface.
 
 - [ ] `dashboard.spec.ts`: metric cards show correct counts; activity feed shows entries in time order; feed updates within 2 seconds of a new entry (SSE test); peer list shows correct online/offline state
 - [ ] `knowledge.spec.ts`: search input filters entries; topic chips filter; confidence slider filters; clicking a card navigates to `/trace/:id`
@@ -1139,6 +1207,11 @@ Playwright against a real daemon (started in the test fixture, using a testnet D
 - [ ] Dashboard server (proxy + SSE + new endpoints): 80% lines, 75% branches
 - [ ] Frontend hooks and lib (usePact, useQuery, useSse, client.ts, format.ts): 80% lines via Vitest (Vite's built-in test runner, runs in jsdom). The SDK itself is tested in `@openpact/sdk`; the dashboard doesn't re-cover it.
 - [ ] UI components: not line-gated. Playwright covers user-facing interaction. Don't unit-test individual Preact components unless they contain non-trivial logic beyond rendering props.
+- [ ] `apply.ts` per-file gate stays at ≥95 lines / 90 branches after the reverse-ref branch lands (the existing `scripts/check-apply-coverage.js` enforces this; covered by the new `apply/ref-index.test.ts` above).
+
+#### Bundle budget
+
+- [ ] `npm run -w @openpact/dashboard size` (size-limit) runs after `vite build` in CI. Gate: `dist/assets/*.js` ≤ 100KB gzipped, `dist/assets/*.css` ≤ 20KB gzipped. A future PR that pulls in a heavy dep fails the budget instead of slipping through.
 
 ---
 
@@ -1147,17 +1220,24 @@ Playwright against a real daemon (started in the test fixture, using a testnet D
 - [ ] **Precursor §2.2a shipped**: `@openpact/sdk` emits dual CJS + ESM with a `"exports"` map, verified by `publint` in CI.
 - [ ] Web dashboard served on localhost:7667, started automatically with `openpact start`
 - [ ] Vite + Preact frontend with 6 screens matching the brand
-- [ ] SSE real-time updates (no polling)
+- [ ] SSE real-time updates (no polling); first frame includes `retry: 1000`; keepalive every 25s
 - [ ] `--no-dashboard` flag for headless deployments
 - [ ] `openpact dashboard` command to open in browser
 - [ ] `vite build` output ships inside the package (pre-built, no user-side build step)
-- [ ] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install, admin promote/remove)
+- [ ] Three tsconfigs in `packages/dashboard/` (root references-only, server, browser); both halves typecheck under one `npm run typecheck`
+- [ ] Reverse-ref index live in `apply.ts`, with `apply.ts` per-file gate still ≥95/90 (`scripts/check-apply-coverage.js` green)
+- [ ] 6 new daemon endpoints (entries by ID, referenced-by, SSE events, skill install + installed-list, admin promote/remove)
+- [ ] New error envelope codes wired into `@openpact/sdk` (`NotIndexerError`, `BadSkillNameError`, `NotConfirmedError`) and into `@openpact/skill`'s `tools.json` errors block
+- [ ] Skill install path constraints enforced: install root pinned at `<dataDir>/skills/`, name regex `^[a-z0-9][a-z0-9._-]*$`, mode `0644`, checksum re-verified before write
+- [ ] `installed-skills.json` tracked per-pact in `<dataDir>/`, written atomically (write-tmp-then-rename)
+- [ ] Bundle budget enforced in CI via `size-limit`: `dist/assets/*.js` ≤ 100KB gzipped, `*.css` ≤ 20KB
 - [ ] README updated with dashboard screenshots
+- [ ] **Doc sync committed alongside the code**: `OPENPACT_DESIGN.md` §6 (CLI surface) + `CLAUDE.md` (`## CLI surface` table + `## REST API contract` block) updated with the new verbs, flags, and endpoints
 - [ ] **Tests**:
-  - [ ] 6+ Playwright UI tests covering all screens
-  - [ ] 5+ unit tests for proxy, SSE, and new endpoints (brittle)
+  - [ ] 6+ Playwright UI tests covering all screens (single Ubuntu+Node 22 slot, `dashboard-ui` job; chromium only)
+  - [ ] 6+ unit tests for proxy, SSE, new endpoints, skill install constraints, ref index (brittle)
   - [ ] Frontend hooks/lib tests via Vitest
-  - [ ] Dashboard server coverage at 80% lines
+  - [ ] Dashboard server coverage at ≥80 lines / ≥75 branches; `apply.ts` per-file ≥95 / ≥90 still green
 
 ---
 

@@ -73,7 +73,7 @@ openpact/
     cli/             # CLI tools (init, join, invite, status)
     sdk/             # Node.js SDK for JavaScript agents
     skill-openclaw/  # OpenClaw skill file
-    desktop/         # Pear desktop app (Phase 3)
+    dashboard/       # web dashboard (Vite + Preact) served on :7667 (Phase 3)
   examples/
     openclaw/        # OpenClaw integration example
     langchain/       # LangChain integration example
@@ -88,7 +88,7 @@ openpact/
 The protocol stays free forever. Revenue comes from services around it:
 
 - **Managed seed nodes.** Always-on availability as a service. "Your OpenPact, always reachable, $5/month." One command to connect.
-- **Hosted dashboard.** Web UI for monitoring your network without running the desktop app. Free for one network, paid for teams.
+- **Hosted dashboard.** Web UI for monitoring your network without running the local dashboard. Free for one network, paid for teams.
 - **Enterprise features.** Audit logging, access controls, compliance exports, SSO for writer permissions.
 - **Skill marketplace.** A curated, security-reviewed registry of shared skills. Free to browse, paid for verified/audited skills.
 
@@ -402,9 +402,9 @@ $ openpact status
   - anon-fox-8b17 wrote knowledge about email deliverability (1h ago)
 ```
 
-### 7.4 Desktop app (Pear)
+### 7.4 Web dashboard
 
-An optional Pear desktop app provides a visual interface for:
+The daemon serves a local web dashboard on `localhost:7667` (Vite + Preact, SSE for live updates). It provides a visual interface for:
 
 - Browsing the shared memory (knowledge, tasks, skills)
 - Viewing the network and peer status
@@ -490,8 +490,9 @@ For any entry, see which peer wrote it, when, and what it references. For any ag
 - [ ] Task claim/complete workflow
 - [ ] Skill publishing and discovery (multi-format support)
 
-### Phase 3: Desktop app (Week 5-6)
-- [ ] Pear desktop app with Electron UI
+### Phase 3: Web dashboard (Week 5-6)
+- [ ] Web dashboard (Vite + Preact) served by the daemon on `localhost:7667`
+- [ ] SSE stream for real-time updates
 - [ ] Dashboard, knowledge browser, task board
 - [ ] Network view with peer status
 - [ ] Entry trace viewer

@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/openpact-logo-512.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/openpact-logo-light-512.png">
-    <img alt="OpenPact" src="docs/openpact-logo-512.png" width="220">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/openpact-logo-512.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/openpact-logo-light-512.png">
+    <img alt="OpenPact" src="docs/assets/openpact-logo-512.png" width="220">
   </picture>
 </p>
 
@@ -52,7 +52,8 @@ Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_
 | 2.4 task TTL + race test   | 🕯 later   | 24h auto-expire on claims; 3-daemon concurrent-claim test. |
 | 2.5 skill checksum         | 🕯 later   | Tampering test + `requires_approval` flag. |
 | 2.6 MCP server             | 🔥 shipped | `@openpact/mcp` — 18 MCP tools, one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed. |
-| 3.x desktop app            | 🕯 later   | Pear desktop, all 6 screens |
+| 2.2a SDK ESM build         | 🕯 later   | Dual CJS + ESM via `"exports"`. Precursor to Phase 3. |
+| 3.x web dashboard          | 🕯 later   | Vite + Preact, served by the daemon on `:7667`, all 6 screens, uses `@openpact/sdk` over `/api` proxy. |
 | 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 
 | Resource    | Location                                                                     |
@@ -128,7 +129,38 @@ Three published-ready packages cover the realistic adoption surface. Pick the on
 | `@openpact/sdk`   | You're writing a Node / TS agent (custom, LangChain.js, CrewAI on Node).     | `npm i @openpact/sdk`                  |
 | `@openpact/skill` | Your runtime consumes markdown rules or codegens tools (OpenClaw, Cursor / Windsurf rules, LangChain Python, custom). | `npm i @openpact/skill` |
 
-For Claude Code without MCP, paste the curl recipe in [`examples/claude-code/CLAUDE.md`](examples/claude-code/CLAUDE.md) into your project — no SDK runtime dep.
+For Claude Code without MCP, paste the curl recipe in [`examples/claude-code/CLAUDE.md`](examples/claude-code/CLAUDE.md) into your project. No SDK runtime dep.
+
+## 🜸 FAQ
+
+### How is this different from Supermemory, Mem0, or Letta?
+
+Those are personal memory for a single agent. OpenPact is shared memory between agents.
+
+Supermemory (and similar services) give one agent a persistent brain across sessions. Your data lives in their cloud. One agent, one user, one provider. The memory belongs to one entity.
+
+OpenPact is memory between multiple agents, on different machines, owned by different people, with no server in the middle. The data never leaves the peer network. Nobody owns the aggregate.
+
+The short version:
+
+- **Supermemory**: my agent remembers things about me across sessions.
+- **OpenPact**: my agent and your agent share what they know, without trusting a third party.
+
+They are complementary, not competing. An agent can use Supermemory for its personal long-term memory and OpenPact for shared knowledge with other agents. Supermemory handles "what do I know about my user", OpenPact handles "what does the network know".
+
+### Is there a hosted version?
+
+No. OpenPact is peer to peer by design. There is nothing to host, nothing to sign up for, no API key. You run the daemon on your machine and peer with other daemons directly.
+
+Phase 4 ships an optional seed-node Docker image you can run yourself for availability when peers are offline. It is never in the data path and never required.
+
+### Do I need to trust anyone with my data?
+
+No third party, no. Within a pact you trust the other writers to post honest entries, the same way you trust the other people in a shared Google Doc. Permissions are explicit (creator, indexer, writer, reader) and every entry is signed by its author.
+
+### What happens to my data if OpenPact the project disappears?
+
+Nothing. The daemon is MIT licensed and runs locally. Your Hypercores sit in `~/.openpact/`. The Holepunch stack it is built on (Hypercore, Autobase, Hyperswarm) is independent and maintained separately. There is no company that can pull the plug.
 
 ## 📜 Documentation
 

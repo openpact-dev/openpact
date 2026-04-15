@@ -51,7 +51,7 @@ openpact/
     sdk/             # @openpact/sdk — typed TS client                    [shipped]
     mcp/             # @openpact/mcp — MCP server wrapping the daemon     [shipped]
     skill/           # @openpact/skill — portable SKILL.md + tools.json   [shipped]
-    desktop/         # Pear desktop app (Phase 3)                          [later]
+    dashboard/       # web dashboard (Vite + Preact) served on :7667       [later]
   examples/
     claude-code/     # paste-into-CLAUDE.md curl + jq recipe              [shipped]
     # openclaw/, langchain/, shell/                                       [Phase 2 remaining]
@@ -164,7 +164,7 @@ Don't pull later-phase work forward until the current phase's test checkpoints p
 
 - **Phase 1** ✅ — daemon, REST, CLI; two daemons sync entries P2P. Test checkpoint: post via curl on machine A, see it via `openpact log` on machine B.
 - **Phase 2** 🩸 mostly shipped — `@openpact/skill`, `@openpact/sdk`, `@openpact/mcp`, Claude Code curl recipe all done. Remaining: OpenClaw / LangChain / shell examples, task claim TTL + 3-daemon race test, skill checksum + `requires_approval`.
-- **Phase 3** — Pear desktop app, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), polls daemon every 5s.
+- **Phase 3** — web dashboard (Vite + Preact) served by the daemon on `:7667`, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), SSE for live updates. The dashboard uses `@openpact/sdk` against `baseUrl: '/api'`; both Vite (dev) and Fastify (prod) proxy `/api/*` to the daemon on `:7666`. No parallel `api.ts` in the dashboard package. **Precursor §2.2a**: SDK must ship dual CJS + ESM before Phase 3 starts.
 - **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch.
 
 ## Definition of done for v0.1.0
@@ -175,14 +175,14 @@ Don't tag v0.1.0 until **all** of these hold (build plan §Definition of done):
 - OpenClaw agent works via the skill file with no custom code.
 - CLI is a complete setup + monitoring experience.
 - REST API is documented with request/response examples.
-- Desktop app shows all six screens with near-real-time updates.
+- Web dashboard shows all six screens with near-real-time updates.
 - Seed node deploys in under 5 minutes.
 - README explains what/why/how-to-start in under 2 minutes of reading.
 - Repo has MIT licence, contributing guide, code of conduct.
 
 ## Working with the Pear/Hyper stack
 
-For Pear runtime, CLI, config, or P2P primitive APIs — invoke the `/pears` skill rather than guessing. Pear ships frequently and flag drift is real. The desktop app (Phase 3) uses `pear-electron`.
+For Pear runtime, CLI, config, or P2P primitive APIs — invoke the `/pears` skill rather than guessing. Pear ships frequently and flag drift is real.
 
 ## Commands
 
@@ -222,9 +222,17 @@ Coverage gate is enforced in CI:
 - Global ≥ 80 / 75 lines/branches (currently sitting at ~95 / 82)
 - `apply.ts` per-file ≥ 95 / 90 (post-test script `scripts/check-apply-coverage.js`)
 
-`@openpact/sdk` and `@openpact/mcp` build CJS-only — `tsc -p
+`@openpact/sdk` and `@openpact/mcp` build CJS-only today — `tsc -p
 tsconfig.cjs.json` per package emits `dist/cjs/` + `dist/types/`. Both
 get rebuilt as part of `test:all` so a stale dist doesn't ship.
+
+**Upcoming — §2.2a (precursor to Phase 3):** `@openpact/sdk` gains a
+second `tsc -p tsconfig.esm.json` pass emitting `dist/esm/`, and a
+dual-condition `"exports"` map (`import` → ESM, `require` → CJS,
+`types` → `.d.ts`). `main` stays CJS for older tools. `publint` in
+CI verifies both conditions resolve. The dashboard imports the SDK
+directly (`import { OpenPact } from '@openpact/sdk'`), so shipping
+proper ESM avoids relying on Vite's CJS pre-bundle for every build.
 
 ## Keep this file current
 
