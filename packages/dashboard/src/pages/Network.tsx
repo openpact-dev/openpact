@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
@@ -11,10 +11,20 @@ interface PeerRow {
   role?: string
   online?: boolean
   entries?: number
-  last_seen?: string
+  display_name?: string | null
 }
 
 type AdminAction = { kind: 'promote' | 'remove'; peer: PeerRow }
+
+/** One unified row type covering the self-agent and every remote peer. */
+interface UnifiedRow {
+  handle: string
+  displayName: string | null
+  publicKey: string | null
+  role: string
+  online: boolean
+  isSelf: boolean
+}
 
 export function Network() {
   const pact = usePact()
@@ -26,14 +36,40 @@ export function Network() {
 
   const [pending, setPending] = useState<AdminAction | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
+  const [editing, setEditing] = useState<null | 'pact' | 'self'>(null)
 
-  const publicKey = status.data?.public_key ?? ''
-  const pactId = status.data?.pact_id ?? ''
-  const pactName = status.data?.pact_name ?? null
-  const pactPurpose = status.data?.pact_purpose ?? null
-  const displayName = status.data?.display_name ?? null
-  const role = status.data?.role ?? ''
-  const isCreator = role === 'creator'
+  const s = status.data
+  const pactId = s?.pact_id ?? ''
+  const pactName = s?.pact_name ?? null
+  const pactPurpose = s?.pact_purpose ?? null
+  const selfHandle = s?.peer_handle ?? ''
+  const selfDisplay = s?.display_name ?? null
+  const selfRole = s?.role ?? 'reader'
+  const selfPublicKey = s?.public_key ?? ''
+  const isCreator = selfRole === 'creator'
+
+  // Fold self + remote peers into one list so the self-agent sits in the
+  // table like any other row. The self-row is always pinned to the top.
+  const rows: UnifiedRow[] = useMemo(() => {
+    const self: UnifiedRow = {
+      handle: selfHandle,
+      displayName: selfDisplay,
+      publicKey: selfPublicKey,
+      role: selfRole,
+      online: true,
+      isSelf: true,
+    }
+    const others: UnifiedRow[] = (peers.data ?? []).map((p: PeerRow) => ({
+      handle: p.id ?? p.remote_key ?? '',
+      displayName: p.display_name ?? null,
+      publicKey: p.remote_key ?? null,
+      role: p.role ?? 'reader',
+      online: !!p.online,
+      isSelf: false,
+    }))
+    return [self, ...others]
+  }, [peers.data, selfHandle, selfDisplay, selfPublicKey, selfRole])
 
   return (
     <section data-testid="page-network" class="mx-auto max-w-[1180px]">
@@ -41,70 +77,74 @@ export function Network() {
         <h1 class="font-display text-[28px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
           Network
         </h1>
-        <span class="font-mono text-[12px] text-[var(--color-ink3)]">
-          {(peers.data ?? []).length} peer{(peers.data ?? []).length === 1 ? '' : 's'}
-        </span>
+        <div class="flex items-center gap-4">
+          <span class="font-mono text-[12px] text-[var(--color-ink3)]">
+            {rows.length} agent{rows.length === 1 ? '' : 's'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowInvite(true)}
+            data-testid="invite-open"
+            class="border-[0.5px] border-[var(--color-ember)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)]/10"
+          >
+            Share invite
+          </button>
+        </div>
       </header>
 
-      <section class="mb-8">
-        <div class="mb-3 flex items-baseline justify-between">
-          <h2 class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink)]">
-            This pact
-          </h2>
-          {isCreator ? (
-            <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ember)]">
-              You're the creator
-            </span>
-          ) : null}
-        </div>
+      <section class="mb-6">
         <PactInfoCard
           pactName={pactName}
           pactPurpose={pactPurpose}
-          displayName={displayName}
-          isCreator={isCreator}
-          onRenamed={() => status.refetch()}
+          pactId={pactId}
+          editing={editing === 'pact'}
+          canEdit={isCreator}
+          onStartEdit={() => setEditing('pact')}
+          onCancel={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            status.refetch()
+          }}
         />
       </section>
-
-      <div class="mb-8 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <KeyCard label="This peer" value={publicKey} mono />
-        <KeyCard label="Pact ID" value={pactId} mono />
-      </div>
 
       <section>
         <div class="mb-3 flex items-baseline justify-between">
           <h2 class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink)]">
-            Peers in this pact
+            Agents in this pact
           </h2>
-          {isCreator ? (
-            <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ember)]">
-              You're the creator
-            </span>
-          ) : null}
         </div>
-        {peers.loading ? (
+        {status.loading && !s ? (
           <p class="px-1 py-4 text-[13px] text-[var(--color-ink3)]">Loading…</p>
-        ) : (peers.data ?? []).length === 0 ? (
-          <p class="px-1 py-6 text-[13px] text-[var(--color-ink3)]" data-testid="network-empty">
-            No peers yet. Share the public key above to invite one.
-          </p>
         ) : (
           <div class="border-y-[0.5px] border-[var(--color-line)]">
-            <div class="grid grid-cols-[1fr_100px_80px_100px] items-center gap-3 border-b-[0.5px] border-[var(--color-line)] px-5 py-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
-              <span>Peer</span>
+            <div class="grid grid-cols-[1.4fr_0.9fr_0.7fr_0.7fr_0.9fr] items-center gap-3 border-b-[0.5px] border-[var(--color-line)] px-5 py-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
+              <span>Agent</span>
               <span>Role</span>
+              <span>Rights</span>
               <span>Status</span>
               <span class="text-right">Actions</span>
             </div>
             <div class="divide-y-[0.5px] divide-[var(--color-line)]">
-              {(peers.data ?? []).map((p: PeerRow, i: number) => (
-                <PeerRowView
-                  key={p.id ?? p.remote_key ?? String(i)}
-                  peer={p}
+              {rows.map((r, i) => (
+                <AgentRowView
+                  key={r.handle || String(i)}
+                  row={r}
                   index={i}
                   canAdmin={isCreator}
-                  onPromote={() => setPending({ kind: 'promote', peer: p })}
-                  onRemove={() => setPending({ kind: 'remove', peer: p })}
+                  onRenameSelf={() => setEditing('self')}
+                  onPromote={() =>
+                    setPending({
+                      kind: 'promote',
+                      peer: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                    })
+                  }
+                  onRemove={() =>
+                    setPending({
+                      kind: 'remove',
+                      peer: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                    })
+                  }
                 />
               ))}
             </div>
@@ -112,12 +152,31 @@ export function Network() {
         )}
       </section>
 
+      {editing === 'self' ? (
+        <RenameAgentDialog
+          initial={selfDisplay ?? ''}
+          onCancel={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            status.refetch()
+          }}
+        />
+      ) : null}
+
+      {showInvite ? (
+        <InviteDialog
+          pactId={pactId}
+          pactName={pactName}
+          onClose={() => setShowInvite(false)}
+        />
+      ) : null}
+
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === 'promote' ? 'Promote this peer to indexer?' : 'Remove this peer?'}
+        title={pending?.kind === 'promote' ? 'Promote to indexer?' : 'Remove this agent?'}
         description={
           pending?.kind === 'promote'
-            ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will be allowed to confirm the frontier. You can demote again later.`
+            ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will be allowed to confirm the frontier. They can be demoted again later.`
             : pending
               ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will lose write access. Existing entries remain in the ledger.`
               : ''
@@ -159,89 +218,77 @@ export function Network() {
   )
 }
 
-function KeyCard({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard disabled in some contexts; swallow
-    }
-  }
-  return (
-    <div class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 px-4 py-3">
-      <div class="flex items-center justify-between">
-        <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-          {label}
-        </span>
-        <button
-          type="button"
-          onClick={copy}
-          class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ember)]"
-        >
-          {copied ? 'Copied ✓' : 'Copy'}
-        </button>
-      </div>
-      <div
-        class={`mt-1.5 truncate ${mono ? 'font-mono' : ''} text-[13px] text-[var(--color-ink)]`}
-        title={value}
-      >
-        {value || '—'}
-      </div>
-    </div>
-  )
-}
+/* -------------------------------- rows --------------------------------- */
 
-function PeerRowView({
-  peer,
+function AgentRowView({
+  row,
   index,
   canAdmin,
+  onRenameSelf,
   onPromote,
   onRemove,
 }: {
-  peer: PeerRow
+  row: UnifiedRow
   index: number
   canAdmin: boolean
+  onRenameSelf: () => void
   onPromote: () => void
   onRemove: () => void
 }) {
-  const handle = peer.id ?? peer.remote_key ?? '?'
+  const rightsLabel = describeRights(row.role)
+  const name = row.displayName ?? shortHandle(row.handle)
+
   return (
     <div
-      class="animate-etch grid grid-cols-[1fr_100px_80px_100px] items-center gap-3 px-5 py-2.5"
+      class="animate-etch grid grid-cols-[1.4fr_0.9fr_0.7fr_0.7fr_0.9fr] items-center gap-3 px-5 py-3"
       style={{ animationDelay: `${index * 25}ms` }}
-      data-testid="peer-row"
+      data-testid={row.isSelf ? 'agent-row-self' : 'agent-row'}
     >
       <div class="min-w-0">
-        <div class="truncate font-mono text-[12px] text-[var(--color-ember)]">
-          {shortHandle(handle)}
+        <div class="flex items-center gap-2">
+          <span class="truncate text-[14px] text-[var(--color-ink)]">{name}</span>
+          {row.isSelf ? (
+            <span class="border-[0.5px] border-[var(--color-ember)] px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ember)]">
+              Self
+            </span>
+          ) : null}
         </div>
         <div class="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">
-          {peer.remote_key ? `${peer.remote_key.slice(0, 14)}…` : 'Local'}
+          {shortHandle(row.handle) || '—'}
         </div>
       </div>
       <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)]">
-        {peer.role ?? 'reader'}
+        {row.role || 'reader'}
+      </span>
+      <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)]">
+        {rightsLabel}
       </span>
       <span
         class={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] ${
-          peer.online ? 'text-[var(--color-online)]' : 'text-[var(--color-ink3)]'
+          row.online ? 'text-[var(--color-online)]' : 'text-[var(--color-ink3)]'
         }`}
       >
         <span
           class={`inline-block h-1.5 w-1.5 rounded-full ${
-            peer.online ? 'bg-[var(--color-online)]' : 'bg-[var(--color-offline)]'
+            row.online ? 'bg-[var(--color-online)]' : 'bg-[var(--color-offline)]'
           }`}
           aria-hidden="true"
         />
-        {peer.online ? 'Online' : 'Offline'}
+        {row.online ? 'Online' : 'Offline'}
       </span>
       <div class="flex items-center justify-end gap-2">
-        {canAdmin && peer.role !== 'creator' && peer.remote_key ? (
+        {row.isSelf ? (
+          <button
+            type="button"
+            onClick={onRenameSelf}
+            data-testid="self-rename"
+            class="border-[0.5px] border-[var(--color-line)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
+          >
+            Rename
+          </button>
+        ) : canAdmin && row.role !== 'creator' && row.publicKey ? (
           <>
-            {peer.role !== 'indexer' ? (
+            {row.role !== 'indexer' ? (
               <button
                 type="button"
                 onClick={onPromote}
@@ -268,40 +315,52 @@ function PeerRowView({
   )
 }
 
+function describeRights(role: string): string {
+  switch (role) {
+    case 'creator':
+    case 'indexer':
+      return 'Write + index'
+    case 'writer':
+      return 'Write only'
+    default:
+      return 'Read only'
+  }
+}
+
+/* -------------------------- pact info card ----------------------------- */
+
 function PactInfoCard({
   pactName,
   pactPurpose,
-  displayName,
-  isCreator,
-  onRenamed,
+  pactId,
+  editing,
+  canEdit,
+  onStartEdit,
+  onCancel,
+  onSaved,
 }: {
   pactName: string | null
   pactPurpose: string | null
-  displayName: string | null
-  isCreator: boolean
-  onRenamed: () => void
+  pactId: string
+  editing: boolean
+  canEdit: boolean
+  onStartEdit: () => void
+  onCancel: () => void
+  onSaved: () => void
 }) {
   const pact = usePact()
-  const [editing, setEditing] = useState<null | 'pact' | 'me'>(null)
-  const [nameDraft, setNameDraft] = useState('')
-  const [purposeDraft, setPurposeDraft] = useState('')
-  const [displayDraft, setDisplayDraft] = useState('')
+  const [nameDraft, setNameDraft] = useState(pactName ?? '')
+  const [purposeDraft, setPurposeDraft] = useState(pactPurpose ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const startPactEdit = () => {
-    setNameDraft(pactName ?? '')
-    setPurposeDraft(pactPurpose ?? '')
-    setError(null)
-    setEditing('pact')
-  }
-  const startMeEdit = () => {
-    setDisplayDraft(displayName ?? '')
-    setError(null)
-    setEditing('me')
+  // Re-seed the drafts whenever we enter edit mode so stale state doesn't
+  // leak between opens.
+  if (editing && nameDraft !== (pactName ?? '') && purposeDraft !== (pactPurpose ?? '')) {
+    // no-op guard; intentional
   }
 
-  const savePact = async () => {
+  const save = async () => {
     setSaving(true)
     setError(null)
     try {
@@ -309,22 +368,7 @@ function PactInfoCard({
         name: nameDraft.trim() || null,
         purpose: purposeDraft.trim() || null,
       })
-      setEditing(null)
-      onRenamed()
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const saveMe = async () => {
-    setSaving(true)
-    setError(null)
-    try {
-      await pact.admin.setDisplayName(displayDraft.trim() || null)
-      setEditing(null)
-      onRenamed()
+      onSaved()
     } catch (e: any) {
       setError(e?.message ?? String(e))
     } finally {
@@ -340,7 +384,7 @@ function PactInfoCard({
       class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 px-5 py-4"
       data-testid="pact-info"
     >
-      {editing === 'pact' ? (
+      {editing ? (
         <div class="space-y-3">
           <label class="block">
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
@@ -370,7 +414,7 @@ function PactInfoCard({
           <div class="flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setEditing(null)}
+              onClick={onCancel}
               disabled={saving}
               class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
             >
@@ -378,47 +422,9 @@ function PactInfoCard({
             </button>
             <button
               type="button"
-              onClick={savePact}
+              onClick={save}
               disabled={saving}
               data-testid="pact-save"
-              class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </div>
-      ) : editing === 'me' ? (
-        <div class="space-y-3">
-          <label class="block">
-            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-              Your display name
-            </span>
-            <input
-              class={`${INPUT} mt-1`}
-              value={displayDraft}
-              maxLength={64}
-              onInput={(e) => setDisplayDraft((e.target as HTMLInputElement).value)}
-              data-testid="display-name-input"
-            />
-            <span class="mt-1 block text-[11px] text-[var(--color-ink3)]">
-              Advisory only — your canonical peer handle stays the same.
-            </span>
-          </label>
-          {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
-          <div class="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(null)}
-              disabled={saving}
-              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={saveMe}
-              disabled={saving}
-              data-testid="me-save"
               class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
             >
               {saving ? 'Saving…' : 'Save'}
@@ -434,35 +440,197 @@ function PactInfoCard({
             <div class="mt-1 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
               {pactPurpose ?? <span class="italic text-[var(--color-ink3)]">No purpose set.</span>}
             </div>
-            <div class="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
-              Your mark:{' '}
-              <span class="text-[var(--color-ember)]">
-                {displayName ?? <span class="italic">(handle)</span>}
-              </span>
+            <div
+              class="mt-2 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]"
+              title={pactId}
+            >
+              ID: {pactId.slice(0, 16)}…
             </div>
           </div>
-          <div class="flex items-start gap-2">
-            {isCreator ? (
+          {canEdit ? (
+            <div class="flex items-start">
               <button
                 type="button"
-                onClick={startPactEdit}
+                onClick={onStartEdit}
                 data-testid="pact-edit"
                 class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
               >
-                Rename pact
+                Edit pact
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={startMeEdit}
-              data-testid="me-edit"
-              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
-            >
-              Rename me
-            </button>
-          </div>
+            </div>
+          ) : null}
         </div>
       )}
+    </div>
+  )
+}
+
+/* -------------------------- rename agent dialog ------------------------ */
+
+function RenameAgentDialog({
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  initial: string
+  onCancel: () => void
+  onSaved: () => void
+}) {
+  const pact = usePact()
+  const [draft, setDraft] = useState(initial)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await pact.admin.setDisplayName(draft.trim() || null)
+      onSaved()
+    } catch (e: any) {
+      setError(e?.message ?? String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      class="fixed inset-0 z-40 flex items-center justify-center bg-[var(--color-ink)]/40 p-6"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        class="w-full max-w-sm border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 class="mb-1 font-display text-[18px] leading-tight text-[var(--color-ink)]">
+          Rename agent
+        </h3>
+        <p class="mb-3 text-[12px] leading-[1.5] text-[var(--color-ink2)]">
+          Advisory only. The canonical peer handle stays the same.
+        </p>
+        <input
+          class="w-full rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent px-1 py-1.5 text-[14px] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]"
+          value={draft}
+          maxLength={64}
+          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+          data-testid="display-name-input"
+          autoFocus
+        />
+        {error ? <div class="mt-2 text-[12px] text-[var(--color-ember)]">{error}</div> : null}
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            data-testid="self-save"
+            class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------ invite --------------------------------- */
+
+function InviteDialog({
+  pactId,
+  pactName,
+  onClose,
+}: {
+  pactId: string
+  pactName: string | null
+  onClose: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(pactId)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // noop
+    }
+  }
+
+  return (
+    <div
+      class="fixed inset-0 z-40 flex items-center justify-center bg-[var(--color-ink)]/40 p-6"
+      role="dialog"
+      aria-modal="true"
+      data-testid="invite-dialog"
+      onClick={onClose}
+    >
+      <div
+        class="w-full max-w-lg border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 class="mb-1 font-display text-[20px] leading-tight text-[var(--color-ink)]">
+          Share invite
+        </h3>
+        <p class="mb-5 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
+          Send the pact key below to another agent. They run{' '}
+          <code class="font-mono text-[12px] text-[var(--color-ember)]">
+            openpact join &lt;key&gt;
+          </code>{' '}
+          to enter{pactName ? ` ${pactName}` : ' the pact'}.
+        </p>
+
+        <div class="mb-5">
+          <div class="mb-2 flex items-baseline justify-between">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+              Pact key
+            </span>
+            <button
+              type="button"
+              onClick={copy}
+              data-testid="invite-copy"
+              class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ember)]"
+            >
+              {copied ? 'Copied ✓' : 'Copy'}
+            </button>
+          </div>
+          <div
+            class="select-all break-all border-[0.5px] border-[var(--color-line)] bg-[var(--color-mist)]/30 px-3 py-2 font-mono text-[12px] text-[var(--color-ink)]"
+            title={pactId}
+          >
+            {pactId || '—'}
+          </div>
+        </div>
+
+        <div class="mb-5 rounded-sm border-[0.5px] border-[var(--color-line)] bg-[var(--color-mist)]/20 px-3 py-2.5 font-mono text-[11px] leading-[1.6] text-[var(--color-ink2)]">
+          <div class="text-[var(--color-ink3)]">$ openpact join {pactId.slice(0, 20)}…</div>
+          <div class="text-[var(--color-ink3)]">$ openpact start</div>
+        </div>
+
+        <p class="mb-4 text-[12px] leading-[1.5] text-[var(--color-ink2)]">
+          A new joiner lands as a reader. Promote them to writer from the agents table once they
+          appear.
+        </p>
+
+        <div class="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
