@@ -96,7 +96,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     'release_task',
     {
       description:
-        'Release a task you claimed back to open. Use when you cannot finish so other agents can pick it up.',
+        'Release a task this agent claimed back to open. Use when the agent cannot finish so other agents can pick it up.',
       inputSchema: {
         id: z.string().describe('Task id to release.'),
       },

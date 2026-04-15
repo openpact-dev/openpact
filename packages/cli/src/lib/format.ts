@@ -74,8 +74,8 @@ export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
   lines.push('')
 
   const handle = s.peer_handle ?? unknown
-  const you = displayName ? `${c.bone(displayName)}  ${c.ash(`(${handle})`)}` : handle
-  lines.push(row('You', `${you}  ${c.ash(`· ${s.role ?? '?'}`)}`))
+  const agent = displayName ? `${c.bone(displayName)}  ${c.ash(`(${handle})`)}` : handle
+  lines.push(row('Agent', `${agent}  ${c.ash(`· ${s.role ?? '?'}`)}`))
   lines.push('')
 
   lines.push(row('Peers', String(s.peers)))

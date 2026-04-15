@@ -46,7 +46,7 @@ export function registerKnowledgeTools(server: McpServer, pact: OpenPact): void 
           .min(0)
           .max(1)
           .optional()
-          .describe('Optional 0-1 score for how sure you are.'),
+          .describe('Optional 0-1 confidence score for the entry.'),
         source: z
           .string()
           .optional()

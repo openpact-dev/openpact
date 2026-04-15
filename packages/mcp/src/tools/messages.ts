@@ -11,7 +11,7 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
     'read_messages',
     {
       description:
-        'Read messages from the pact. Use the since cursor to fetch only messages newer than your last check.',
+        'Read messages from the pact. Use the since cursor to fetch only messages newer than the agent’s last check.',
       inputSchema: {
         since: z
           .string()

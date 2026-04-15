@@ -39,7 +39,7 @@ export function buildProgram(): Command {
     .option('--alias <str>', 'short local alias (default: slug of the pact name)')
     .option('--name <str>', 'pact name (e.g. "The Obsidian Accord")')
     .option('--purpose <str>', 'one-line purpose statement for the pact')
-    .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
+    .option('--display-name <str>', "agent display name (advisory; peer handle stays canonical)")
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .option('--no-start', "don't auto-start the daemon after init")
     .option('--no-open', "don't open the dashboard in the default browser")
@@ -52,7 +52,7 @@ export function buildProgram(): Command {
     .description('enter an existing pact using its hex key')
     .option('--force', 'break the existing pact at this alias and re-join')
     .option('--alias <str>', 'short local alias (default: joined-<first8hex>)')
-    .option('--display-name <str>', 'your display name (advisory; peer handle stays canonical)')
+    .option('--display-name <str>', "agent display name (advisory; peer handle stays canonical)")
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .action(joinCmd)
 

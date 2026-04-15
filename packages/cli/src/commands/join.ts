@@ -26,7 +26,7 @@ export async function joinCmd(
     provided: opts.displayName,
     nonInteractive,
     default: suggestDisplayName(),
-    label: 'Your name',
+    label: 'Agent name',
     max: 64,
   })
 
@@ -54,15 +54,17 @@ export async function joinCmd(
   })
   try {
     console.log()
-    console.log(`  ${emoji.brand} ${c.brandBold('You have entered the pact.')}`)
+    console.log(`  ${emoji.brand} ${c.brandBold('Agent bound to the pact.')}`)
     console.log()
     console.log(`  ${c.brandBold('Alias')}       ${c.ash(alias)}`)
     console.log(`  ${c.brandBold('Data dir')}    ${c.ash(hostDir)}`)
     console.log(`  ${c.brandBold('Pact key')}    ${c.bone(pact.pactKey ?? '')}`)
-    console.log(`  ${c.brandBold('Your mark')}   ${displayName} ${c.ash(`(${pact.peerHandle})`)}`)
+    console.log(`  ${c.brandBold('Agent')}       ${displayName} ${c.ash(`(${pact.peerHandle})`)}`)
     console.log()
     console.log(
-      c.ash('  next:  openpact start    (the creator must bind you as a writer to write entries)'),
+      c.ash(
+        '  next:  openpact start    (the creator must bind this agent as a writer before it can post entries)',
+      ),
     )
   } finally {
     await daemon.stop()

@@ -63,7 +63,7 @@ export async function startForegroundCmd(
   if (dashboard) {
     console.log(`  ${c.brandBold('Dashboard')}  ${c.bone(dashboard.url)}`)
   }
-  console.log(`  ${c.ash(`pact ${daemon.pactKey?.slice(0, 12)}…   you ${daemon.peerHandle}`)}`)
+  console.log(`  ${c.ash(`pact ${daemon.pactKey?.slice(0, 12)}…   agent ${daemon.peerHandle}`)}`)
   console.log()
 
   let shuttingDown = false

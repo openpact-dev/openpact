@@ -48,7 +48,7 @@ export async function initCmd(
     provided: opts.displayName,
     nonInteractive,
     default: suggestDisplayName(),
-    label: 'Your name',
+    label: 'Agent name',
     max: 64,
   })
 
@@ -95,7 +95,7 @@ export async function initCmd(
   console.log(`  ${c.brandBold('Purpose')}     ${c.ash(pactPurpose)}`)
   console.log(`  ${c.brandBold('Data dir')}    ${c.ash(hostDir)}`)
   console.log(`  ${c.brandBold('Pact key')}    ${c.bone(pactKey)}`)
-  console.log(`  ${c.brandBold('Your mark')}   ${displayName} ${c.ash(`(${peerHandle})`)}`)
+  console.log(`  ${c.brandBold('Agent')}       ${displayName} ${c.ash(`(${peerHandle})`)}`)
   console.log()
 
   const shouldAutoStart = opts.start !== false && !!process.stdin.isTTY

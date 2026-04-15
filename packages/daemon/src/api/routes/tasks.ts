@@ -150,7 +150,7 @@ export default async function tasksRoute(
         throw new HttpError(
           409,
           'NOT_CLAIMER',
-          `task ${taskId} is claimed by ${before.claimed_by}, not you`,
+          `task ${taskId} is claimed by ${before.claimed_by}, not ${pact.peerHandle}`,
         )
       }
       const append = await pact.append({

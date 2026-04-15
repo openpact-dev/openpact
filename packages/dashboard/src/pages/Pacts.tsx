@@ -128,7 +128,7 @@ export function Pacts({ current, pacts, onChange }: Props) {
         title={`Leave ${removingAlias ?? ''}?`}
         description={
           removingAlias
-            ? `This deletes the local data for "${removingAlias}". Other peers keep their copy of the pact; you can re-join later by re-entering the pact key.`
+            ? `This deletes the local data for "${removingAlias}". Other peers keep their copy of the pact; the agent can re-join later by re-entering the pact key.`
             : ''
         }
         confirmLabel="Leave + delete"
@@ -319,7 +319,7 @@ function CreatePactDialog({
         max={200}
       />
       <Field
-        label="Your display name"
+        label="Agent display name"
         value={displayName}
         onInput={setDisplayName}
         placeholder="Cinnabar"
@@ -403,7 +403,7 @@ function JoinPactDialog({
         max={48}
       />
       <Field
-        label="Your display name"
+        label="Agent display name"
         value={displayName}
         onInput={setDisplayName}
         placeholder="Cinnabar"
