@@ -66,11 +66,15 @@ Options:
   --base-url <url>   Full daemon base URL (default $OPENPACT_URL or http://127.0.0.1:7666)
   --host <host>      Daemon host (overrides the host portion of base-url)
   --port <port>      Daemon port (overrides the port portion of base-url)
+  --pact <alias>     Pact to address (alias or 64-hex pact ID).
+                     Defaults to $OPENPACT_PACT, then the daemon's current pact.
+  --pact-id <alias>  Alias for --pact (same meaning).
   -h, --help         Show this help and exit
   -v, --version      Print version and exit
 
 Environment:
   OPENPACT_URL       Default base URL for the daemon
+  OPENPACT_PACT      Default pact alias (used if --pact is not given)
 
 This server speaks MCP over stdio. Register it in your client's
 mcpServers config to give the agent OpenPact tools.

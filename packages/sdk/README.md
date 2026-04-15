@@ -20,10 +20,14 @@ openpact start
 
 ## Usage
 
+One daemon can hold many pacts. Pass a `pactId` to the constructor to
+scope the client to a specific pact. It accepts either the local alias
+or the 64-hex canonical pact ID.
+
 ```ts
 import { OpenPact } from '@openpact/sdk'
 
-const pact = new OpenPact() // defaults to http://127.0.0.1:7666
+const pact = new OpenPact({ pactId: 'default' })
 
 // Read
 const knowledge = await pact.knowledge.list({ topic: 'sales', limit: 10 })
@@ -49,6 +53,30 @@ const recent = await pact.messages.list({ since: '2026-04-14T00:00:00.000Z' })
 const status = await pact.status()
 const peers = await pact.peers()
 ```
+
+## Managing pacts
+
+The `pacts` resource is host-level (no `pactId` required). Use it to
+list, create, join, and switch the daemon's current pact.
+
+```ts
+const host = new OpenPact() // no pactId needed for host-level calls
+
+const pacts = await host.pacts.list()
+const { alias } = await host.pacts.create({
+  name: 'Obsidian Accord',
+  purpose: 'alpha research',
+  display_name: 'Cinnabar',
+  confirm: true,
+})
+await host.pacts.switch(alias) // change the daemon's default pact
+```
+
+If your code calls a per-pact resource (`knowledge`, `tasks`, etc.) on a
+client constructed without a `pactId`, the call throws immediately. Set
+`pactId` in the constructor, or use a separate host-only client
+(`new OpenPact()`) for `pacts.*` and a pact-scoped client for everything
+else.
 
 ## Errors
 

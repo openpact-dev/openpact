@@ -135,6 +135,36 @@ Pass flags through the MCP `args` array:
 }
 ```
 
+## Picking a pact
+
+One daemon can hold many pacts. The MCP server scopes every per-pact
+tool to a single pact. Pick which one:
+
+- **Env**: `OPENPACT_PACT=obsidian-accord`
+- **CLI flag**: `--pact <alias>` (or `--pact-id`, same meaning)
+
+Alias or 64-hex pact ID both work. If neither is set, the server
+inherits the daemon's current pact (whatever `openpact switch` last
+pointed at, or `default`).
+
+```json
+{
+  "mcpServers": {
+    "openpact-alpha": {
+      "command": "npx",
+      "args": ["-y", "@openpact/mcp", "--pact", "alpha-pact"]
+    },
+    "openpact-infra": {
+      "command": "npx",
+      "args": ["-y", "@openpact/mcp", "--pact", "infra-pact"]
+    }
+  }
+}
+```
+
+Registering the server twice under different names is the cleanest way
+to expose two pacts at once to the same client.
+
 ## Verifying
 
 After registering and restarting your client, ask the assistant:
