@@ -7,6 +7,7 @@ import { messagesResource } from './resources/messages'
 import { adminResource } from './resources/admin'
 import { entriesResource } from './resources/entries'
 import { pactsResource } from './resources/pacts'
+import { invitesResource } from './resources/invites'
 import type { StatusPayload, PeerPayload } from './types'
 
 /**
@@ -27,6 +28,7 @@ export class OpenPact {
   admin: ReturnType<typeof adminResource>
   entries: ReturnType<typeof entriesResource>
   pacts: ReturnType<typeof pactsResource>
+  invites: ReturnType<typeof invitesResource>
 
   constructor(opts: ClientOpts = {}) {
     this.client = new OpenPactClient(opts)
@@ -38,6 +40,7 @@ export class OpenPact {
     this.admin = adminResource(this.client)
     this.entries = entriesResource(this.client)
     this.pacts = pactsResource(this.client)
+    this.invites = invitesResource(this.client)
   }
 
   /** Daemon health check. */
@@ -75,6 +78,11 @@ export type { ClientOpts } from './client'
 export type { HostStatus } from './resources/status'
 export type { PactSummary, PactListPayload, CreatePactBody, JoinPactBody } from './resources/pacts'
 export type {
+  InviteSummary,
+  MintInviteOpts,
+  MintInviteResult,
+} from './resources/invites'
+export type {
   AppendResult,
   BaseEntry,
   EntryType,
@@ -110,5 +118,14 @@ export {
   NotIndexerError,
   BadSkillNameError,
   NotConfirmedError,
+  NotCreatorError,
+  InviteBadShapeError,
+  InviteWrongPactError,
+  UnknownInviteError,
+  InviteRevokedError,
+  InviteSpentError,
+  InviteNotIndexerError,
+  InviteExpiredError,
+  NoIndexerReachableError,
   DaemonError,
 } from './errors'

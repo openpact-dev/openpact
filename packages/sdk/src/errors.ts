@@ -114,6 +114,69 @@ export class NotConfirmedError extends OpenPactError {
   }
 }
 
+export class NotCreatorError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_CREATOR' })
+    this.name = 'NotCreatorError'
+  }
+}
+
+export class InviteBadShapeError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'INVITE_BAD_SHAPE' })
+    this.name = 'InviteBadShapeError'
+  }
+}
+
+export class InviteWrongPactError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'INVITE_WRONG_PACT' })
+    this.name = 'InviteWrongPactError'
+  }
+}
+
+export class UnknownInviteError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 404, code: 'UNKNOWN_INVITE' })
+    this.name = 'UnknownInviteError'
+  }
+}
+
+export class InviteRevokedError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'INVITE_REVOKED' })
+    this.name = 'InviteRevokedError'
+  }
+}
+
+export class InviteSpentError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'INVITE_SPENT' })
+    this.name = 'InviteSpentError'
+  }
+}
+
+export class InviteNotIndexerError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'INVITE_NOT_INDEXER' })
+    this.name = 'InviteNotIndexerError'
+  }
+}
+
+export class InviteExpiredError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 410, code: 'INVITE_EXPIRED' })
+    this.name = 'InviteExpiredError'
+  }
+}
+
+export class NoIndexerReachableError extends OpenPactError {
+  constructor(message: string, code: 'NO_PEERS' | 'NO_INDEXER_REACHABLE' = 'NO_INDEXER_REACHABLE') {
+    super(message, { status: 503, code })
+    this.name = 'NoIndexerReachableError'
+  }
+}
+
 export class DaemonError extends OpenPactError {
   constructor(message: string, status: number, code = 'INTERNAL') {
     super(message, { status, code })
@@ -157,6 +220,27 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new BadSkillNameError(message)
     case 'NOT_CONFIRMED':
       return new NotConfirmedError(message)
+    case 'NOT_CREATOR':
+      return new NotCreatorError(message)
+    case 'INVITE_BAD_SHAPE':
+      return new InviteBadShapeError(message)
+    case 'INVITE_WRONG_PACT':
+      return new InviteWrongPactError(message)
+    case 'UNKNOWN_INVITE':
+      return new UnknownInviteError(message)
+    case 'INVITE_REVOKED':
+      return new InviteRevokedError(message)
+    case 'INVITE_SPENT':
+      return new InviteSpentError(message)
+    case 'INVITE_NOT_INDEXER':
+      return new InviteNotIndexerError(message)
+    case 'INVITE_EXPIRED':
+      return new InviteExpiredError(message)
+    case 'NO_PEERS':
+      return new NoIndexerReachableError(message, 'NO_PEERS')
+    case 'NO_INDEXER_REACHABLE':
+    case 'PEER_DISCONNECTED':
+      return new NoIndexerReachableError(message)
     case 'INTERNAL':
       return new DaemonError(message, status, code)
     default:
