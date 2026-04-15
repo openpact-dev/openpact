@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
+import { config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { pidFileLooksAlive, writePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
@@ -74,6 +75,34 @@ export async function startCmd(
   if (!ready) {
     sp.fail(c.brand(`the daemon failed to bind. see logs at ${logPath}`))
     process.exit(1)
+  }
+
+  // Match-verify: a prior daemon from a *different* dataDir may already
+  // own :port. Our detached child would have failed with EADDRINUSE and
+  // died, but waitForReady happily pinged the stranger. Compare the
+  // responding daemon's pact_id with the one we just persisted to this
+  // dataDir; if they differ, the strange daemon is not ours.
+  const cfg = await daemonConfig.loadConfig(dir).catch(() => null)
+  if (cfg?.pactKey) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/v1/status`)
+      const status = (await res.json()) as { pact_id?: string | null }
+      if (status.pact_id && status.pact_id !== cfg.pactKey) {
+        sp.fail(
+          c.brand(
+            `port :${port} is already held by a different pact (${status.pact_id.slice(
+              0,
+              12,
+            )}…). run \`openpact stop\` in that dataDir first, or pass \`--port <n>\` to use a different port.`,
+          ),
+        )
+        process.exit(1)
+      }
+    } catch {
+      // Non-fatal — if the status probe itself fails, keep the
+      // original success path (the daemon is on the port, we just
+      // couldn't double-check identity).
+    }
   }
   sp.succeed(c.brandBold('The daemon stirs.'))
 
