@@ -6,9 +6,16 @@ import Hyperbee from 'hyperbee'
 
 import { pactStorePath } from './data-dir'
 import { loadPactConfig, savePactConfig, type Role, type PactConfig } from './config'
-import { makeApply } from './apply'
+import { makeApply, INVITE_PREFIX } from './apply'
 import * as peerHandle from './peer-handle'
 import * as entryId from './entry-id'
+import * as invites from './invites'
+import {
+  DEFAULT_TTL_MS,
+  InviteDecodeError,
+  type Invite,
+  type InviteSummary,
+} from './invites'
 
 export interface PactOpts {
   /** Directory holding the pact's config.json + data/ store. */
@@ -219,6 +226,187 @@ export class Pact extends EventEmitter {
     const seq = this._base.local.length
     const id = entryId.encode({ writerKey: this._base.local.key, seq })
     return { id, timestamp: entry.timestamp as string }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Invite tokens
+  // ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Serialised per-pact lock that protects createInvite / revokeInvite /
+   * redeemInvite from each other. Two concurrent redeem attempts for the
+   * same nonce must not both pass the unspent check and both append
+   * entries — we want only one invite-redeemed + admin pair per token.
+   * The apply-level `_invites/<nonce>` guard is the ultimate authority,
+   * but this lock keeps us from emitting orphan admin entries.
+   */
+  private _inviteLock: Promise<void> = Promise.resolve()
+  private async _withInviteLock<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this._inviteLock
+    let release: () => void = () => {}
+    this._inviteLock = new Promise<void>((r) => {
+      release = r
+    })
+    try {
+      await prev
+      return await fn()
+    } finally {
+      release()
+    }
+  }
+
+  /** Mint a fresh one-time invite token, persisted to invites.json. */
+  async createInvite(opts: { ttlMs?: number } = {}): Promise<{
+    token: string
+    invite: Invite
+  }> {
+    if (!this.pactKey) throw new Error('pact is not open')
+    const ttlMs = opts.ttlMs ?? DEFAULT_TTL_MS
+    const now = Date.now()
+    const invite: Invite = {
+      nonce: invites.newNonce(),
+      expiresAt: new Date(now + ttlMs).toISOString(),
+      createdAt: new Date(now).toISOString(),
+      ttlMs,
+      pactName: this._pactName,
+      issuerDisplay: this._displayName,
+      revoked: false,
+      revokedAt: null,
+      spentAt: null,
+      spentBy: null,
+    }
+    const token = invites.encodeToken({
+      v: 1,
+      pactId: this.pactKey,
+      nonce: invite.nonce,
+      expiresAt: invite.expiresAt,
+      pactName: this._pactName,
+      issuerDisplay: this._displayName,
+    })
+    await this._withInviteLock(async () => {
+      const file = await invites.loadInvites(this.dataDir)
+      file.invites.push(invite)
+      await invites.saveInvites(this.dataDir, file)
+    })
+    return { token, invite }
+  }
+
+  /** Read invites.json and return a UI-ready summary list. */
+  async listInvites(): Promise<InviteSummary[]> {
+    const file = await invites.loadInvites(this.dataDir)
+    const now = Date.now()
+    return file.invites.map((inv) => invites.summarise(inv, now))
+  }
+
+  /** Mark an invite as revoked. Local to this daemon (phase 1). */
+  async revokeInvite(nonce: string): Promise<void> {
+    await this._withInviteLock(async () => {
+      const file = await invites.loadInvites(this.dataDir)
+      const entry = file.invites.find((inv) => inv.nonce === nonce)
+      if (!entry) throw new Error(`no invite with nonce ${nonce}`)
+      if (entry.revoked) return
+      entry.revoked = true
+      entry.revokedAt = new Date().toISOString()
+      await invites.saveInvites(this.dataDir, file)
+    })
+  }
+
+  /**
+   * Redeem a token on behalf of a new writer. Appends an
+   * `invite-redeemed` entry followed by `admin.addWriter`, so the pair
+   * confirms together on the next frontier. The caller (REST handler
+   * or protomux receiver) is expected to be running on an indexer
+   * daemon — we verify that here and throw if not.
+   *
+   * On success, marks the nonce spent in the local invites.json. Any
+   * future attempt on the same nonce hits either the local-file check
+   * (same daemon) or the apply-level `_invites/<nonce>` guard (if a
+   * second indexer ever became capable of redeeming).
+   */
+  async redeemInvite(token: string, writerKeyHex: string): Promise<{ nonce: string }> {
+    if (!this._base || !this.pactKey) throw new Error('pact is not open')
+    if (!/^[0-9a-f]{64}$/i.test(writerKeyHex)) {
+      throw new invites.RedeemError(
+        'INVITE_BAD_SHAPE',
+        'writer key must be 64-hex',
+        400,
+      )
+    }
+    let payload: invites.InviteTokenPayload
+    try {
+      payload = invites.decodeToken(token)
+    } catch (e) {
+      if (e instanceof InviteDecodeError) {
+        throw new invites.RedeemError('INVITE_BAD_SHAPE', e.message, 400)
+      }
+      throw e
+    }
+    if (payload.pactId.toLowerCase() !== this.pactKey.toLowerCase()) {
+      throw new invites.RedeemError(
+        'INVITE_WRONG_PACT',
+        'token pactId does not match this pact',
+        400,
+      )
+    }
+    if (!this._base.isIndexer) {
+      throw new invites.RedeemError(
+        'INVITE_NOT_INDEXER',
+        'this daemon is not an indexer for the pact — forward the request to an indexer',
+        409,
+      )
+    }
+
+    return this._withInviteLock(async () => {
+      const file = await invites.loadInvites(this.dataDir)
+      const entry = file.invites.find((inv) => inv.nonce === payload.nonce)
+      if (!entry) {
+        throw new invites.RedeemError('INVITE_UNKNOWN', 'unknown invite', 404)
+      }
+      if (entry.revoked) {
+        throw new invites.RedeemError('INVITE_REVOKED', 'invite has been revoked', 409)
+      }
+      if (entry.spentAt) {
+        throw new invites.RedeemError('INVITE_SPENT', 'invite has already been redeemed', 409)
+      }
+      if (Date.parse(entry.expiresAt) <= Date.now()) {
+        throw new invites.RedeemError('INVITE_EXPIRED', 'invite has expired', 410)
+      }
+      const existing = await this.view.get(`${INVITE_PREFIX}${payload.nonce}`)
+      if (existing) {
+        // Pre-empt apply-time rejection so we never emit an orphan
+        // admin.addWriter against an already-spent nonce. Shouldn't
+        // happen in the current creator-only MVP; guards the future
+        // multi-indexer path.
+        throw new invites.RedeemError('INVITE_SPENT', 'invite has already been redeemed', 409)
+      }
+
+      const ts = new Date().toISOString()
+      await this._base.append({
+        type: 'invite-redeemed',
+        timestamp: ts,
+        agent_id: this.peerHandle,
+        display_name: this.displayName,
+        payload: { nonce: payload.nonce, redeemed_by: writerKeyHex.toLowerCase() },
+      })
+      await this._base.append({
+        type: 'admin',
+        timestamp: ts,
+        agent_id: this.peerHandle,
+        display_name: this.displayName,
+        payload: {
+          action: 'addWriter',
+          key: writerKeyHex.toLowerCase(),
+          indexer: false,
+        },
+      })
+
+      // Mark locally spent so `invite --list` reflects reality
+      // immediately, without waiting for apply to catch up.
+      entry.spentAt = ts
+      entry.spentBy = writerKeyHex.toLowerCase()
+      await invites.saveInvites(this.dataDir, file)
+      return { nonce: payload.nonce }
+    })
   }
 
   async addWriter(

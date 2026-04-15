@@ -40,6 +40,10 @@ export interface Invite {
   issuerDisplay: string | null
   revoked: boolean
   revokedAt: string | null
+  /** When this invite was consumed by a successful redemption. Null = still live. */
+  spentAt: string | null
+  /** Writer pubkey that redeemed this invite, for audit. */
+  spentBy: string | null
 }
 
 export interface InviteTokenPayload {
@@ -75,6 +79,25 @@ export class InviteDecodeError extends Error {
   constructor(code: 'BAD_TOKEN' | 'BAD_VERSION' | 'BAD_SHAPE', message: string) {
     super(message)
     this.code = code
+  }
+}
+
+export type RedeemErrorCode =
+  | 'INVITE_BAD_SHAPE'
+  | 'INVITE_WRONG_PACT'
+  | 'INVITE_UNKNOWN'
+  | 'INVITE_EXPIRED'
+  | 'INVITE_REVOKED'
+  | 'INVITE_SPENT'
+  | 'INVITE_NOT_INDEXER'
+
+export class RedeemError extends Error {
+  readonly code: RedeemErrorCode
+  readonly status: number
+  constructor(code: RedeemErrorCode, message: string, status: number) {
+    super(message)
+    this.code = code
+    this.status = status
   }
 }
 
@@ -162,14 +185,15 @@ export interface InviteSummary {
   pact_name: string | null
   issuer_display: string | null
   revoked: boolean
-  /** true when expiresAt is in the past (relative to `now`) or the invite is revoked. */
+  spent_at: string | null
+  spent_by: string | null
+  /** true when the invite is no longer redeemable (spent, revoked, or expired). */
   dead: boolean
-  /** present when the view's `_invites/<nonce>` already holds a redemption record. */
-  redeemed_by?: string | null
 }
 
 export function isDead(inv: Invite, now: number): boolean {
   if (inv.revoked) return true
+  if (inv.spentAt) return true
   return Date.parse(inv.expiresAt) <= now
 }
 
@@ -181,6 +205,8 @@ export function summarise(inv: Invite, now: number): InviteSummary {
     pact_name: inv.pactName,
     issuer_display: inv.issuerDisplay,
     revoked: inv.revoked,
+    spent_at: inv.spentAt,
+    spent_by: inv.spentBy,
     dead: isDead(inv, now),
   }
 }

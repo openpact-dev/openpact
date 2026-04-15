@@ -135,6 +135,8 @@ test('saveInvites / loadInvites round-trip', async (t) => {
     issuerDisplay: null,
     revoked: false,
     revokedAt: null,
+    spentAt: null,
+    spentBy: null,
   }
   await saveInvites(dir, { invites: [inv] })
   const back = await loadInvites(dir)
@@ -154,6 +156,8 @@ test('saveInvites overwrites on subsequent calls', async (t) => {
     issuerDisplay: null,
     revoked: false,
     revokedAt: null,
+    spentAt: null,
+    spentBy: null,
   }
   await saveInvites(dir, { invites: [a] })
   await saveInvites(dir, { invites: [] })
@@ -172,6 +176,8 @@ test('isDead: future unrevoked → not dead', (t) => {
     issuerDisplay: null,
     revoked: false,
     revokedAt: null,
+    spentAt: null,
+    spentBy: null,
   }
   t.absent(isDead(inv, Date.now()))
 })
@@ -186,6 +192,8 @@ test('isDead: past expiry → dead', (t) => {
     issuerDisplay: null,
     revoked: false,
     revokedAt: null,
+    spentAt: null,
+    spentBy: null,
   }
   t.ok(isDead(inv, Date.now()))
 })
@@ -200,6 +208,24 @@ test('isDead: revoked → dead regardless of expiry', (t) => {
     issuerDisplay: null,
     revoked: true,
     revokedAt: new Date().toISOString(),
+    spentAt: null,
+    spentBy: null,
+  }
+  t.ok(isDead(inv, Date.now()))
+})
+
+test('isDead: spent → dead even if not revoked', (t) => {
+  const inv: Invite = {
+    nonce: newNonce(),
+    expiresAt: new Date(Date.now() + 100_000).toISOString(),
+    createdAt: new Date().toISOString(),
+    ttlMs: 100_000,
+    pactName: null,
+    issuerDisplay: null,
+    revoked: false,
+    revokedAt: null,
+    spentAt: new Date().toISOString(),
+    spentBy: 'b'.repeat(64),
   }
   t.ok(isDead(inv, Date.now()))
 })
@@ -214,6 +240,8 @@ test('summarise: maps snake-case fields + dead flag', (t) => {
     issuerDisplay: 'Ana',
     revoked: false,
     revokedAt: null,
+    spentAt: null,
+    spentBy: null,
   }
   const s = summarise(inv, Date.now())
   t.is(s.nonce, inv.nonce)
