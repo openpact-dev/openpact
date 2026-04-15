@@ -20,7 +20,7 @@ test('POST /v1/admin/writers: appends admin entry', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/writers',
+    url: '/v1/pacts/default/admin/writers',
     payload: { key: KEY_B, indexer: false },
   })
   t.is(res.statusCode, 200)
@@ -37,7 +37,7 @@ test('POST /v1/admin/writers: indexer flag honoured', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/writers',
+    url: '/v1/pacts/default/admin/writers',
     payload: { key: KEY_B, indexer: true },
   })
   t.is(res.statusCode, 200)
@@ -51,7 +51,7 @@ test('POST /v1/admin/writers: rejects bad hex with 400', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/writers',
+    url: '/v1/pacts/default/admin/writers',
     payload: { key: 'short' },
   })
   t.is(res.statusCode, 400)
@@ -65,7 +65,7 @@ test('POST /v1/admin/writers: missing key returns 400', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/writers',
+    url: '/v1/pacts/default/admin/writers',
     payload: { indexer: true },
   })
   t.is(res.statusCode, 400)
@@ -79,12 +79,12 @@ test('DELETE /v1/admin/writers/:key: appends remove admin entry', async (t) => {
   // Add then remove.
   await app.inject({
     method: 'POST',
-    url: '/v1/admin/writers',
+    url: '/v1/pacts/default/admin/writers',
     payload: { key: KEY_B, indexer: true },
   })
   const res = await app.inject({
     method: 'DELETE',
-    url: `/v1/admin/writers/${KEY_B}`,
+    url: `/v1/pacts/default/admin/writers/${KEY_B}`,
   })
   t.is(res.statusCode, 200)
   t.is(JSON.parse(res.body).key, KEY_B)
@@ -97,7 +97,7 @@ test('DELETE /v1/admin/writers/:key: bad hex → 400', async (t) => {
 
   const res = await app.inject({
     method: 'DELETE',
-    url: '/v1/admin/writers/notlongenough',
+    url: '/v1/pacts/default/admin/writers/notlongenough',
   })
   t.is(res.statusCode, 400)
 })

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { HttpError } from '../errors'
 import { DISPLAY_NAME_MAX, PACT_NAME_MAX, PACT_PURPOSE_MAX } from '../../config'
+import { resolvePact } from '../pact-resolver'
 
 const HEX64 = /^[0-9a-f]{64}$/i
 
@@ -15,70 +16,81 @@ const addWriterSchema = {
   additionalProperties: false,
 }
 
-interface AddBody {
-  key: string
-  indexer?: boolean
+const promoteSchema = {
+  type: 'object',
+  properties: {
+    key: { type: 'string', pattern: '^[0-9a-f]{64}$' },
+    confirm: { type: 'boolean' },
+  },
+  required: ['key', 'confirm'],
+  additionalProperties: false,
 }
 
-interface RemoveParams {
-  key: string
+const pactInfoSchema = {
+  type: 'object',
+  properties: {
+    name: { type: ['string', 'null'], maxLength: PACT_NAME_MAX },
+    purpose: { type: ['string', 'null'], maxLength: PACT_PURPOSE_MAX },
+  },
+  additionalProperties: false,
+}
+
+const meSchema = {
+  type: 'object',
+  properties: {
+    display_name: { type: ['string', 'null'], maxLength: DISPLAY_NAME_MAX },
+  },
+  additionalProperties: false,
 }
 
 export default async function adminRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  app.post<{ Body: AddBody }>(
-    '/v1/admin/writers',
+  // Raw writer plumbing — add / remove writers on this pact.
+  app.post<{ Params: { pactId: string }; Body: { key: string; indexer?: boolean } }>(
+    '/v1/pacts/:pactId/admin/writers',
     { schema: { body: addWriterSchema } },
     async (req) => {
-      if (!daemon.isWriter) {
+      const pact = await resolvePact(daemon, req)
+      if (!pact.isWriter) {
         throw new HttpError(
           409,
           'NOT_A_WRITER',
-          'this daemon is not a writer for the pact and cannot issue admin entries',
+          'this peer is not a writer for the pact and cannot issue admin entries',
         )
       }
-      await daemon.addWriter(req.body.key, { indexer: !!req.body.indexer })
+      await pact.addWriter(req.body.key, { indexer: !!req.body.indexer })
       return { ok: true, key: req.body.key, indexer: !!req.body.indexer }
     },
   )
 
-  app.delete<{ Params: RemoveParams }>('/v1/admin/writers/:key', async (req) => {
-    if (!HEX64.test(req.params.key)) {
-      throw new HttpError(
-        400,
-        'BAD_REQUEST',
-        `key must be 64 hex chars (got ${req.params.key.length})`,
-      )
-    }
-    if (!daemon.isWriter) {
-      throw new HttpError(
-        409,
-        'NOT_A_WRITER',
-        'this daemon is not a writer for the pact and cannot issue admin entries',
-      )
-    }
-    await daemon.removeWriter(req.params.key)
-    return { ok: true, key: req.params.key }
-  })
-
-  // Dashboard-flavoured wrappers. Same underlying append, but gated on
-  // `daemon.role === 'creator'` and require an explicit confirmation
-  // body so a CSRF-style accidental click can't trigger them. The
-  // trust boundary is the loopback interface (`127.0.0.1`); these
-  // checks are belt-and-braces UI gating, not auth.
-  const promoteSchema = {
-    type: 'object',
-    properties: {
-      key: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-      confirm: { type: 'boolean' },
+  app.delete<{ Params: { pactId: string; key: string } }>(
+    '/v1/pacts/:pactId/admin/writers/:key',
+    async (req) => {
+      if (!HEX64.test(req.params.key)) {
+        throw new HttpError(
+          400,
+          'BAD_REQUEST',
+          `key must be 64 hex chars (got ${req.params.key.length})`,
+        )
+      }
+      const pact = await resolvePact(daemon, req)
+      if (!pact.isWriter) {
+        throw new HttpError(
+          409,
+          'NOT_A_WRITER',
+          'this peer is not a writer for the pact and cannot issue admin entries',
+        )
+      }
+      await pact.removeWriter(req.params.key)
+      return { ok: true, key: req.params.key }
     },
-    required: ['key', 'confirm'],
-    additionalProperties: false,
-  }
-  app.post<{ Body: { key: string; confirm: boolean } }>(
-    '/v1/admin/promote',
+  )
+
+  // Dashboard-flavoured wrappers. Creator-only, require explicit confirm.
+  app.post<{ Params: { pactId: string }; Body: { key: string; confirm: boolean } }>(
+    '/v1/pacts/:pactId/admin/promote',
     { schema: { body: promoteSchema } },
     async (req) => {
       if (req.body.confirm !== true) {
@@ -88,20 +100,21 @@ export default async function adminRoute(
           'promote requires explicit { "confirm": true } in the request body',
         )
       }
-      if (daemon.role !== 'creator') {
+      const pact = await resolvePact(daemon, req)
+      if (pact.role !== 'creator') {
         throw new HttpError(
           409,
           'NOT_INDEXER',
-          `daemon.role is ${daemon.role}; only the creator may promote writers`,
+          `pact.role is ${pact.role}; only the creator may promote writers`,
         )
       }
-      await daemon.addWriter(req.body.key, { indexer: true })
+      await pact.addWriter(req.body.key, { indexer: true })
       return { ok: true, key: req.body.key, indexer: true }
     },
   )
 
-  app.post<{ Body: { key: string; confirm: boolean } }>(
-    '/v1/admin/remove',
+  app.post<{ Params: { pactId: string }; Body: { key: string; confirm: boolean } }>(
+    '/v1/pacts/:pactId/admin/remove',
     { schema: { body: promoteSchema } },
     async (req) => {
       if (req.body.confirm !== true) {
@@ -111,58 +124,45 @@ export default async function adminRoute(
           'remove requires explicit { "confirm": true } in the request body',
         )
       }
-      if (daemon.role !== 'creator') {
+      const pact = await resolvePact(daemon, req)
+      if (pact.role !== 'creator') {
         throw new HttpError(
           409,
           'NOT_INDEXER',
-          `daemon.role is ${daemon.role}; only the creator may remove writers`,
+          `pact.role is ${pact.role}; only the creator may remove writers`,
         )
       }
-      await daemon.removeWriter(req.body.key)
+      await pact.removeWriter(req.body.key)
       return { ok: true, key: req.body.key }
     },
   )
 
-  // Pact metadata — creator-only. Passing null clears a field; omitting
-  // it leaves the field untouched.
-  const pactInfoSchema = {
-    type: 'object',
-    properties: {
-      name: { type: ['string', 'null'], maxLength: PACT_NAME_MAX },
-      purpose: { type: ['string', 'null'], maxLength: PACT_PURPOSE_MAX },
-    },
-    additionalProperties: false,
-  }
-  app.put<{ Body: { name?: string | null; purpose?: string | null } }>(
-    '/v1/pact',
+  // Pact metadata — creator-only. Null clears a field; omit to leave untouched.
+  app.put<{ Params: { pactId: string }; Body: { name?: string | null; purpose?: string | null } }>(
+    '/v1/pacts/:pactId/info',
     { schema: { body: pactInfoSchema } },
     async (req) => {
-      if (daemon.role !== 'creator') {
+      const pact = await resolvePact(daemon, req)
+      if (pact.role !== 'creator') {
         throw new HttpError(
           409,
           'NOT_INDEXER',
-          `daemon.role is ${daemon.role}; only the creator may rename the pact`,
+          `pact.role is ${pact.role}; only the creator may rename the pact`,
         )
       }
-      await daemon.setPactInfo({ name: req.body.name, purpose: req.body.purpose })
-      return { ok: true, pact_name: daemon.pactName, pact_purpose: daemon.pactPurpose }
+      await pact.setPactInfo({ name: req.body.name, purpose: req.body.purpose })
+      return { ok: true, pact_name: pact.pactName, pact_purpose: pact.pactPurpose }
     },
   )
 
-  // This peer's display name. Any peer can edit their own.
-  const meSchema = {
-    type: 'object',
-    properties: {
-      display_name: { type: ['string', 'null'], maxLength: DISPLAY_NAME_MAX },
-    },
-    additionalProperties: false,
-  }
-  app.put<{ Body: { display_name?: string | null } }>(
-    '/v1/me',
+  // This peer's display name on this pact. Any peer may edit their own.
+  app.put<{ Params: { pactId: string }; Body: { display_name?: string | null } }>(
+    '/v1/pacts/:pactId/me',
     { schema: { body: meSchema } },
     async (req) => {
-      await daemon.setDisplayName(req.body.display_name ?? null)
-      return { ok: true, display_name: daemon.displayName }
+      const pact = await resolvePact(daemon, req)
+      await pact.setDisplayName(req.body.display_name ?? null)
+      return { ok: true, display_name: pact.displayName }
     },
   )
 }

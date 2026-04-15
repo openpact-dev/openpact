@@ -17,7 +17,7 @@ async function ensureKilled(pid: number | null) {
 test('log prints entries posted via REST', async (t) => {
   const home = await tmpHome(t)
   const port = nextPort++
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
 
   await runWithDir(home, ['start', '--no-dashboard', '--port', String(port)])
   const pid = await readPidFile(home)
@@ -28,12 +28,12 @@ test('log prints entries posted via REST', async (t) => {
   const base = `http://127.0.0.1:${port}`
   await waitForPing(base)
 
-  await fetch(`${base}/v1/knowledge`, {
+  await fetch(`${base}/v1/pacts/default/knowledge`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ topic: 'sales', content: 'cli log smoke' }),
   })
-  await fetch(`${base}/v1/messages`, {
+  await fetch(`${base}/v1/pacts/default/messages`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ to: '*', content: 'hi everyone' }),
@@ -56,7 +56,7 @@ test('log prints entries posted via REST', async (t) => {
 test('log: errors when daemon not running', async (t) => {
   const home = await tmpHome(t)
   const port = nextPort++
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
   const res = await runWithDir(home, ['log', '--port', String(port)])
   t.not(res.exitCode, 0)
   t.ok(res.stderr.includes('not running'))
@@ -72,7 +72,7 @@ test('log: rejects unknown --type', async (t) => {
 test('status: errors when daemon not running', async (t) => {
   const home = await tmpHome(t)
   const port = nextPort++
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
   const res = await runWithDir(home, ['status', '--port', String(port)])
   t.not(res.exitCode, 0)
   t.ok(res.stderr.includes('not running'))

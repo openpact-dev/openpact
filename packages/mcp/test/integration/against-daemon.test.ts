@@ -29,7 +29,7 @@ async function bootMcpAgainstDaemon(t: any): Promise<Env> {
   const port = nextPort++
   await bind(app, { host: '127.0.0.1', port })
 
-  const pact = new OpenPact({ port })
+  const pact = new OpenPact({ port, pactId: 'default' })
   const server = buildServer(pact, { name: 'openpact-test', version: '0.0.0' })
 
   const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair()

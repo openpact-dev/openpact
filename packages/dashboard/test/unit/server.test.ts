@@ -60,12 +60,12 @@ test('GET /api/v1/ping proxies to the daemon and returns { ok: true }', async (t
   t.alike(await res.json(), { ok: true })
 })
 
-test('GET /api/v1/knowledge proxies query strings through to the daemon', async (t) => {
+test('GET /api/v1/pacts/default/knowledge proxies query strings through to the daemon', async (t) => {
   const { daemonPort } = await bootDaemon(t)
   const dash = await startDashboard({ daemonPort, port: 0 })
   t.teardown(() => dash.close())
 
-  const post = await fetch(`${dash.url}/api/v1/knowledge`, {
+  const post = await fetch(`${dash.url}/api/v1/pacts/default/knowledge`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ topic: 'wiring', content: 'proxy works' }),
@@ -74,7 +74,7 @@ test('GET /api/v1/knowledge proxies query strings through to the daemon', async 
 
   let arr: any[] = []
   for (let i = 0; i < 60; i++) {
-    const res = await fetch(`${dash.url}/api/v1/knowledge?topic=wiring`)
+    const res = await fetch(`${dash.url}/api/v1/pacts/default/knowledge?topic=wiring`)
     arr = (await res.json()) as any[]
     if (arr.length >= 1) break
     await new Promise((r) => setTimeout(r, 50))

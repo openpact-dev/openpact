@@ -89,7 +89,7 @@ test('GET /v1/events streams an SSE entry-applied frame after a knowledge POST',
 
   // Trigger an entry-applied while the stream is open.
   setTimeout(() => {
-    fetch(`http://127.0.0.1:${port}/v1/knowledge`, {
+    fetch(`http://127.0.0.1:${port}/v1/pacts/default/knowledge`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ topic: 'sse', content: 'live update' }),

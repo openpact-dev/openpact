@@ -43,8 +43,10 @@ test(
     const portA = nextPort++
     const portB = nextPort++
 
-    // A: init + start with the testnet bootstrap.
-    await runCli(['--data-dir', homeA, 'init'])
+    // A: init + start with the testnet bootstrap. Pin alias to
+    // "default" so the REST URLs below stay stable (auto-slug from
+    // the themed pact name would otherwise pick something random).
+    await runCli(['--data-dir', homeA, 'init', '--alias', 'default'])
     await runCli([
       '--data-dir',
       homeA,
@@ -64,8 +66,8 @@ test(
     const key = inv.stdout.trim()
     t.ok(/^[0-9a-f]+$/.test(key), 'invite emitted a hex key')
 
-    // B: join + start with the same bootstrap.
-    await runCli(['--data-dir', homeB, 'join', key])
+    // B: join + start with the same bootstrap. Same alias pinning as A.
+    await runCli(['--data-dir', homeB, 'join', key, '--alias', 'default'])
     await runCli([
       '--data-dir',
       homeB,
@@ -84,15 +86,28 @@ test(
     await waitForPing(`http://127.0.0.1:${portB}`)
 
     // Get B's writer public key from its status (so A can promote it).
-    const bStatusRes = await fetch(`http://127.0.0.1:${portB}/v1/status`)
-    const bStatus = (await bStatusRes.json()) as { public_key: string; peer_handle: string }
+    // B's autobase may take a moment to populate `local` after start —
+    // poll until publicKey is available.
+    let bStatus: { public_key: string; peer_handle: string } = {
+      public_key: '',
+      peer_handle: '',
+    }
+    const bDeadline = Date.now() + 5000
+    while (Date.now() < bDeadline) {
+      const bStatusRes = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`)
+      bStatus = (await bStatusRes.json()) as { public_key: string; peer_handle: string }
+      if (bStatus.public_key && /^[0-9a-f]{64}$/.test(bStatus.public_key)) break
+      await new Promise((r) => setTimeout(r, 100))
+    }
     t.ok(/^[0-9a-f]{64}$/.test(bStatus.public_key), 'B reports a 64-hex public key')
 
     // Wait for A to see B as a peer (so the admin entry can replicate).
     const peersDeadline = Date.now() + 15_000
     let aPeers: number = 0
     while (Date.now() < peersDeadline) {
-      const aStatus = (await (await fetch(`http://127.0.0.1:${portA}/v1/status`)).json()) as {
+      const aStatus = (await (
+        await fetch(`http://127.0.0.1:${portA}/v1/pacts/default/status`)
+      ).json()) as {
         peers: number
       }
       aPeers = aStatus.peers
@@ -120,7 +135,9 @@ test(
     const writableDeadline = Date.now() + 30_000
     let bIsWriter = false
     while (Date.now() < writableDeadline) {
-      const bs = (await (await fetch(`http://127.0.0.1:${portB}/v1/status`)).json()) as {
+      const bs = (await (
+        await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`)
+      ).json()) as {
         is_writer: boolean
       }
       if (bs.is_writer) {
@@ -131,7 +148,7 @@ test(
     }
     t.ok(bIsWriter, 'B is now a writer')
 
-    const post = await fetch(`http://127.0.0.1:${portB}/v1/knowledge`, {
+    const post = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/knowledge`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ topic: 'two-daemon', content: 'B wrote this; A should see it' }),

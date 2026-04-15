@@ -9,7 +9,7 @@ test('POST /v1/messages: broadcast passes', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: '*', content: 'heads up' },
   })
   t.is(res.statusCode, 200)
@@ -23,7 +23,7 @@ test('POST /v1/messages: direct to handle passes', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: 'anon-cobra-3e91', content: 'hi' },
   })
   t.is(res.statusCode, 200)
@@ -36,7 +36,7 @@ test('POST /v1/messages: invalid handle returns 400', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: 'NotAHandle', content: 'hi' },
   })
   t.is(res.statusCode, 400)
@@ -49,7 +49,7 @@ test('GET /v1/messages: since cursor filters', async (t) => {
 
   await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: '*', content: 'first' },
   })
   await new Promise((r) => setTimeout(r, 5))
@@ -57,13 +57,13 @@ test('GET /v1/messages: since cursor filters', async (t) => {
   await new Promise((r) => setTimeout(r, 5))
   await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: '*', content: 'second' },
   })
   await daemon.update()
   await daemon.waitForViewVersion(2, { timeout: 2000 })
 
-  const res = await app.inject({ method: 'GET', url: `/v1/messages?since=${cutoff}` })
+  const res = await app.inject({ method: 'GET', url: `/v1/pacts/default/messages?since=${cutoff}` })
   const entries = JSON.parse(res.body) as any[]
   t.is(entries.length, 1)
   t.is(entries[0].payload.content, 'second')
@@ -76,12 +76,12 @@ test('GET /v1/messages: filter by recipient', async (t) => {
 
   await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: '*', content: 'broadcast' },
   })
   await app.inject({
     method: 'POST',
-    url: '/v1/messages',
+    url: '/v1/pacts/default/messages',
     payload: { to: 'anon-cobra-3e91', content: 'direct' },
   })
   await daemon.update()
@@ -89,7 +89,7 @@ test('GET /v1/messages: filter by recipient', async (t) => {
 
   const res = await app.inject({
     method: 'GET',
-    url: '/v1/messages?to=anon-cobra-3e91',
+    url: '/v1/pacts/default/messages?to=anon-cobra-3e91',
   })
   const entries = JSON.parse(res.body) as any[]
   t.is(entries.length, 1)

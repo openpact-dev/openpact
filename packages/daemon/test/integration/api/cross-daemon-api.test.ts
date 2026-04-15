@@ -29,7 +29,7 @@ test('POST knowledge to A; GET knowledge on B sees it', async (t) => {
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
 
-  const post = await postJson(`${apiA}/v1/knowledge`, {
+  const post = await postJson(`${apiA}/v1/pacts/default/knowledge`, {
     topic: 'sales',
     content: 'cross-daemon flow works',
   })
@@ -39,7 +39,7 @@ test('POST knowledge to A; GET knowledge on B sees it', async (t) => {
   let entries: any[] = []
   while (Date.now() < deadline) {
     await b.daemon.update()
-    const res = await getJson(`${apiB}/v1/knowledge?topic=sales`)
+    const res = await getJson(`${apiB}/v1/pacts/default/knowledge?topic=sales`)
     entries = res.body
     if (entries.length >= 1) break
     await new Promise((r) => setTimeout(r, 100))
@@ -54,13 +54,13 @@ test('GET status on B reflects entries written via A', async (t) => {
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
 
-  await postJson(`${apiA}/v1/knowledge`, { topic: 't', content: '1' })
+  await postJson(`${apiA}/v1/pacts/default/knowledge`, { topic: 't', content: '1' })
 
   const deadline = Date.now() + 15000
   let entries = 0
   while (Date.now() < deadline) {
     await b.daemon.update()
-    const res = await getJson(`${apiB}/v1/status`)
+    const res = await getJson(`${apiB}/v1/pacts/default/status`)
     entries = res.body.entries
     if (entries > 0) break
     await new Promise((r) => setTimeout(r, 100))

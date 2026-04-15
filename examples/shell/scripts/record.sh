@@ -16,6 +16,7 @@ USAGE
 fi
 
 base="${OPENPACT_URL:-http://127.0.0.1:7666}"
+pact="${OPENPACT_PACT:-default}"
 topic="$1"
 content="$2"
 confidence="${3:-}"
@@ -26,6 +27,6 @@ else
   body="$(jq -n --arg t "$topic" --arg c "$content" '{topic:$t, content:$c}')"
 fi
 
-curl -sf -X POST "${base}/v1/knowledge" \
+curl -sf -X POST "${base}/v1/pacts/${pact}/knowledge" \
   -H 'content-type: application/json' \
   -d "$body" | jq

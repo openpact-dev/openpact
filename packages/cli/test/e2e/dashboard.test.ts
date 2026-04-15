@@ -25,7 +25,7 @@ test('start with --dashboard-port binds the dashboard and proxies to the daemon'
   const home = await tmpHome(t)
   const port = String(nextDaemonPort++)
   const dashPort = String(nextDashPort++)
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
 
   const start = await runWithDir(home, ['start', '--port', port, '--dashboard-port', dashPort])
   t.is(start.exitCode, 0)
@@ -51,7 +51,7 @@ test('start with --dashboard-port binds the dashboard and proxies to the daemon'
 test('start with --no-dashboard skips the dashboard banner line', async (t) => {
   const home = await tmpHome(t)
   const port = String(nextDaemonPort++)
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
 
   const start = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
   t.is(start.exitCode, 0)

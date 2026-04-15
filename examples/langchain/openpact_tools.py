@@ -51,12 +51,22 @@ def find_tools_json() -> Path:
 
 
 class OpenPactClient:
-    def __init__(self, base_url: str | None = None, tools_json: Path | None = None):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        tools_json: Path | None = None,
+        pact_id: str | None = None,
+    ):
         spec_path = tools_json or find_tools_json()
         spec = json.loads(spec_path.read_text())
         env_var = spec["runtime"]["env"]
         default = spec["runtime"]["base_url"]
         self.base_url = base_url or os.environ.get(env_var, default)
+        # Default pactId for :pactId substitution. Callers may still pass
+        # `pactId=` explicitly per-call to override.
+        pact_env = spec["runtime"].get("pact_env")
+        env_pact = os.environ.get(pact_env) if pact_env else None
+        self.pact_id = pact_id or env_pact or "default"
         self.tools: list[dict[str, Any]] = spec["tools"]
         self._tools_by_name = {t["name"]: t for t in self.tools}
 
@@ -96,10 +106,14 @@ class OpenPactClient:
         params = dict(spec.get("params") or {})
         query = dict(spec.get("query") or {})
         body = dict(spec.get("body") or {})
-        # Substitute :id-style path params.
+        # Substitute :id-style path params. `:pactId` gets the client's
+        # default when the caller didn't override it explicitly.
         for key in params:
             placeholder = f":{key}"
             if placeholder in url:
+                if key not in kwargs and key == "pactId":
+                    url = url.replace(placeholder, str(self.pact_id))
+                    continue
                 if key not in kwargs:
                     raise TypeError(f"{spec['name']}: missing required path param {key!r}")
                 url = url.replace(placeholder, str(kwargs.pop(key)))

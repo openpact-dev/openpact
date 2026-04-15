@@ -9,7 +9,7 @@ test('start writes PID; stop removes it', async (t) => {
   const home = await tmpHome(t)
   const port = String(nextPort++)
 
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
 
   const start = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
   t.is(start.exitCode, 0)
@@ -44,7 +44,7 @@ test('start writes PID; stop removes it', async (t) => {
 
 test('stop without running daemon is a no-op', async (t) => {
   const home = await tmpHome(t)
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
   const res = await runWithDir(home, ['stop'])
   t.is(res.exitCode, 0)
   t.ok(res.stderr.includes('no PID file') || res.stderr.includes('no daemon to banish'))

@@ -11,6 +11,7 @@ import tasksRoute from './routes/tasks'
 import adminRoute from './routes/admin'
 import entriesRoute from './routes/entries'
 import eventsRoute from './routes/events'
+import pactsRoute from './routes/pacts'
 
 export { HttpError, type ErrorEnvelope } from './errors'
 export { bind, DEFAULT_PORT, type BindOpts } from './bind'
@@ -27,6 +28,7 @@ export function createApi(daemon: Daemon, opts: ApiOpts = {}): FastifyInstance {
   })
   app.register(pingRoute, { daemon })
   app.register(statusRoute, { daemon })
+  app.register(pactsRoute, { daemon })
   app.register(peersRoute, { daemon })
   app.register(knowledgeRoute, { daemon })
   app.register(messagesRoute, { daemon })

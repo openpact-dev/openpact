@@ -8,6 +8,7 @@
 set -euo pipefail
 
 base="${OPENPACT_URL:-http://127.0.0.1:7666}"
+pact="${OPENPACT_PACT:-default}"
 cmd="${1:-}"
 
 usage() {
@@ -33,7 +34,7 @@ case "$cmd" in
     status="${2:-}"
     q=""
     [[ -n "$status" ]] && q="?status=${status}"
-    curl -sf "${base}/v1/tasks${q}" | jq
+    curl -sf "${base}/v1/pacts/${pact}/tasks${q}" | jq
     ;;
 
   create)
@@ -44,14 +45,14 @@ case "$cmd" in
     else
       body="$(jq -n --arg t "$title" '{title:$t}')"
     fi
-    curl -sf -X POST "${base}/v1/tasks" \
+    curl -sf -X POST "${base}/v1/pacts/${pact}/tasks" \
       -H 'content-type: application/json' \
       -d "$body" | jq
     ;;
 
   claim)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/tasks/${id}/claim" | jq
+    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/claim" | jq
     ;;
 
   complete)
@@ -62,14 +63,14 @@ case "$cmd" in
     else
       body="{}"
     fi
-    curl -sf -X PUT "${base}/v1/tasks/${id}/complete" \
+    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/complete" \
       -H 'content-type: application/json' \
       -d "$body" | jq
     ;;
 
   release)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/tasks/${id}/release" | jq
+    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/release" | jq
     ;;
 
   *)

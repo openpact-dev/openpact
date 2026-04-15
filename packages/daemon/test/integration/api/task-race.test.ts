@@ -36,7 +36,7 @@ async function getJson(url: string): Promise<{ status: number; body: any }> {
 async function waitForTask(url: string, taskId: string, timeout = 15000) {
   const deadline = Date.now() + timeout
   while (Date.now() < deadline) {
-    const res = await getJson(`${url}/v1/tasks/${taskId}`)
+    const res = await getJson(`${url}/v1/pacts/default/tasks/${taskId}`)
     if (res.status === 200) return res.body
     await new Promise((r) => setTimeout(r, 100))
   }
@@ -48,7 +48,7 @@ test('two writers concurrently claim same task; eventual single winner', async (
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
 
-  const created = await postJson(`${apiA}/v1/tasks`, { title: 'race me' })
+  const created = await postJson(`${apiA}/v1/pacts/default/tasks`, { title: 'race me' })
   t.is(created.status, 200)
   const taskId = created.body.id as string
 
@@ -60,8 +60,8 @@ test('two writers concurrently claim same task; eventual single winner', async (
   // both may transiently return 200 — the resolution is the eventual
   // deterministic state.
   const [resA, resB] = await Promise.all([
-    putJson(`${apiA}/v1/tasks/${taskId}/claim`),
-    putJson(`${apiB}/v1/tasks/${taskId}/claim`),
+    putJson(`${apiA}/v1/pacts/default/tasks/${taskId}/claim`),
+    putJson(`${apiB}/v1/pacts/default/tasks/${taskId}/claim`),
   ])
 
   // At least one must have succeeded; both 200 is allowed (race window).
@@ -73,14 +73,14 @@ test('two writers concurrently claim same task; eventual single winner', async (
   await new Promise((r) => setTimeout(r, 500))
   await a.daemon.update()
   await b.daemon.update()
-  const fromA = await getJson(`${apiA}/v1/tasks/${taskId}`)
-  const fromB = await getJson(`${apiB}/v1/tasks/${taskId}`)
+  const fromA = await getJson(`${apiA}/v1/pacts/default/tasks/${taskId}`)
+  const fromB = await getJson(`${apiB}/v1/pacts/default/tasks/${taskId}`)
   t.is(fromA.body.status, 'claimed', 'A sees claimed')
   t.is(fromB.body.status, 'claimed', 'B sees claimed')
   t.is(fromA.body.claimed_by, fromB.body.claimed_by, 'A and B agree on the winner')
 
   // A subsequent claim by anyone returns 409 — task is no longer open.
-  const retry = await putJson(`${apiA}/v1/tasks/${taskId}/claim`)
+  const retry = await putJson(`${apiA}/v1/pacts/default/tasks/${taskId}/claim`)
   t.is(retry.status, 409)
   t.is(retry.body.error, 'TASK_NOT_OPEN')
 })

@@ -2,12 +2,26 @@ import test from 'brittle'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
 
-test('GET /v1/status returns the expected shape', async (t) => {
+test('GET /v1/status returns the host-level summary', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
 
   const res = await app.inject({ method: 'GET', url: '/v1/status' })
+  t.is(res.statusCode, 200)
+  const body = JSON.parse(res.body)
+
+  t.is(body.current, 'default', 'currentAlias is the default pact')
+  t.is(body.pact_count, 1)
+  t.is(typeof body.peers, 'number')
+})
+
+test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/status' })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
 
@@ -19,12 +33,14 @@ test('GET /v1/status returns the expected shape', async (t) => {
   t.is(body.is_writer, true)
 })
 
-test('GET /v1/status entries reflects appends', async (t) => {
+test('GET /v1/pacts/:pactId/status entries reflects appends', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
 
-  const before = JSON.parse((await app.inject({ method: 'GET', url: '/v1/status' })).body)
+  const before = JSON.parse(
+    (await app.inject({ method: 'GET', url: '/v1/pacts/default/status' })).body,
+  )
 
   await daemon.append({
     type: 'knowledge',
@@ -35,6 +51,18 @@ test('GET /v1/status entries reflects appends', async (t) => {
   await daemon.update()
   await daemon.waitForViewVersion(1, { timeout: 2000 })
 
-  const after = JSON.parse((await app.inject({ method: 'GET', url: '/v1/status' })).body)
+  const after = JSON.parse(
+    (await app.inject({ method: 'GET', url: '/v1/pacts/default/status' })).body,
+  )
   t.ok(after.entries > before.entries)
+})
+
+test('GET /v1/pacts/unknown/status returns 404 UNKNOWN_PACT', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({ method: 'GET', url: '/v1/pacts/does-not-exist/status' })
+  t.is(res.statusCode, 404)
+  t.is(JSON.parse(res.body).error, 'UNKNOWN_PACT')
 })

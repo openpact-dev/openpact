@@ -8,15 +8,15 @@ export interface KnowledgeListOpts {
 
 export function knowledgeResource(client: OpenPactClient) {
   return {
-    /** GET /v1/knowledge — list knowledge entries, optionally filtered by topic. */
+    /** GET /v1/pacts/:pactId/knowledge — list knowledge entries, optionally filtered by topic. */
     list(opts: KnowledgeListOpts = {}): Promise<KnowledgeEntry[]> {
       return client.req<KnowledgeEntry[]>(
-        `/v1/knowledge${buildQuery(opts as Record<string, unknown>)}`,
+        client.pactPath(`/knowledge${buildQuery(opts as Record<string, unknown>)}`),
       )
     },
-    /** POST /v1/knowledge — share a discovery with the pact. */
+    /** POST /v1/pacts/:pactId/knowledge — share a discovery with the pact. */
     create(payload: KnowledgePayload): Promise<AppendResult> {
-      return client.json<AppendResult>('/v1/knowledge', 'POST', payload)
+      return client.json<AppendResult>(client.pactPath('/knowledge'), 'POST', payload)
     },
   }
 }

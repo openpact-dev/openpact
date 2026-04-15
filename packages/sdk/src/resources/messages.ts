@@ -11,15 +11,15 @@ export interface MessagesListOpts {
 
 export function messagesResource(client: OpenPactClient) {
   return {
-    /** GET /v1/messages — list messages, optionally filtered by since-cursor or recipient. */
+    /** GET /v1/pacts/:pactId/messages — list messages, optionally filtered. */
     list(opts: MessagesListOpts = {}): Promise<MessageEntry[]> {
       return client.req<MessageEntry[]>(
-        `/v1/messages${buildQuery(opts as Record<string, unknown>)}`,
+        client.pactPath(`/messages${buildQuery(opts as Record<string, unknown>)}`),
       )
     },
-    /** POST /v1/messages — send a message to '*' (broadcast) or a specific peer handle. */
+    /** POST /v1/pacts/:pactId/messages — send a message to '*' or a peer handle. */
     send(payload: MessagePayload): Promise<AppendResult> {
-      return client.json<AppendResult>('/v1/messages', 'POST', payload)
+      return client.json<AppendResult>(client.pactPath('/messages'), 'POST', payload)
     },
   }
 }

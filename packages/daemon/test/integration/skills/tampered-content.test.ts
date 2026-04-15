@@ -17,14 +17,33 @@ function sha(content: string): string {
 }
 
 function stubDaemon(entries: any[]) {
-  return {
+  const pact = {
+    dataDir: '/tmp/stub-pact',
     view: {
       async *createReadStream(_range: any) {
         for (const value of entries) yield { key: `skill/${value.timestamp}/${value.id}`, value }
       },
     },
     peerHandle: 'anon-stub-0001',
+    displayName: null,
     append: async () => ({ id: 'stub-1', timestamp: '2026-04-15T00:00:00Z' }),
+  }
+  return {
+    // The resolvePact helper walks listPacts() then openPact() to get a Pact.
+    // Stub both against one `default` pact so route handlers get `pact`.
+    async listPacts() {
+      return [
+        {
+          alias: 'default',
+          pactId: 'stub-pact-id',
+          dataDir: pact.dataDir,
+          addedAt: '2026-04-15T00:00:00Z',
+        },
+      ]
+    },
+    async openPact() {
+      return pact
+    },
   }
 }
 
@@ -58,7 +77,7 @@ test('GET /v1/skills/:id/content detects tampered local content', async (t) => {
     },
   }
   const url = await bootApi(t, stubDaemon([tampered]))
-  const res = await fetch(`${url}/v1/skills/${tampered.id}/content`)
+  const res = await fetch(`${url}/v1/pacts/default/skills/${tampered.id}/content`)
   t.is(res.status, 500)
   const body = (await res.json()) as { error: string }
   t.is(body.error, 'SKILL_CHECKSUM_MISMATCH')
@@ -80,7 +99,7 @@ test('GET /v1/skills/:id/content passes through when content matches checksum', 
     },
   }
   const url = await bootApi(t, stubDaemon([good]))
-  const res = await fetch(`${url}/v1/skills/${good.id}/content`)
+  const res = await fetch(`${url}/v1/pacts/default/skills/${good.id}/content`)
   t.is(res.status, 200)
   t.is(((await res.json()) as any).content, content)
 })

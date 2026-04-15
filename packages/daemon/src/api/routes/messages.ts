@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { listByType } from '../views'
+import { resolvePact } from '../pact-resolver'
 
 const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{4}$'
 
@@ -27,8 +28,8 @@ export default async function messagesRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  app.get<{ Querystring: ListQuery }>(
-    '/v1/messages',
+  app.get<{ Params: { pactId: string }; Querystring: ListQuery }>(
+    '/v1/pacts/:pactId/messages',
     {
       schema: {
         querystring: {
@@ -42,8 +43,9 @@ export default async function messagesRoute(
       },
     },
     async (req) => {
+      const pact = await resolvePact(daemon, req)
       const { since, to, limit } = req.query
-      return listByType(daemon.view, 'message', {
+      return listByType(pact.view, 'message', {
         limit,
         filter: (v) => {
           if (since && v?.timestamp <= since) return false
@@ -54,16 +56,21 @@ export default async function messagesRoute(
     },
   )
 
-  app.post('/v1/messages', { schema: { body: messagePayloadSchema } }, async (req) => {
-    const payload = req.body as Record<string, unknown>
-    const timestamp = new Date().toISOString()
-    const result = await daemon.append({
-      type: 'message',
-      timestamp,
-      agent_id: daemon.peerHandle!,
-      display_name: daemon.displayName,
-      payload,
-    })
-    return { id: result.id, timestamp }
-  })
+  app.post<{ Params: { pactId: string } }>(
+    '/v1/pacts/:pactId/messages',
+    { schema: { body: messagePayloadSchema } },
+    async (req) => {
+      const pact = await resolvePact(daemon, req)
+      const payload = req.body as Record<string, unknown>
+      const timestamp = new Date().toISOString()
+      const result = await pact.append({
+        type: 'message',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      })
+      return { id: result.id, timestamp }
+    },
+  )
 }

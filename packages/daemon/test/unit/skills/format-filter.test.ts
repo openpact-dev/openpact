@@ -45,7 +45,7 @@ test('GET /v1/skills?format=openclaw filters by format', async (t) => {
   // Seed one of each format.
   for (const format of ['openclaw', 'langchain', 'generic'] as const) {
     const content = `content-${format}`
-    const r = await postJson(`${url}/v1/skills`, {
+    const r = await postJson(`${url}/v1/pacts/default/skills`, {
       name: `skill-${format}`,
       version: '1.0.0',
       format,
@@ -55,10 +55,10 @@ test('GET /v1/skills?format=openclaw filters by format', async (t) => {
     t.is(r.status, 200)
   }
 
-  await waitForListLen(`${url}/v1/skills`, 3)
+  await waitForListLen(`${url}/v1/pacts/default/skills`, 3)
 
   for (const format of ['openclaw', 'langchain', 'generic'] as const) {
-    const res = await fetch(`${url}/v1/skills?format=${format}`)
+    const res = await fetch(`${url}/v1/pacts/default/skills?format=${format}`)
     const arr = (await res.json()) as any[]
     t.is(arr.length, 1, `${format}: one match`)
     t.is(arr[0].payload.format, format)
@@ -67,6 +67,6 @@ test('GET /v1/skills?format=openclaw filters by format', async (t) => {
 
 test('GET /v1/skills?format=bogus is rejected by the schema', async (t) => {
   const { url } = await bootApi(t)
-  const res = await fetch(`${url}/v1/skills?format=autogen`)
+  const res = await fetch(`${url}/v1/pacts/default/skills?format=autogen`)
   t.is(res.status, 400, 'unknown format value rejected')
 })

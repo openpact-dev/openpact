@@ -29,7 +29,7 @@ async function postSkill(app: any, over: Record<string, unknown> = {}): Promise<
   const content = (over.content as string) ?? 'real content'
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/skills',
+    url: '/v1/pacts/default/skills',
     payload: {
       name: 'scraper',
       version: '1.0.0',
@@ -49,14 +49,14 @@ test('install: writes file under <dataDir>/skills/<name>@<version>.<ext> with mo
 
   const res = await app.inject({
     method: 'POST',
-    url: `/v1/skills/${id}/install`,
+    url: `/v1/pacts/default/skills/${id}/install`,
     payload: { confirm: true },
   })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
   t.is(body.ok, true)
 
-  const expected = path.join(daemon.dataDir, 'skills', 'scraper@1.0.0.md')
+  const expected = path.join(daemon.current!.dataDir, 'skills', 'scraper@1.0.0.md')
   t.is(body.path, expected)
   const stat = await fs.stat(expected)
   t.is(stat.mode & 0o777, 0o644, 'file mode is 0644')
@@ -69,7 +69,7 @@ test('install: missing { confirm: true } returns 400 NOT_CONFIRMED', async (t) =
 
   const res = await app.inject({
     method: 'POST',
-    url: `/v1/skills/${id}/install`,
+    url: `/v1/pacts/default/skills/${id}/install`,
     payload: { confirm: false },
   })
   t.is(res.statusCode, 400)
@@ -84,7 +84,7 @@ test('install: bad name (path traversal) is rejected with 400 BAD_SKILL_NAME', a
 
   const res = await app.inject({
     method: 'POST',
-    url: `/v1/skills/${id}/install`,
+    url: `/v1/pacts/default/skills/${id}/install`,
     payload: { confirm: true },
   })
   t.is(res.statusCode, 400)
@@ -105,11 +105,11 @@ test('install: each format gets the right extension', async (t) => {
     })
     const res = await app.inject({
       method: 'POST',
-      url: `/v1/skills/${id}/install`,
+      url: `/v1/pacts/default/skills/${id}/install`,
       payload: { confirm: true },
     })
     t.is(res.statusCode, 200, `install ${format}`)
-    const target = path.join(daemon.dataDir, 'skills', `s-${format}@1.0.0.${ext}`)
+    const target = path.join(daemon.current!.dataDir, 'skills', `s-${format}@1.0.0.${ext}`)
     await fs.access(target)
     t.pass(`installed at ${target}`)
   }
@@ -119,7 +119,7 @@ test('install: 404 when skill id is unknown', async (t) => {
   const { app } = await bootApi(t)
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/skills/zzzz-99/install',
+    url: '/v1/pacts/default/skills/zzzz-99/install',
     payload: { confirm: true },
   })
   t.is(res.statusCode, 404)
@@ -130,12 +130,12 @@ test('install: updates installed-skills.json atomically', async (t) => {
   const { id } = await postSkill(app)
   await app.inject({
     method: 'POST',
-    url: `/v1/skills/${id}/install`,
+    url: `/v1/pacts/default/skills/${id}/install`,
     payload: { confirm: true },
   })
 
   const manifest = JSON.parse(
-    await fs.readFile(path.join(daemon.dataDir, 'installed-skills.json'), 'utf8'),
+    await fs.readFile(path.join(daemon.current!.dataDir, 'installed-skills.json'), 'utf8'),
   )
   t.ok(manifest[id], 'entry id is the manifest key')
   t.is(manifest[id].name, 'scraper')
@@ -145,7 +145,7 @@ test('install: updates installed-skills.json atomically', async (t) => {
   t.ok(manifest[id].installed_at, 'installed_at is set')
 
   // No leftover .tmp file
-  const dir = await fs.readdir(daemon.dataDir)
+  const dir = await fs.readdir(daemon.current!.dataDir)
   t.absent(
     dir.some((f) => f.endsWith('.tmp')),
     'no leftover .tmp file',
@@ -159,16 +159,16 @@ test('GET /v1/skills/installed lists every installed skill', async (t) => {
 
   await app.inject({
     method: 'POST',
-    url: `/v1/skills/${a.id}/install`,
+    url: `/v1/pacts/default/skills/${a.id}/install`,
     payload: { confirm: true },
   })
   await app.inject({
     method: 'POST',
-    url: `/v1/skills/${b.id}/install`,
+    url: `/v1/pacts/default/skills/${b.id}/install`,
     payload: { confirm: true },
   })
 
-  const res = await app.inject({ method: 'GET', url: '/v1/skills/installed' })
+  const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/skills/installed' })
   t.is(res.statusCode, 200)
   const installed = JSON.parse(res.body) as any[]
   t.is(installed.length, 2)
@@ -178,7 +178,7 @@ test('GET /v1/skills/installed lists every installed skill', async (t) => {
 
 test('GET /v1/skills/installed returns [] when nothing has been installed', async (t) => {
   const { app } = await bootApi(t)
-  const res = await app.inject({ method: 'GET', url: '/v1/skills/installed' })
+  const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/skills/installed' })
   t.is(res.statusCode, 200)
   t.alike(JSON.parse(res.body), [])
 })

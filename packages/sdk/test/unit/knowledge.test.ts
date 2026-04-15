@@ -6,21 +6,21 @@ import { mockFetch } from '../helpers/mock-fetch'
 
 test('knowledge.list: builds URL with query', async (t) => {
   const m = mockFetch({ status: 200, body: [] })
-  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch }))
+  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   await r.list({ topic: 'sales', limit: 5 })
-  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/knowledge?topic=sales&limit=5')
+  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/knowledge?topic=sales&limit=5')
 })
 
 test('knowledge.list: no opts → bare URL', async (t) => {
   const m = mockFetch({ status: 200, body: [] })
-  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch }))
+  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   await r.list()
-  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/knowledge')
+  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/knowledge')
 })
 
 test('knowledge.create: POSTs payload', async (t) => {
   const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: '2026-04-15T00:00:00Z' } })
-  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch }))
+  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   const res = await r.create({ topic: 'sales', content: 'hi', confidence: 0.8 })
   t.is(res.id, 'aaaa-1')
   t.is(m.calls[0].method, 'POST')
@@ -29,6 +29,6 @@ test('knowledge.create: POSTs payload', async (t) => {
 
 test('knowledge.create: 400 → BadRequestError', async (t) => {
   const m = mockFetch({ status: 400, body: { error: 'BAD_REQUEST', message: 'missing topic' } })
-  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch }))
+  const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   await t.exception(() => r.create({ topic: '', content: 'x' }), BadRequestError)
 })

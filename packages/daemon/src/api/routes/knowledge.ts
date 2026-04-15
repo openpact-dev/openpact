@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { listByType } from '../views'
+import { resolvePact } from '../pact-resolver'
 
 const knowledgePayloadSchema = {
   type: 'object',
@@ -23,8 +24,8 @@ export default async function knowledgeRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  app.get<{ Querystring: ListQuery }>(
-    '/v1/knowledge',
+  app.get<{ Params: { pactId: string }; Querystring: ListQuery }>(
+    '/v1/pacts/:pactId/knowledge',
     {
       schema: {
         querystring: {
@@ -37,24 +38,30 @@ export default async function knowledgeRoute(
       },
     },
     async (req) => {
+      const pact = await resolvePact(daemon, req)
       const { topic, limit } = req.query
-      return listByType(daemon.view, 'knowledge', {
+      return listByType(pact.view, 'knowledge', {
         limit,
         filter: topic ? (v) => v?.payload?.topic === topic : undefined,
       })
     },
   )
 
-  app.post('/v1/knowledge', { schema: { body: knowledgePayloadSchema } }, async (req) => {
-    const payload = req.body as Record<string, unknown>
-    const timestamp = new Date().toISOString()
-    const result = await daemon.append({
-      type: 'knowledge',
-      timestamp,
-      agent_id: daemon.peerHandle!,
-      display_name: daemon.displayName,
-      payload,
-    })
-    return { id: result.id, timestamp }
-  })
+  app.post<{ Params: { pactId: string } }>(
+    '/v1/pacts/:pactId/knowledge',
+    { schema: { body: knowledgePayloadSchema } },
+    async (req) => {
+      const pact = await resolvePact(daemon, req)
+      const payload = req.body as Record<string, unknown>
+      const timestamp = new Date().toISOString()
+      const result = await pact.append({
+        type: 'knowledge',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      })
+      return { id: result.id, timestamp }
+    },
+  )
 }

@@ -89,7 +89,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
       '-sf',
       '-X',
       'POST',
-      `${base}/v1/knowledge`,
+      `${base}/v1/pacts/default/knowledge`,
       '-H',
       'content-type: application/json',
       '-d',
@@ -104,7 +104,8 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
 
   // list filtered by topic — wait for view
   const list = await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/knowledge?topic=routing&limit=20`)),
+    async () =>
+      JSON.parse(await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`)),
     (arr: any[]) => Array.isArray(arr) && arr.length >= 1,
   )
   t.is(list[0].payload.topic, 'routing')
@@ -116,7 +117,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
       '-sf',
       '-X',
       'POST',
-      `${base}/v1/tasks`,
+      `${base}/v1/pacts/default/tasks`,
       '-H',
       'content-type: application/json',
       '-d',
@@ -130,12 +131,14 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
 
   // list open tasks
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/tasks?status=open`)),
+    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)),
     (arr: any[]) => arr.some((tt) => tt.id === taskId),
   )
 
   // claim
-  const claimed = JSON.parse(await curl('-sf', '-X', 'PUT', `${base}/v1/tasks/${taskId}/claim`))
+  const claimed = JSON.parse(
+    await curl('-sf', '-X', 'PUT', `${base}/v1/pacts/default/tasks/${taskId}/claim`),
+  )
   t.is(claimed.task.status, 'claimed')
 
   // complete
@@ -144,7 +147,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
       '-sf',
       '-X',
       'PUT',
-      `${base}/v1/tasks/${taskId}/complete`,
+      `${base}/v1/pacts/default/tasks/${taskId}/complete`,
       '-H',
       'content-type: application/json',
       '-d',
@@ -161,7 +164,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
     '-sf',
     '-X',
     'POST',
-    `${base}/v1/messages`,
+    `${base}/v1/pacts/default/messages`,
     '-H',
     'content-type: application/json',
     '-d',
@@ -169,13 +172,15 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   )
   await waitFor(
     async () =>
-      JSON.parse(await curl('-sf', `${base}/v1/messages?since=${encodeURIComponent(cutoff)}`)),
+      JSON.parse(
+        await curl('-sf', `${base}/v1/pacts/default/messages?since=${encodeURIComponent(cutoff)}`),
+      ),
     (arr: any[]) => arr.length >= 1,
   )
 
   // jq pipeline used in the doc must parse the response shape we emit
   const jqOut = await curlPipeJq(
-    ['-sf', `${base}/v1/knowledge?topic=routing&limit=20`],
+    ['-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`],
     ['-c', '.[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'],
   )
   const parsed = JSON.parse(jqOut.trim().split('\n')[0])
@@ -190,7 +195,7 @@ test('claiming a task someone else already owns returns the documented 409', asy
       '-sf',
       '-X',
       'POST',
-      `${base}/v1/tasks`,
+      `${base}/v1/pacts/default/tasks`,
       '-H',
       'content-type: application/json',
       '-d',
@@ -198,10 +203,10 @@ test('claiming a task someone else already owns returns the documented 409', asy
     ),
   )
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/tasks?status=open`)),
+    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)),
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
-  await curl('-sf', '-X', 'PUT', `${base}/v1/tasks/${id}/claim`)
+  await curl('-sf', '-X', 'PUT', `${base}/v1/pacts/default/tasks/${id}/claim`)
 
   // Second claim must surface the documented error envelope. -s + -w
   // gives us status code; -o pipes body to a temp file we then parse.
@@ -214,7 +219,7 @@ test('claiming a task someone else already owns returns the documented 409', asy
     '%{http_code}',
     '-X',
     'PUT',
-    `${base}/v1/tasks/${id}/claim`,
+    `${base}/v1/pacts/default/tasks/${id}/claim`,
   )
   t.is(code.trim(), '409')
   const body = JSON.parse(await fs.readFile(errFile, 'utf8'))

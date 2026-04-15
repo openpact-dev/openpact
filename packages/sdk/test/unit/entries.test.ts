@@ -11,17 +11,17 @@ test('entries.get: GETs /v1/entries/:id and returns the parsed entry', async (t)
     payload: { topic: 'wiring', content: 'hi' },
   }
   const m = mockFetch({ status: 200, body: entry })
-  const pact = new OpenPact({ fetch: m.fetch })
+  const pact = new OpenPact({ fetch: m.fetch, pactId: 'default' })
   const got = await pact.entries.get('a7f2-412')
-  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/entries/a7f2-412')
+  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/entries/a7f2-412')
   t.alike(got, entry)
 })
 
 test('entries.referencedBy: GETs the referenced-by suffix', async (t) => {
   const m = mockFetch({ status: 200, body: [] })
-  const pact = new OpenPact({ fetch: m.fetch })
+  const pact = new OpenPact({ fetch: m.fetch, pactId: 'default' })
   await pact.entries.referencedBy('a7f2-412')
-  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/entries/a7f2-412/referenced-by')
+  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/entries/a7f2-412/referenced-by')
 })
 
 test('entries.get: forwards 404 NotFoundError up', async (t) => {
@@ -29,6 +29,6 @@ test('entries.get: forwards 404 NotFoundError up', async (t) => {
     status: 404,
     body: { error: 'NOT_FOUND', message: 'no such entry' },
   })
-  const pact = new OpenPact({ fetch: m.fetch })
+  const pact = new OpenPact({ fetch: m.fetch, pactId: 'default' })
   await t.exception(() => pact.entries.get('zzzz-99'))
 })

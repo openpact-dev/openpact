@@ -33,7 +33,7 @@ async function postJson(url: string, body: unknown): Promise<{ status: number; b
 test('POST /v1/skills: correct checksum is accepted', async (t) => {
   const { url } = await bootApi(t)
   const content = 'hello'
-  const res = await postJson(`${url}/v1/skills`, {
+  const res = await postJson(`${url}/v1/pacts/default/skills`, {
     name: 's',
     version: '1.0.0',
     format: 'generic',
@@ -46,7 +46,7 @@ test('POST /v1/skills: correct checksum is accepted', async (t) => {
 
 test('POST /v1/skills: mismatched checksum returns 400 SKILL_CHECKSUM_MISMATCH', async (t) => {
   const { url } = await bootApi(t)
-  const res = await postJson(`${url}/v1/skills`, {
+  const res = await postJson(`${url}/v1/pacts/default/skills`, {
     name: 's',
     version: '1.0.0',
     format: 'generic',
@@ -60,7 +60,7 @@ test('POST /v1/skills: mismatched checksum returns 400 SKILL_CHECKSUM_MISMATCH',
 test('POST /v1/skills: requires_approval is preserved on the appended entry', async (t) => {
   const { url, daemon } = await bootApi(t)
   const content = 'careful with this one'
-  const res = await postJson(`${url}/v1/skills`, {
+  const res = await postJson(`${url}/v1/pacts/default/skills`, {
     name: 'dangerous',
     version: '1.0.0',
     format: 'generic',

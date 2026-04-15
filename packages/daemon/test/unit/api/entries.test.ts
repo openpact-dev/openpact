@@ -24,12 +24,12 @@ test('GET /v1/entries/:id returns the full entry across any type', async (t) => 
   const { app } = await bootApi(t)
   const create = await app.inject({
     method: 'POST',
-    url: '/v1/knowledge',
+    url: '/v1/pacts/default/knowledge',
     payload: { topic: 'wiring', content: 'cross-type-lookup-works' },
   })
   const { id } = JSON.parse(create.body)
 
-  const res = await app.inject({ method: 'GET', url: `/v1/entries/${id}` })
+  const res = await app.inject({ method: 'GET', url: `/v1/pacts/default/entries/${id}` })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
   t.is(body.id, id)
@@ -39,7 +39,7 @@ test('GET /v1/entries/:id returns the full entry across any type', async (t) => 
 
 test('GET /v1/entries/:id returns 404 NOT_FOUND for unknown id', async (t) => {
   const { app } = await bootApi(t)
-  const res = await app.inject({ method: 'GET', url: '/v1/entries/zzzz-99' })
+  const res = await app.inject({ method: 'GET', url: '/v1/pacts/default/entries/zzzz-99' })
   t.is(res.statusCode, 404)
   t.is(JSON.parse(res.body).error, 'NOT_FOUND')
 })
@@ -65,7 +65,7 @@ test('GET /v1/entries/:id/referenced-by returns entries that ref this one', asyn
 
   const res = await app.inject({
     method: 'GET',
-    url: `/v1/entries/${original.id}/referenced-by`,
+    url: `/v1/pacts/default/entries/${original.id}/referenced-by`,
   })
   t.is(res.statusCode, 200)
   const arr = JSON.parse(res.body) as any[]
@@ -77,12 +77,15 @@ test('GET /v1/entries/:id/referenced-by returns [] for an entry with no incoming
   const { app } = await bootApi(t)
   const create = await app.inject({
     method: 'POST',
-    url: '/v1/knowledge',
+    url: '/v1/pacts/default/knowledge',
     payload: { topic: 'lonely', content: 'no one references this' },
   })
   const { id } = JSON.parse(create.body)
 
-  const res = await app.inject({ method: 'GET', url: `/v1/entries/${id}/referenced-by` })
+  const res = await app.inject({
+    method: 'GET',
+    url: `/v1/pacts/default/entries/${id}/referenced-by`,
+  })
   t.is(res.statusCode, 200)
   t.alike(JSON.parse(res.body), [])
 })

@@ -1,6 +1,8 @@
 export interface ApiClientOpts {
   port?: number
   host?: string
+  /** Pact alias or 64-hex id. Required for per-pact reads/writes. Default: 'default'. */
+  pactId?: string
 }
 
 export class DaemonNotRunningError extends Error {
@@ -12,9 +14,15 @@ export class DaemonNotRunningError extends Error {
 
 export class ApiClient {
   base: string
+  pactId: string
 
-  constructor({ port = 7666, host = '127.0.0.1' }: ApiClientOpts = {}) {
+  constructor({ port = 7666, host = '127.0.0.1', pactId = 'default' }: ApiClientOpts = {}) {
     this.base = `http://${host}:${port}`
+    this.pactId = pactId
+  }
+
+  private pactPath(suffix: string): string {
+    return `/v1/pacts/${encodeURIComponent(this.pactId)}${suffix}`
   }
 
   private async req(path: string, init: RequestInit = {}): Promise<any> {
@@ -52,15 +60,14 @@ export class ApiClient {
   }
 
   async status(): Promise<any> {
-    return this.req('/v1/status')
+    return this.req(this.pactPath('/status'))
   }
 
   async peers(): Promise<any[]> {
-    return this.req('/v1/peers')
+    return this.req(this.pactPath('/peers'))
   }
 
   async list(type: string, opts: { limit?: number } = {}): Promise<any[]> {
-    // knowledge stays singular; task/skill/message endpoints are plural.
     const path =
       type === 'knowledge'
         ? 'knowledge'
@@ -74,11 +81,11 @@ export class ApiClient {
     const params = new URLSearchParams()
     if (opts.limit) params.set('limit', String(opts.limit))
     const qs = params.toString()
-    return this.req(`/v1/${path}${qs ? `?${qs}` : ''}`)
+    return this.req(this.pactPath(`/${path}${qs ? `?${qs}` : ''}`))
   }
 
   async addWriter(key: string, indexer = false): Promise<any> {
-    return this.req('/v1/admin/writers', {
+    return this.req(this.pactPath('/admin/writers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ key, indexer }),
@@ -86,6 +93,6 @@ export class ApiClient {
   }
 
   async removeWriter(key: string): Promise<any> {
-    return this.req(`/v1/admin/writers/${key}`, { method: 'DELETE' })
+    return this.req(this.pactPath(`/admin/writers/${key}`), { method: 'DELETE' })
   }
 }

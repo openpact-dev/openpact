@@ -1,38 +1,48 @@
 ---
 name: openpact
-version: 0.0.1
+version: 0.0.2
 description: |
   Use a local OpenPact daemon as shared, append-only memory across
   agent sessions. Read prior decisions before acting, record
   non-obvious calls after deciding, coordinate work via tasks, and
-  broadcast short status messages.
+  broadcast short status messages. The daemon holds one or more
+  pacts; every per-pact tool takes a `pactId` (alias or 64-hex key).
 runtime:
   base_url: http://127.0.0.1:7666
   env: OPENPACT_URL
+  pact_env: OPENPACT_PACT
 tools:
   - name: ping
     description: Check the daemon is reachable. Returns {ok: true}.
     method: GET
     path: /v1/ping
-  - name: pact_status
-    description: Pact id, this peer handle, role, peer count, entry count, role flags.
+  - name: host_status
+    description: Host-level summary — current pact alias, peer count, pact count.
     method: GET
     path: /v1/status
-  - name: list_peers
-    description: Peers currently connected to this pact.
+  - name: list_pacts
+    description: List every pact on the host (alias, name, purpose, role, is_current).
     method: GET
-    path: /v1/peers
+    path: /v1/pacts
+  - name: pact_status
+    description: Pact id, name, purpose, this peer handle + display name, role, peer + entry counts.
+    method: GET
+    path: /v1/pacts/:pactId/status
+  - name: list_peers
+    description: Peers currently connected to this host.
+    method: GET
+    path: /v1/pacts/:pactId/peers
   - name: recall_knowledge
     description: List recent knowledge entries, optionally filtered by topic.
     method: GET
-    path: /v1/knowledge
+    path: /v1/pacts/:pactId/knowledge
     query:
       topic: { type: string, optional: true }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
   - name: record_knowledge
     description: Share a discovery (decision, convention, workaround, tradeoff).
     method: POST
-    path: /v1/knowledge
+    path: /v1/pacts/:pactId/knowledge
     body:
       topic: { type: string, min_length: 1, max_length: 200 }
       content: { type: string, min_length: 1 }
@@ -41,47 +51,47 @@ tools:
   - name: list_tasks
     description: List tasks, optionally filtered by status.
     method: GET
-    path: /v1/tasks
+    path: /v1/pacts/:pactId/tasks
     query:
       status: { enum: [open, claimed, complete], optional: true }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
   - name: get_task
     description: Fetch a single task by id with reduced state.
     method: GET
-    path: /v1/tasks/:id
+    path: /v1/pacts/:pactId/tasks/:id
   - name: create_task
     description: Post a new open task.
     method: POST
-    path: /v1/tasks
+    path: /v1/pacts/:pactId/tasks
     body:
       title: { type: string, min_length: 1, max_length: 200 }
       description: { type: string, optional: true }
   - name: claim_task
     description: Claim an open task. 409 TASK_NOT_OPEN if another agent already owns it.
     method: PUT
-    path: /v1/tasks/:id/claim
+    path: /v1/pacts/:pactId/tasks/:id/claim
   - name: complete_task
     description: Mark a task complete. Claimer-only unless skip-claim.
     method: PUT
-    path: /v1/tasks/:id/complete
+    path: /v1/pacts/:pactId/tasks/:id/complete
     body:
       result: { type: string, optional: true, nullable: true }
   - name: release_task
     description: Claimer-only revert of a claimed task back to open.
     method: PUT
-    path: /v1/tasks/:id/release
+    path: /v1/pacts/:pactId/tasks/:id/release
   - name: get_entry
     description: Fetch a single entry by id, across any type (knowledge / task / skill / message).
     method: GET
-    path: /v1/entries/:id
+    path: /v1/pacts/:pactId/entries/:id
   - name: referenced_by
     description: List entries that reference this one (reverse-ref index).
     method: GET
-    path: /v1/entries/:id/referenced-by
+    path: /v1/pacts/:pactId/entries/:id/referenced-by
   - name: share_skill
     description: Publish a skill to the pact. Caller must compute sha256 of content (sha256:<hex64>).
     method: POST
-    path: /v1/skills
+    path: /v1/pacts/:pactId/skills
     body:
       name: { type: string, min_length: 1, max_length: 200 }
       version: { type: string, min_length: 1 }
@@ -93,28 +103,28 @@ tools:
   - name: list_skills
     description: List skills shared in the pact, optionally filtered by runtime format.
     method: GET
-    path: /v1/skills
+    path: /v1/pacts/:pactId/skills
     query:
       format: { enum: [openclaw, langchain, generic], optional: true }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
   - name: get_skill_content
     description: Download a skill's full content. Daemon verifies checksum.
     method: GET
-    path: /v1/skills/:id/content
+    path: /v1/pacts/:pactId/skills/:id/content
   - name: install_skill
-    description: Install a skill to the daemon's <dataDir>/skills/. Requires { confirm: true }; daemon validates the name + re-verifies sha256 before writing.
+    description: Install a skill to <pactDir>/skills/. Requires { confirm: true }; daemon validates the name + re-verifies sha256 before writing.
     method: POST
-    path: /v1/skills/:id/install
+    path: /v1/pacts/:pactId/skills/:id/install
     body:
       confirm: { type: boolean, description: 'must be true' }
   - name: list_installed_skills
-    description: List skills installed locally on this daemon.
+    description: List skills installed locally for this pact.
     method: GET
-    path: /v1/skills/installed
+    path: /v1/pacts/:pactId/skills/installed
   - name: read_messages
     description: List messages, optionally since a cursor or filtered by recipient.
     method: GET
-    path: /v1/messages
+    path: /v1/pacts/:pactId/messages
     query:
       since: { type: string, format: date-time, optional: true }
       to: { type: string, optional: true }
@@ -122,7 +132,7 @@ tools:
   - name: send_message
     description: Send a message to "*" (broadcast) or a specific peer handle.
     method: POST
-    path: /v1/messages
+    path: /v1/pacts/:pactId/messages
     body:
       to: { type: string, description: '"*" or peer handle anon-foo-1234' }
       content: { type: string, min_length: 1 }
@@ -130,19 +140,20 @@ tools:
   - name: grant_writer
     description: Bind a peer (by 64-hex public key) as a writer or indexer of this pact. Indexer-only.
     method: POST
-    path: /v1/admin/writers
+    path: /v1/pacts/:pactId/admin/writers
     body:
       key: { type: string, pattern: '^[0-9a-f]{64}$' }
       indexer: { type: boolean, optional: true }
   - name: revoke_writer
     description: Remove a writer from this pact by 64-hex public key. Indexer-only.
     method: DELETE
-    path: /v1/admin/writers/:key
+    path: /v1/pacts/:pactId/admin/writers/:key
 errors:
   envelope: '{ "error": "<CODE>", "message": "...", "status": <int> }'
   codes:
     - { status: 400, code: BAD_REQUEST, meaning: malformed payload or query }
     - { status: 404, code: NOT_FOUND, meaning: id not in the pact }
+    - { status: 404, code: UNKNOWN_PACT, meaning: pactId in the URL isn't registered on this host }
     - { status: 409, code: TASK_NOT_OPEN, meaning: task already claimed or complete }
     - { status: 409, code: TASK_ALREADY_COMPLETE, meaning: cannot transition a complete task }
     - { status: 409, code: NOT_CLAIMER, meaning: only the current claimer may complete or release }
@@ -155,7 +166,9 @@ errors:
 
 A local OpenPact daemon gives every agent in this project shared,
 append-only memory. Use it as a long-lived notebook every agent reads
-and writes.
+and writes. The daemon holds one or more pacts; every per-pact tool
+takes a `pactId` — either the short local alias (e.g. `default`, or
+whatever the creator named it) or the 64-hex pact key.
 
 ## When to read
 
@@ -174,6 +187,14 @@ and writes.
 - **When work needs tracking across sessions**, post a task instead of
   a TODO comment.
 
+## Picking a pact
+
+- A host may hold multiple pacts. Start by calling `list_pacts` or
+  `host_status` to find the currently-selected alias. Default to the
+  `current` pact unless the user tells you otherwise.
+- `OPENPACT_PACT` in the environment is the conventional override if
+  the tool layer supports it.
+
 ## Conventions
 
 - **Topics are short and reusable** — `routing`, `auth`, `db-schema`,
@@ -190,20 +211,23 @@ and writes.
 ## Calling the API
 
 The daemon listens on `http://127.0.0.1:7666`. Override with the
-`OPENPACT_URL` environment variable. Every operation in the `tools:`
-list above is a plain HTTP request:
+`OPENPACT_URL` environment variable. Most tools are pact-scoped —
+substitute `:pactId` with an alias or pact key:
 
 ```
 GET    /v1/ping
-GET    /v1/knowledge?topic=routing&limit=20
-POST   /v1/knowledge          { topic, content, confidence?, source? }
-GET    /v1/tasks?status=open
-POST   /v1/tasks              { title, description? }
-PUT    /v1/tasks/<id>/claim
-PUT    /v1/tasks/<id>/complete    { result? }
-PUT    /v1/tasks/<id>/release
-GET    /v1/messages?since=<iso>
-POST   /v1/messages           { to, content, priority? }
+GET    /v1/status                                       # host summary
+GET    /v1/pacts                                        # list pacts
+GET    /v1/pacts/<pactId>/status
+GET    /v1/pacts/<pactId>/knowledge?topic=routing
+POST   /v1/pacts/<pactId>/knowledge   { topic, content, confidence?, source? }
+GET    /v1/pacts/<pactId>/tasks?status=open
+POST   /v1/pacts/<pactId>/tasks       { title, description? }
+PUT    /v1/pacts/<pactId>/tasks/<id>/claim
+PUT    /v1/pacts/<pactId>/tasks/<id>/complete    { result? }
+PUT    /v1/pacts/<pactId>/tasks/<id>/release
+GET    /v1/pacts/<pactId>/messages?since=<iso>
+POST   /v1/pacts/<pactId>/messages    { to, content, priority? }
 ```
 
 Errors come back as `{ error: "<CODE>", message, status }`. See the

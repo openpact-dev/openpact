@@ -6,6 +6,7 @@ export interface ParsedArgs {
   baseUrl?: string
   host?: string
   port?: number
+  pactId?: string
   help?: boolean
   version?: boolean
 }
@@ -23,6 +24,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break
       case '--port':
         out.port = Number(argv[++i])
+        break
+      case '--pact':
+      case '--pact-id':
+        out.pactId = argv[++i]
         break
       case '-h':
       case '--help':
@@ -48,6 +53,8 @@ export function resolveClientOpts(args: ParsedArgs, env: NodeJS.ProcessEnv): Cli
     if (!Number.isFinite(args.port)) throw new Error('--port must be a number')
     opts.port = args.port
   }
+  const pactId = args.pactId ?? env.OPENPACT_PACT
+  if (pactId) opts.pactId = pactId
   return opts
 }
 

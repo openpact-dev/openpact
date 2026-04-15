@@ -23,7 +23,7 @@ test('error envelope shape: 400 BAD_REQUEST from validation', async (t) => {
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/knowledge',
+    url: '/v1/pacts/default/knowledge',
     payload: { content: 'no topic' },
   })
   t.is(res.statusCode, 400)
@@ -52,12 +52,12 @@ test('error envelope shape: 409 from HttpError throw', async (t) => {
 
   const post = await app.inject({
     method: 'POST',
-    url: '/v1/tasks',
+    url: '/v1/pacts/default/tasks',
     payload: { title: 'x' },
   })
   const { id } = JSON.parse(post.body)
-  await app.inject({ method: 'PUT', url: `/v1/tasks/${id}/claim` })
-  const res = await app.inject({ method: 'PUT', url: `/v1/tasks/${id}/claim` })
+  await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
+  const res = await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
   t.is(res.statusCode, 409)
   const body = JSON.parse(res.body)
   t.is(body.error, 'TASK_NOT_OPEN')

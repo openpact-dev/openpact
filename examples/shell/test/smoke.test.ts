@@ -97,7 +97,7 @@ test('send.sh broadcasts a message', async (t) => {
 
   await waitFor(
     async () => {
-      const res = await fetch(`${base}/v1/messages`)
+      const res = await fetch(`${base}/v1/pacts/default/messages`)
       return (await res.json()) as any[]
     },
     (arr) => arr.some((m) => m.payload.content === 'hello from shell'),

@@ -86,21 +86,23 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
 
   // Seed a knowledge entry, a task, a skill, and a message so the
   // GET-by-id and PUT lifecycle tools have a real id to chase.
-  const k = await call(base, 'POST', '/v1/knowledge', {
+  const k = await call(base, 'POST', '/v1/pacts/default/knowledge', {
     topic: 'wiring',
     content: 'tools.json drove this',
   })
   t.is(k.status, 200)
   const knowledgeId: string = k.body.id
 
-  const taskCreate = await call(base, 'POST', '/v1/tasks', { title: 'tools-json-task' })
+  const taskCreate = await call(base, 'POST', '/v1/pacts/default/tasks', {
+    title: 'tools-json-task',
+  })
   t.is(taskCreate.status, 200)
   const taskId: string = taskCreate.body.id
 
   const { createHash } = await import('crypto')
   const skillContent = 'x'
   const SHA = 'sha256:' + createHash('sha256').update(skillContent, 'utf8').digest('hex')
-  const skillCreate = await call(base, 'POST', '/v1/skills', {
+  const skillCreate = await call(base, 'POST', '/v1/pacts/default/skills', {
     name: 's',
     version: '1.0.0',
     format: 'generic',
@@ -110,10 +112,10 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
   t.is(skillCreate.status, 200)
   const skillId: string = skillCreate.body.id
 
-  await call(base, 'POST', '/v1/messages', { to: '*', content: 'hi' })
+  await call(base, 'POST', '/v1/pacts/default/messages', { to: '*', content: 'hi' })
 
   await waitFor(
-    async () => (await call(base, 'GET', '/v1/tasks?status=open')).body,
+    async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
     (arr) => Array.isArray(arr) && arr.some((tt: any) => tt.id === taskId),
   )
 
@@ -127,10 +129,14 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
     if (skip.has(tool.name)) continue
 
     let url = tool.path
+    // Substitute :pactId first so later :id substitutions have a stable path.
+    if (url.includes(':pactId')) {
+      url = url.replace(':pactId', 'default')
+    }
     if (url.includes(':id')) {
-      if (tool.path.startsWith('/v1/tasks/')) url = url.replace(':id', taskId)
-      else if (tool.path.startsWith('/v1/skills/')) url = url.replace(':id', skillId)
-      else if (tool.path.startsWith('/v1/entries/')) url = url.replace(':id', knowledgeId)
+      if (url.includes('/tasks/')) url = url.replace(':id', taskId)
+      else if (url.includes('/skills/')) url = url.replace(':id', skillId)
+      else if (url.includes('/entries/')) url = url.replace(':id', knowledgeId)
     }
 
     let body: unknown | undefined
@@ -164,14 +170,14 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
 
 test('lost claim race surfaces the documented TASK_NOT_OPEN 409', async (t) => {
   const { base } = await bootDaemon(t)
-  const created = await call(base, 'POST', '/v1/tasks', { title: 'race' })
+  const created = await call(base, 'POST', '/v1/pacts/default/tasks', { title: 'race' })
   const id = created.body.id
   await waitFor(
-    async () => (await call(base, 'GET', '/v1/tasks?status=open')).body,
+    async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
     (arr) => Array.isArray(arr) && arr.some((tt: any) => tt.id === id),
   )
-  await call(base, 'PUT', `/v1/tasks/${id}/claim`)
-  const second = await call(base, 'PUT', `/v1/tasks/${id}/claim`)
+  await call(base, 'PUT', `/v1/pacts/default/tasks/${id}/claim`)
+  const second = await call(base, 'PUT', `/v1/pacts/default/tasks/${id}/claim`)
   t.is(second.status, 409, 'second claim is a documented conflict')
   t.is(second.body.error, 'TASK_NOT_OPEN', 'envelope code matches tools.json')
 })

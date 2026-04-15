@@ -17,7 +17,7 @@ async function tmpDaemonWithApi(
   const port = nextPort++
   await bind(app, { host: '127.0.0.1', port })
 
-  const pact = new OpenPact({ port })
+  const pact = new OpenPact({ port, pactId: 'default' })
 
   const stop = async () => {
     await app.close()

@@ -3,8 +3,10 @@ import { mkdir, readFile, writeFile, rename } from 'fs/promises'
 import path from 'path'
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
+import type { Pact } from '../../pact'
 import { listByType, getById } from '../views'
 import { HttpError } from '../errors'
+import { resolvePact } from '../pact-resolver'
 
 const SKILL_FORMATS = ['openclaw', 'langchain', 'generic'] as const
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/
@@ -18,12 +20,12 @@ function expectedChecksum(content: string): string {
   return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
 }
 
-function skillsDir(daemon: Daemon): string {
-  return path.join(daemon.dataDir, 'skills')
+function skillsDir(pact: Pact): string {
+  return path.join(pact.dataDir, 'skills')
 }
 
-function installedManifestPath(daemon: Daemon): string {
-  return path.join(daemon.dataDir, 'installed-skills.json')
+function installedManifestPath(pact: Pact): string {
+  return path.join(pact.dataDir, 'installed-skills.json')
 }
 
 interface InstalledRecord {
@@ -35,9 +37,9 @@ interface InstalledRecord {
   format: string
 }
 
-async function readInstalled(daemon: Daemon): Promise<Record<string, InstalledRecord>> {
+async function readInstalled(pact: Pact): Promise<Record<string, InstalledRecord>> {
   try {
-    return JSON.parse(await readFile(installedManifestPath(daemon), 'utf8'))
+    return JSON.parse(await readFile(installedManifestPath(pact), 'utf8'))
   } catch (err: any) {
     if (err?.code === 'ENOENT') return {}
     throw err
@@ -45,11 +47,10 @@ async function readInstalled(daemon: Daemon): Promise<Record<string, InstalledRe
 }
 
 async function writeInstalled(
-  daemon: Daemon,
+  pact: Pact,
   manifest: Record<string, InstalledRecord>,
 ): Promise<void> {
-  // Atomic write: tmp-then-rename so a crash mid-write can't half-truncate.
-  const target = installedManifestPath(daemon)
+  const target = installedManifestPath(pact)
   const tmp = `${target}.tmp`
   await mkdir(path.dirname(target), { recursive: true })
   await writeFile(tmp, JSON.stringify(manifest, null, 2))
@@ -77,6 +78,7 @@ interface ListQuery {
 }
 
 interface IdParams {
+  pactId: string
   id: string
 }
 
@@ -84,8 +86,8 @@ export default async function skillsRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  app.get<{ Querystring: ListQuery }>(
-    '/v1/skills',
+  app.get<{ Params: { pactId: string }; Querystring: ListQuery }>(
+    '/v1/pacts/:pactId/skills',
     {
       schema: {
         querystring: {
@@ -98,39 +100,46 @@ export default async function skillsRoute(
       },
     },
     async (req) => {
+      const pact = await resolvePact(daemon, req)
       const { format, limit } = req.query
-      return listByType(daemon.view, 'skill', {
+      return listByType(pact.view, 'skill', {
         limit,
         filter: format ? (v) => v?.payload?.format === format : undefined,
       })
     },
   )
 
-  app.post('/v1/skills', { schema: { body: skillPayloadSchema } }, async (req) => {
-    const payload = req.body as Record<string, unknown>
-    const content = payload.content as string
-    const claimed = payload.checksum as string
-    const actual = expectedChecksum(content)
-    if (claimed !== actual) {
-      throw new HttpError(
-        400,
-        'SKILL_CHECKSUM_MISMATCH',
-        `checksum ${claimed} does not match sha256(content) ${actual}`,
-      )
-    }
-    const timestamp = new Date().toISOString()
-    const result = await daemon.append({
-      type: 'skill',
-      timestamp,
-      agent_id: daemon.peerHandle!,
-      display_name: daemon.displayName,
-      payload,
-    })
-    return { id: result.id, timestamp }
-  })
+  app.post<{ Params: { pactId: string } }>(
+    '/v1/pacts/:pactId/skills',
+    { schema: { body: skillPayloadSchema } },
+    async (req) => {
+      const pact = await resolvePact(daemon, req)
+      const payload = req.body as Record<string, unknown>
+      const content = payload.content as string
+      const claimed = payload.checksum as string
+      const actual = expectedChecksum(content)
+      if (claimed !== actual) {
+        throw new HttpError(
+          400,
+          'SKILL_CHECKSUM_MISMATCH',
+          `checksum ${claimed} does not match sha256(content) ${actual}`,
+        )
+      }
+      const timestamp = new Date().toISOString()
+      const result = await pact.append({
+        type: 'skill',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      })
+      return { id: result.id, timestamp }
+    },
+  )
 
-  app.get<{ Params: IdParams }>('/v1/skills/:id/content', async (req) => {
-    const entry = await getById(daemon.view, 'skill', req.params.id)
+  app.get<{ Params: IdParams }>('/v1/pacts/:pactId/skills/:id/content', async (req) => {
+    const pact = await resolvePact(daemon, req)
+    const entry = await getById(pact.view, 'skill', req.params.id)
     if (!entry) {
       throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
     }
@@ -154,13 +163,14 @@ export default async function skillsRoute(
     }
   })
 
-  app.get('/v1/skills/installed', async () => {
-    const manifest = await readInstalled(daemon)
+  app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/skills/installed', async (req) => {
+    const pact = await resolvePact(daemon, req)
+    const manifest = await readInstalled(pact)
     return Object.entries(manifest).map(([id, record]) => ({ id, ...record }))
   })
 
   app.post<{ Params: IdParams; Body: { confirm?: boolean } }>(
-    '/v1/skills/:id/install',
+    '/v1/pacts/:pactId/skills/:id/install',
     {
       schema: {
         body: {
@@ -180,7 +190,8 @@ export default async function skillsRoute(
         )
       }
 
-      const entry = await getById(daemon.view, 'skill', req.params.id)
+      const pact = await resolvePact(daemon, req)
+      const entry = await getById(pact.view, 'skill', req.params.id)
       if (!entry) {
         throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
       }
@@ -191,10 +202,6 @@ export default async function skillsRoute(
       const content = entry.payload.content as string
       const claimedChecksum = entry.payload.checksum as string
 
-      // Path-traversal defence. Names and versions are validated server-side
-      // before any file write — peer-supplied values can never escape the
-      // install root. Unknown formats are rejected (file extension is
-      // derived server-side, never from peer data).
       if (!SKILL_NAME_RE.test(name) || !SKILL_NAME_RE.test(version)) {
         throw new HttpError(
           400,
@@ -207,9 +214,6 @@ export default async function skillsRoute(
         throw new HttpError(400, 'BAD_REQUEST', `unknown skill format ${format}`)
       }
 
-      // Re-verify the checksum BEFORE writing anything to disk. If the
-      // local store has been corrupted, we don't want to install
-      // tampered content.
       const actualChecksum = expectedChecksum(content)
       if (claimedChecksum !== actualChecksum) {
         throw new HttpError(
@@ -219,19 +223,16 @@ export default async function skillsRoute(
         )
       }
 
-      const dir = skillsDir(daemon)
+      const dir = skillsDir(pact)
       await mkdir(dir, { recursive: true })
       const filename = `${name}@${version}.${ext}`
       const target = path.join(dir, filename)
       const tmp = `${target}.tmp`
-      // Atomic write at mode 0644. Never 0755 — the dashboard never
-      // executes installed skills; the agent runtime that consumes them
-      // is responsible for that.
       await writeFile(tmp, content, { mode: 0o644 })
       await rename(tmp, target)
 
       const installedAt = new Date().toISOString()
-      const manifest = await readInstalled(daemon)
+      const manifest = await readInstalled(pact)
       manifest[entry.id as string] = {
         path: target,
         installed_at: installedAt,
@@ -240,7 +241,7 @@ export default async function skillsRoute(
         version,
         format,
       }
-      await writeInstalled(daemon, manifest)
+      await writeInstalled(pact, manifest)
 
       return {
         ok: true,

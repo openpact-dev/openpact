@@ -24,7 +24,7 @@ test('promote: missing { confirm: true } returns 400 NOT_CONFIRMED', async (t) =
   const { app } = await bootApi(t)
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: KEY_B },
   })
   // Schema validation rejects missing required field with 400.
@@ -35,7 +35,7 @@ test('promote: confirm: false returns 400 NOT_CONFIRMED', async (t) => {
   const { app } = await bootApi(t)
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: KEY_B, confirm: false },
   })
   t.is(res.statusCode, 400)
@@ -46,7 +46,7 @@ test('promote: bad-format key is rejected by schema', async (t) => {
   const { app } = await bootApi(t)
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: 'not-hex', confirm: true },
   })
   t.is(res.statusCode, 400)
@@ -57,7 +57,7 @@ test('promote: from a creator daemon succeeds', async (t) => {
   const { app } = await bootApi(t)
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: KEY_B, confirm: true },
   })
   t.is(res.statusCode, 200)
@@ -72,12 +72,12 @@ test('remove: from a creator daemon succeeds', async (t) => {
   // Promote first so removal isn't a no-op edge case (still tests the route).
   await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: KEY_B, confirm: true },
   })
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/remove',
+    url: '/v1/pacts/default/admin/remove',
     payload: { key: KEY_B, confirm: true },
   })
   t.is(res.statusCode, 200)
@@ -95,7 +95,7 @@ test('promote: non-creator daemon (reader) returns 409 NOT_INDEXER', async (t) =
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/promote',
+    url: '/v1/pacts/default/admin/promote',
     payload: { key: KEY_B, confirm: true },
   })
   t.is(res.statusCode, 409)
@@ -108,7 +108,7 @@ test('remove: non-creator daemon (reader) returns 409 NOT_INDEXER', async (t) =>
 
   const res = await app.inject({
     method: 'POST',
-    url: '/v1/admin/remove',
+    url: '/v1/pacts/default/admin/remove',
     payload: { key: KEY_B, confirm: true },
   })
   t.is(res.statusCode, 409)

@@ -18,6 +18,7 @@ USAGE
 fi
 
 base="${OPENPACT_URL:-http://127.0.0.1:7666}"
+pact="${OPENPACT_PACT:-default}"
 topic="${1:-}"
 limit="${2:-20}"
 
@@ -26,4 +27,4 @@ if [[ -n "$topic" ]]; then
   query="${query}&topic=${topic}"
 fi
 
-curl -sf "${base}/v1/knowledge${query}" | jq '.[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
+curl -sf "${base}/v1/pacts/${pact}/knowledge${query}" | jq '.[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'

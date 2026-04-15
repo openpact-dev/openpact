@@ -7,7 +7,7 @@ let nextPort = 17400
 test('double start refuses with clear error', async (t) => {
   const home = await tmpHome(t)
   const port = String(nextPort++)
-  await runWithDir(home, ['init'])
+  await runWithDir(home, ['init', '--alias', 'default'])
 
   const first = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
   t.is(first.exitCode, 0)
