@@ -637,7 +637,47 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   - [ ] `tampered-content.test.ts` — manually corrupt the stored skill content; `GET /:id/content` detects mismatch and returns 500 with `SKILL_CHECKSUM_MISMATCH`
   - [ ] `requires-approval.test.ts` — flagged skills appear in list with the flag preserved across replication
 
-### 2.6 Phase 2 deliverables
+### 2.6 MCP server ✅
+
+- [x] Create `packages/mcp/` as `@openpact/mcp` — TypeScript, CJS-only
+  build (matches the SDK pattern), bin entry so `npx @openpact/mcp`
+  works after publish
+- [x] Stdio MCP server registering one tool per public daemon
+  operation (~18 tools), one tool file per resource
+- [x] Calls `@openpact/sdk` internally — keeps fetch + error mapping
+  DRY between the SDK and the MCP server
+- [x] Connection config via `OPENPACT_URL` env or
+  `--base-url` / `--host` / `--port` CLI flags (passable through the
+  MCP `args` field)
+- [x] Errors surface as MCP `isError: true` content prefixed with the
+  daemon's code (`TASK_NOT_OPEN: lost claim race ...`)
+- [ ] Publish to npm as `@openpact/mcp` (manual; ready when the
+  maintainer is)
+
+#### 2.6 Tests
+
+- [x] **Unit** (`packages/mcp/test/unit/`) — fakePact spies + handler
+  extraction:
+  - [x] `server.test.ts` — buildServer registers exactly the tool
+    names in `TOOL_NAMES`; every tool has a non-trivial description
+  - [x] `format.test.ts` — text/JSON helpers; SDK errors render with
+    code prefix and `isError: true`
+  - [x] `cli.test.ts` — arg parsing + env resolution (OPENPACT_URL,
+    `--base-url`, `--host`, `--port`)
+  - [x] `status.test.ts` / `knowledge.test.ts` / `tasks.test.ts` /
+    `skills.test.ts` / `messages.test.ts` / `admin.test.ts` — each
+    tool calls the right SDK method with the right args and renders
+    the documented summary/JSON
+- [x] **Integration** (`packages/mcp/test/integration/against-daemon.test.ts`)
+  — boots a real daemon on an ephemeral port, instantiates the MCP
+  server in-process, drives it via the MCP SDK's `InMemoryTransport`,
+  round-trips knowledge, the full task lifecycle, the lost-claim
+  race (asserts the documented `isError` shape), messages with a
+  since cursor, and peer listing
+- [x] **Coverage gate**: global c8 gate still green (95% lines /
+  82% branches); MCP package surface is small and uniform
+
+### 2.7 Phase 2 deliverables
 
 - [ ] Working OpenClaw skill (tested with real OpenClaw, smoke logged)
 - [ ] Published `@openpact/sdk` on npm with passing types test

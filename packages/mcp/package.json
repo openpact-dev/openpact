@@ -1,0 +1,45 @@
+{
+  "name": "@openpact/mcp",
+  "version": "0.0.1",
+  "description": "Model Context Protocol server for the OpenPact daemon",
+  "license": "MIT",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openpact-dev/openpact.git",
+    "directory": "packages/mcp"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "commonjs",
+  "main": "dist/cjs/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "bin": {
+    "openpact-mcp": "bin/openpact-mcp.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.cjs.json",
+    "prepublishOnly": "npm run build",
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@openpact/sdk": "*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*"
+  }
+}
