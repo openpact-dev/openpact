@@ -103,18 +103,12 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
 
   return (
     <nav class="relative z-10 flex h-full w-[228px] shrink-0 flex-col bg-[var(--color-paper)]/70 backdrop-blur-sm">
-      {/* Right-edge hairline with a tiny medallion at brand level.
-          Diamond uses an integer-pixel offset so it pixel-snaps onto
-          the 1px hairline without fractional-subpixel drift on HiDPI. */}
+      {/* Right-edge hairline. */}
       <div
         aria-hidden="true"
         class="pointer-events-none absolute right-0 top-0 h-full w-px bg-[var(--color-line)]"
-      >
-        <span
-          class="absolute block rotate-45 border border-[var(--color-ember)] bg-[var(--color-paper)]"
-          style={{ width: 7, height: 7, left: -3, top: 58 }}
-        />
-      </div>
+      />
+
 
       {/* Brand block — product name, plus the current pact's name
           (italic, secondary) when status has loaded. */}

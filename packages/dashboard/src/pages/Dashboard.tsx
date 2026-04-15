@@ -47,38 +47,15 @@ export function Dashboard() {
   const openTasks = (tasks.data ?? []).filter((t: any) => t.status === 'open')
   const entryCount = status.data?.entries ?? 0
 
-  const pactId = status.data?.pact_id ?? null
-
   return (
     <section data-testid="page-dashboard" class="mx-auto max-w-[1180px]">
       <header class="mb-6 flex items-end justify-between gap-6 border-b-[0.5px] border-[var(--color-line)] pb-4">
         <h1 class="font-display text-[28px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
           Dashboard
         </h1>
-        <div class="flex items-center gap-5 text-right">
-          <div class="flex flex-col items-end gap-0.5">
-            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-              This peer
-            </span>
-            <span
-              class="font-mono text-[12px] text-[var(--color-ember)]"
-              title={status.data?.peer_handle ?? undefined}
-            >
-              {status.data?.display_name ??
-                (status.data?.peer_handle ? shortHandle(status.data.peer_handle) : '…')}
-            </span>
-          </div>
-          {pactId ? (
-            <div class="flex flex-col items-end gap-0.5">
-              <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-                Pact
-              </span>
-              <span class="font-mono text-[12px] text-[var(--color-online)]" title={pactId}>
-                {status.data?.pact_name ?? `${pactId.slice(0, 8)} · synced`}
-              </span>
-            </div>
-          ) : null}
-        </div>
+        <span class="font-mono text-[12px] text-[var(--color-ink3)]">
+          {entryCount} entr{entryCount === 1 ? 'y' : 'ies'}
+        </span>
       </header>
 
       {/* Four equal metrics in one strip — peers carries the ember tone
