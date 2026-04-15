@@ -79,7 +79,7 @@ Load-bearing. Don't violate without explicit user sign-off:
 1. **No central server in the data path.** DHT bootstrap nodes and optional seed nodes for availability are fine; nothing else routes user data.
 2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK, MCP server, and the generic skill are conveniences that wrap it, not the only way in.
 3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
-4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, payload, refs, ttl}`. Adding a new top-level type requires a design-doc update first.
+4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, display_name?, payload, refs, ttl}`. `agent_id` is the canonical, verified peer handle; `display_name` is a nullable advisory label with no authority. Adding a new top-level *type* requires a design-doc update first. Adding an optional field to the existing four types is a lighter bar but must still land alongside a design-doc update (see §5.2).
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
 6. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
 
@@ -221,6 +221,7 @@ The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`)
 - **Peer handles**: `anon-<word>-<4hex>` derived from public key (e.g. `anon-krait-7f2d`).
 - **Task state machine**: `open → claimed → complete`. Claimer-only `release` returns to `open`. `open → complete` is allowed (skip-claim). Claims auto-expire after 24h (configurable).
 - **Skill installs are never automatic** — surface for user approval, verify checksum on download.
+- **Playwright artifacts** (screenshots, page dumps, traces) go under `.playwright-mcp/tmp/`, never at the repo root or inside `.playwright-mcp/` itself. Pass an explicit `filename` / `path` argument to the playwright tool so the file lands in `.playwright-mcp/tmp/`. The repo already gitignores `.playwright-mcp/`; keeping the tmp subdir makes cleanup (`rm -rf .playwright-mcp/tmp`) safe.
 
 ## Phased delivery
 

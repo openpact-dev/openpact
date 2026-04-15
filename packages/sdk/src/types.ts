@@ -8,7 +8,15 @@ export interface BaseEntry<T extends EntryType = EntryType, P = unknown> {
   id: string
   type: T
   timestamp: string
+  /** Deterministic peer handle derived from the author's public key. Canonical identity. */
   agent_id: string
+  /**
+   * Advisory display name the author picked at init/join time. Null
+   * means the author hasn't set one; UIs should fall back to agent_id.
+   * Set and preserved by the daemon — never trust this field for
+   * authorization.
+   */
+  display_name?: string | null
   payload: P
   refs?: string[]
   ttl?: number | null

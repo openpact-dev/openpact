@@ -80,6 +80,7 @@ export default async function tasksRoute(
       type: 'task',
       timestamp,
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       payload: { ...payload, status: 'open' },
     })
     return { id: result.id, timestamp }
@@ -104,6 +105,7 @@ export default async function tasksRoute(
       type: 'task',
       timestamp: new Date().toISOString(),
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       refs: [taskId],
       payload: {
         title: before.title,
@@ -144,6 +146,7 @@ export default async function tasksRoute(
         type: 'task',
         timestamp: new Date().toISOString(),
         agent_id: daemon.peerHandle!,
+        display_name: daemon.displayName,
         refs: [taskId],
         payload: {
           title: before.title,
@@ -176,6 +179,7 @@ export default async function tasksRoute(
       type: 'task',
       timestamp: new Date().toISOString(),
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       refs: [taskId],
       payload: { title: before.title, status: 'open', claimed_by: null },
     })

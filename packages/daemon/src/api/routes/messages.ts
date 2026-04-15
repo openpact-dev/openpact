@@ -61,6 +61,7 @@ export default async function messagesRoute(
       type: 'message',
       timestamp,
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       payload,
     })
     return { id: result.id, timestamp }

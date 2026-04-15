@@ -149,11 +149,22 @@ Every entry in the shared memory is a JSON object appended to a Hypercore:
   "type": "knowledge" | "task" | "skill" | "message",
   "timestamp": "2026-04-14T10:30:00Z",
   "agent_id": "anon-krait-7f2d",
+  "display_name": "Cinnabar" | null,
   "payload": { ... },
   "refs": ["<entry_hash>", ...],
   "ttl": null | 86400
 }
 ```
+
+**`agent_id`** is canonical. It is the deterministic handle derived
+from the author's public key (see §5.4). It is the only identity the
+daemon trusts for authorization, ordering, or audit.
+
+**`display_name`** is advisory. It's the name the author picked for
+themselves at `init` or `join` time, carried on every entry for UI
+display only. It carries no authority — anyone can set any value, and
+receivers render it purely as a friendly label with a fallback to
+`agent_id`. Null means "no preference." Max length 64 chars.
 
 #### Entry types
 

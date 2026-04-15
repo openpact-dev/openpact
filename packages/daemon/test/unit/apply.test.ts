@@ -462,3 +462,66 @@ test('all four user types append to view', async (t) => {
   t.ok(keys.some((k) => k.startsWith('skill/')))
   t.ok(keys.some((k) => k.startsWith('message/')))
 })
+
+test('display_name flows through apply unchanged', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'sales', content: 'hi' }),
+          display_name: 'Cinnabar',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const kKey = view._keys().find((k) => k.startsWith('knowledge/'))!
+  const stored = view._data.get(kKey) as { display_name?: string | null }
+  t.is(stored.display_name, 'Cinnabar')
+})
+
+test('display_name null is preserved', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'sales', content: 'hi' }),
+          display_name: null,
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const kKey = view._keys().find((k) => k.startsWith('knowledge/'))!
+  const stored = view._data.get(kKey) as { display_name?: string | null }
+  t.is(stored.display_name, null)
+})
+
+test('display_name missing field is preserved (backward compat from pre-4a pacts)', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: entry('knowledge', { topic: 'x', content: 'y' }),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const kKey = view._keys().find((k) => k.startsWith('knowledge/'))!
+  const stored = view._data.get(kKey) as { display_name?: string | null }
+  t.is(stored.display_name, undefined) // field never existed, not added by apply
+})

@@ -183,6 +183,7 @@ export class Daemon extends EventEmitter {
       type: 'admin',
       timestamp: new Date().toISOString(),
       agent_id: this.peerHandle,
+      display_name: this.displayName,
       payload: { action: 'addWriter', key: keyHex, indexer: !!indexer },
     }
     await this._base.append(adminEntry)
@@ -194,6 +195,7 @@ export class Daemon extends EventEmitter {
       type: 'admin',
       timestamp: new Date().toISOString(),
       agent_id: this.peerHandle,
+      display_name: this.displayName,
       payload: { action: 'removeWriter', key: keyHex },
     }
     await this._base.append(adminEntry)
@@ -215,6 +217,16 @@ export class Daemon extends EventEmitter {
   get peerHandle(): string | null {
     if (!this._base || !this._base.local) return null
     return peerHandle.derive(this._base.local.key)
+  }
+
+  /**
+   * Author's chosen display name. Null means "no preference — render
+   * the deterministic peerHandle." Slice 4a-2 will thread this from
+   * config.json; Slice 4a-1 stamps null to lock in the wire format
+   * without waiting for the config surface.
+   */
+  get displayName(): string | null {
+    return null
   }
 
   get role(): Role | null {

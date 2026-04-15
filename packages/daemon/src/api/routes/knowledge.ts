@@ -52,6 +52,7 @@ export default async function knowledgeRoute(
       type: 'knowledge',
       timestamp,
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       payload,
     })
     return { id: result.id, timestamp }

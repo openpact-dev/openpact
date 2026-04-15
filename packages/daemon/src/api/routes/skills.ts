@@ -123,6 +123,7 @@ export default async function skillsRoute(
       type: 'skill',
       timestamp,
       agent_id: daemon.peerHandle!,
+      display_name: daemon.displayName,
       payload,
     })
     return { id: result.id, timestamp }

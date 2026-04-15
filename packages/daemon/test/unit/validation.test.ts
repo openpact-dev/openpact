@@ -161,3 +161,65 @@ test('payload size: at-limit accepts', (t) => {
   const r = validate(base('knowledge', { topic: 'x', content }))
   t.is(r.valid, true)
 })
+
+// display_name — advisory label on every entry type.
+test('display_name: null is valid', (t) => {
+  const e = { ...base('knowledge', { topic: 'x', content: 'y' }), display_name: null }
+  t.is(validate(e).valid, true)
+})
+
+test('display_name: string is valid', (t) => {
+  const e = { ...base('knowledge', { topic: 'x', content: 'y' }), display_name: 'Cinnabar' }
+  t.is(validate(e).valid, true)
+})
+
+test('display_name: unicode accepted', (t) => {
+  const e = { ...base('knowledge', { topic: 'x', content: 'y' }), display_name: '狐火 Bramble' }
+  t.is(validate(e).valid, true)
+})
+
+test('display_name: over 64 chars rejects', (t) => {
+  const e = {
+    ...base('knowledge', { topic: 'x', content: 'y' }),
+    display_name: 'a'.repeat(65),
+  }
+  t.is(validate(e).valid, false)
+})
+
+test('display_name: applies on every entry type', (t) => {
+  t.is(
+    validate({ ...base('task', { title: 'x', status: 'open' }), display_name: 'Wyrm' }).valid,
+    true,
+  )
+  t.is(
+    validate({
+      ...base('skill', {
+        name: 's',
+        version: '1.0.0',
+        format: 'generic',
+        content: '...',
+        checksum: 'sha256:' + 'a'.repeat(64),
+      }),
+      display_name: 'Wyrm',
+    }).valid,
+    true,
+  )
+  t.is(
+    validate({ ...base('message', { to: '*', content: 'hi' }), display_name: 'Wyrm' }).valid,
+    true,
+  )
+  t.is(
+    validate({
+      ...base('admin', { action: 'addWriter', key: 'a'.repeat(64), indexer: true }),
+      display_name: 'Wyrm',
+    }).valid,
+    true,
+  )
+})
+
+test('display_name: omitted field is valid (backward compat)', (t) => {
+  // No display_name at all on the object — older entries replicated
+  // from pre-4a pacts look like this. Must still pass.
+  const r = validate(base('knowledge', { topic: 'x', content: 'y' }))
+  t.is(r.valid, true)
+})
