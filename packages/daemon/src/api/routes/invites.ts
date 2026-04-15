@@ -39,8 +39,13 @@ const revokeSchema = {
 }
 
 function buildShareUrl(token: string): string {
-  const base = process.env.OPENPACT_JOIN_BASE_URL || 'https://openpact.dev/join'
-  return `${base}?invite=${token}`
+  // Trailing slash matters: Vite's dev server treats /join/ as the
+  // directory-based HTML entry for src/join/index.html. Without the
+  // slash it falls back to the landing page. Production static hosts
+  // are happy either way.
+  const base = process.env.OPENPACT_JOIN_BASE_URL || 'https://openpact.dev/join/'
+  const sep = base.endsWith('/') ? '' : '/'
+  return `${base}${sep}?invite=${token}`
 }
 
 export default async function invitesRoute(

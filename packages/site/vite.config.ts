@@ -1,6 +1,45 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
+
+/**
+ * Directory-based HTML entries in our MPA (/join, /docs, /for-agents,
+ * /docs/getting-started, …) only match when the URL carries a trailing
+ * slash — otherwise Vite falls back to the landing page. Shared invite
+ * links in the wild often drop the slash, so redirect them here.
+ * Production static hosts (Cloudflare Pages, nginx) are happy either
+ * way; this plugin only matters in `vite dev`.
+ */
+const DIRECTORY_ROUTES = new Set([
+  '/join',
+  '/docs',
+  '/docs/getting-started',
+  '/docs/cli',
+  '/docs/dashboard',
+  '/docs/rest-api',
+  '/docs/architecture',
+  '/docs/packages',
+  '/docs/skill',
+  '/docs/examples',
+  '/for-agents',
+])
+
+function trailingSlashRedirect(): Plugin {
+  return {
+    name: 'openpact-trailing-slash',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url) return next()
+        const [path, query] = req.url.split('?')
+        if (!DIRECTORY_ROUTES.has(path)) return next()
+        const target = path + '/' + (query ? '?' + query : '')
+        res.statusCode = 301
+        res.setHeader('location', target)
+        res.end()
+      })
+    },
+  }
+}
 
 /**
  * Vite config for openpact.dev.
@@ -17,7 +56,7 @@ const src = (p: string) => resolve(__dirname, 'src', p)
 export default defineConfig({
   root: 'src',
   publicDir: '../public',
-  plugins: [tailwindcss()],
+  plugins: [trailingSlashRedirect(), tailwindcss()],
   esbuild: {
     jsx: 'automatic',
     jsxImportSource: 'preact',
