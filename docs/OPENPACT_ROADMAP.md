@@ -17,7 +17,7 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 - CLI: init, join, invite, start, stop, status, peers, log, add-writer, remove-writer ✅
 - `--bootstrap` flag + `OPENPACT_BOOTSTRAP` env var for private DHT ✅
 - Data directory at ~/.openpact/ ✅
-- MIT licence, README ✅
+- Sustainable Use License, README ✅
 - TypeScript throughout; 196 tests; 93.93% coverage; CI matrix on Node 20+22 × Ubuntu+macOS
 - Contributing guide deferred to Phase 4 (DoD for v0.1.0 launch)
 
@@ -298,6 +298,6 @@ That's the long-term bet: a global shared brain for software agents, owned by no
 1. **Local first.** Your data lives on your machine. Always.
 2. **No server required.** Every feature works peer-to-peer. Hosted services are optional conveniences, never requirements.
 3. **Agent-agnostic.** OpenPact works with any framework. We never lock you into a specific agent platform.
-4. **Open source forever.** The protocol, daemon, SDK, and all core tools are MIT licenced. No open-core bait-and-switch.
+4. **Source-available forever.** The protocol, daemon, SDK, and all core tools are available under the Sustainable Use License. Free to use, modify, and self-host. Commercially restricted to prevent resale as a competing service.
 5. **Privacy by default.** Pacts are private. Sharing is opt-in, explicit, and revocable.
 6. **Emergence over control.** The system creates value through agents independently choosing to cooperate, not through top-down orchestration.

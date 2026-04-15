@@ -15,6 +15,23 @@ export interface SkillContent {
   content: string
 }
 
+export interface InstalledSkill {
+  id: string
+  name: string
+  version: string
+  format: SkillFormat
+  checksum: string
+  path: string
+  installed_at: string
+}
+
+export interface InstallResult {
+  ok: true
+  id: string
+  path: string
+  installed_at: string
+}
+
 export function skillsResource(client: OpenPactClient) {
   return {
     /** GET /v1/skills — list skills, optionally filtered by runtime format. */
@@ -28,6 +45,20 @@ export function skillsResource(client: OpenPactClient) {
     /** GET /v1/skills/:id/content — download a skill's full content for installation. */
     getContent(id: string): Promise<SkillContent> {
       return client.req<SkillContent>(`/v1/skills/${encodeURIComponent(id)}/content`)
+    },
+    /**
+     * POST /v1/skills/:id/install — install a skill to <dataDir>/skills/.
+     * Requires explicit confirmation; the daemon enforces name/version
+     * regex + sha256 re-verify before any file write.
+     */
+    install(id: string): Promise<InstallResult> {
+      return client.json<InstallResult>(`/v1/skills/${encodeURIComponent(id)}/install`, 'POST', {
+        confirm: true,
+      })
+    },
+    /** GET /v1/skills/installed — list locally installed skills. */
+    installed(): Promise<InstalledSkill[]> {
+      return client.req<InstalledSkill[]>('/v1/skills/installed')
     },
   }
 }

@@ -1,13 +1,59 @@
 import { createHash } from 'crypto'
+import { mkdir, readFile, writeFile, rename } from 'fs/promises'
+import path from 'path'
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { listByType, getById } from '../views'
 import { HttpError } from '../errors'
 
 const SKILL_FORMATS = ['openclaw', 'langchain', 'generic'] as const
+const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/
+const FORMAT_EXT: Record<string, string> = {
+  openclaw: 'md',
+  langchain: 'py',
+  generic: 'txt',
+}
 
 function expectedChecksum(content: string): string {
   return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+}
+
+function skillsDir(daemon: Daemon): string {
+  return path.join(daemon.dataDir, 'skills')
+}
+
+function installedManifestPath(daemon: Daemon): string {
+  return path.join(daemon.dataDir, 'installed-skills.json')
+}
+
+interface InstalledRecord {
+  path: string
+  installed_at: string
+  checksum: string
+  name: string
+  version: string
+  format: string
+}
+
+async function readInstalled(daemon: Daemon): Promise<Record<string, InstalledRecord>> {
+  try {
+    return JSON.parse(await readFile(installedManifestPath(daemon), 'utf8'))
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') return {}
+    throw err
+  }
+}
+
+async function writeInstalled(
+  daemon: Daemon,
+  manifest: Record<string, InstalledRecord>,
+): Promise<void> {
+  // Atomic write: tmp-then-rename so a crash mid-write can't half-truncate.
+  const target = installedManifestPath(daemon)
+  const tmp = `${target}.tmp`
+  await mkdir(path.dirname(target), { recursive: true })
+  await writeFile(tmp, JSON.stringify(manifest, null, 2))
+  await rename(tmp, target)
 }
 
 const skillPayloadSchema = {
@@ -106,4 +152,101 @@ export default async function skillsRoute(
       content: entry.payload.content,
     }
   })
+
+  app.get('/v1/skills/installed', async () => {
+    const manifest = await readInstalled(daemon)
+    return Object.entries(manifest).map(([id, record]) => ({ id, ...record }))
+  })
+
+  app.post<{ Params: IdParams; Body: { confirm?: boolean } }>(
+    '/v1/skills/:id/install',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          properties: { confirm: { type: 'boolean' } },
+          required: ['confirm'],
+          additionalProperties: false,
+        },
+      },
+    },
+    async (req) => {
+      if (req.body.confirm !== true) {
+        throw new HttpError(
+          400,
+          'NOT_CONFIRMED',
+          'install requires explicit { "confirm": true } in the request body',
+        )
+      }
+
+      const entry = await getById(daemon.view, 'skill', req.params.id)
+      if (!entry) {
+        throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
+      }
+
+      const name = entry.payload.name as string
+      const version = entry.payload.version as string
+      const format = entry.payload.format as string
+      const content = entry.payload.content as string
+      const claimedChecksum = entry.payload.checksum as string
+
+      // Path-traversal defence. Names and versions are validated server-side
+      // before any file write — peer-supplied values can never escape the
+      // install root. Unknown formats are rejected (file extension is
+      // derived server-side, never from peer data).
+      if (!SKILL_NAME_RE.test(name) || !SKILL_NAME_RE.test(version)) {
+        throw new HttpError(
+          400,
+          'BAD_SKILL_NAME',
+          `name and version must match ${SKILL_NAME_RE.source}; got name=${JSON.stringify(name)}, version=${JSON.stringify(version)}`,
+        )
+      }
+      const ext = FORMAT_EXT[format]
+      if (!ext) {
+        throw new HttpError(400, 'BAD_REQUEST', `unknown skill format ${format}`)
+      }
+
+      // Re-verify the checksum BEFORE writing anything to disk. If the
+      // local store has been corrupted, we don't want to install
+      // tampered content.
+      const actualChecksum = expectedChecksum(content)
+      if (claimedChecksum !== actualChecksum) {
+        throw new HttpError(
+          500,
+          'SKILL_CHECKSUM_MISMATCH',
+          `stored content for skill ${req.params.id} does not match its recorded checksum`,
+        )
+      }
+
+      const dir = skillsDir(daemon)
+      await mkdir(dir, { recursive: true })
+      const filename = `${name}@${version}.${ext}`
+      const target = path.join(dir, filename)
+      const tmp = `${target}.tmp`
+      // Atomic write at mode 0644. Never 0755 — the dashboard never
+      // executes installed skills; the agent runtime that consumes them
+      // is responsible for that.
+      await writeFile(tmp, content, { mode: 0o644 })
+      await rename(tmp, target)
+
+      const installedAt = new Date().toISOString()
+      const manifest = await readInstalled(daemon)
+      manifest[entry.id as string] = {
+        path: target,
+        installed_at: installedAt,
+        checksum: claimedChecksum,
+        name,
+        version,
+        format,
+      }
+      await writeInstalled(daemon, manifest)
+
+      return {
+        ok: true,
+        id: entry.id,
+        path: target,
+        installed_at: installedAt,
+      }
+    },
+  )
 }

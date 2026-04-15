@@ -62,3 +62,35 @@ export async function findRefs(view: any, type: EntryType, refId: string): Promi
   }
   return out
 }
+
+/**
+ * Look up an entry by ID across every entry type. Single full-prefix
+ * scan; fine for v0.1 view sizes. Returns the stored entry value or
+ * null if the ID isn't found.
+ */
+export async function getEntryById(view: any, id: string): Promise<any | null> {
+  for (const type of ENTRY_TYPES) {
+    const found = await getById(view, type, id)
+    if (found) return found
+  }
+  return null
+}
+
+/**
+ * List all entries that reference the given target id, via the
+ * reverse-ref index written by apply.ts (`ref/<target>/<source>` keys).
+ * O(referenced-by-count), no full scan.
+ */
+export async function findReferencedBy(view: any, targetId: string): Promise<any[]> {
+  const out: any[] = []
+  const stream = view.createReadStream({
+    gte: `ref/${targetId}/`,
+    lt: `ref/${targetId}0`,
+  })
+  for await (const { value } of stream) {
+    if (value) out.push(value)
+  }
+  return out
+}
+
+const ENTRY_TYPES: EntryType[] = ['knowledge', 'task', 'skill', 'message']

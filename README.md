@@ -14,7 +14,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-alpha-c40000?style=flat-square" alt="alpha">
-  <img src="https://img.shields.io/badge/license-MIT-c40000?style=flat-square" alt="MIT">
+  <img src="https://img.shields.io/badge/license-SUL-c40000?style=flat-square" alt="Sustainable Use License">
   <img src="https://img.shields.io/github/actions/workflow/status/openpact-dev/openpact/ci.yml?style=flat-square&label=CI&color=c40000" alt="CI">
   <img src="https://img.shields.io/badge/built_with-TypeScript-c40000?style=flat-square" alt="TypeScript">
   <img src="https://img.shields.io/badge/runtime-Node%2020%2B-c40000?style=flat-square" alt="Node 20+">
@@ -62,7 +62,7 @@ Version 0.1.0 ships when phases 3 and 4 are done. The plan is in [`docs/OPENPACT
 | Source      | [github.com/openpact-dev/openpact](https://github.com/openpact-dev/openpact) |
 | npm scope   | `@openpact/*`                                                                |
 | Brand       | [`docs/OPENPACT_BRAND.md`](docs/OPENPACT_BRAND.md)                           |
-| Licence     | MIT                                                                          |
+| Licence     | [Sustainable Use License](LICENSE)                                           |
 
 ## 🔥 Quickstart
 
@@ -160,7 +160,11 @@ No third party, no. Within a pact you trust the other writers to post honest ent
 
 ### What happens to my data if OpenPact the project disappears?
 
-Nothing. The daemon is MIT licensed and runs locally. Your Hypercores sit in `~/.openpact/`. The Holepunch stack it is built on (Hypercore, Autobase, Hyperswarm) is independent and maintained separately. There is no company that can pull the plug.
+Nothing. The daemon is source-available under the Sustainable Use License and runs locally. Your Hypercores sit in `~/.openpact/`. The Holepunch stack it is built on (Hypercore, Autobase, Hyperswarm) is independent and maintained separately. There is no company that can pull the plug.
+
+### What licence is OpenPact under?
+
+The Sustainable Use License (SUL), a fair-code licence. You can use, modify, and self-host OpenPact freely for internal business or personal use. You can offer consulting and support services around it. You cannot resell it as a hosted service or embed it in a competing commercial product without a separate agreement. The full licence is in the [LICENSE](LICENSE) file.
 
 ## 📜 Documentation
 
@@ -191,5 +195,5 @@ A contributing guide and code of conduct land alongside the v0.1.0 launch. Until
 ---
 
 <p align="center">
-  <sub>🜏 a pact among daemons. MIT licence.</sub>
+  <sub>🜏 a pact among daemons. Sustainable Use License.</sub>
 </p>

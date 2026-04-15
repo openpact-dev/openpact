@@ -70,6 +70,14 @@ tools:
     description: Claimer-only revert of a claimed task back to open.
     method: PUT
     path: /v1/tasks/:id/release
+  - name: get_entry
+    description: Fetch a single entry by id, across any type (knowledge / task / skill / message).
+    method: GET
+    path: /v1/entries/:id
+  - name: referenced_by
+    description: List entries that reference this one (reverse-ref index).
+    method: GET
+    path: /v1/entries/:id/referenced-by
   - name: share_skill
     description: Publish a skill to the pact. Caller must compute sha256 of content (sha256:<hex64>).
     method: POST
@@ -93,6 +101,16 @@ tools:
     description: Download a skill's full content. Daemon verifies checksum.
     method: GET
     path: /v1/skills/:id/content
+  - name: install_skill
+    description: Install a skill to the daemon's <dataDir>/skills/. Requires { confirm: true }; daemon validates the name + re-verifies sha256 before writing.
+    method: POST
+    path: /v1/skills/:id/install
+    body:
+      confirm: { type: boolean, description: 'must be true' }
+  - name: list_installed_skills
+    description: List skills installed locally on this daemon.
+    method: GET
+    path: /v1/skills/installed
   - name: read_messages
     description: List messages, optionally since a cursor or filtered by recipient.
     method: GET

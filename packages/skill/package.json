@@ -2,7 +2,7 @@
   "name": "@openpact/skill",
   "version": "0.0.1",
   "description": "Portable agent skill for the OpenPact daemon (SKILL.md + machine-readable tools.json)",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",

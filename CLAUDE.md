@@ -80,7 +80,7 @@ Load-bearing. Don't violate without explicit user sign-off:
 3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
 4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, payload, refs, ttl}`. Adding a new top-level type requires a design-doc update first.
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
-6. **MIT-licensed, fully open source.** No proprietary modules in the daemon path.
+6. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
 
 ## Tech stack (per build plan §Technical decisions)
 
@@ -185,7 +185,7 @@ Don't tag v0.1.0 until **all** of these hold (build plan §Definition of done):
 - Web dashboard shows all six screens with near-real-time updates.
 - Seed node deploys in under 5 minutes.
 - README explains what/why/how-to-start in under 2 minutes of reading.
-- Repo has MIT licence, contributing guide, code of conduct.
+- Repo has Sustainable Use License, contributing guide, code of conduct.
 
 ## Working with the Pear/Hyper stack
 

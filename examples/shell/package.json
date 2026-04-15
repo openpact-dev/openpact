@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Shell scripts demonstrating OpenPact reads + writes via curl",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=20"
   },

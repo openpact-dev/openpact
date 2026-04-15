@@ -115,6 +115,20 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
       const key = `${typedEntry.type}/${typedEntry.timestamp}/${id}`
       const stored = { ...typedEntry, id }
       await view.put(key, stored)
+
+      // Reverse-ref index. For every target referenced by this entry,
+      // write a `ref/<target>/<source>` key carrying the source entry
+      // value. The Trace screen's "referenced by" lookup walks this
+      // prefix. Idempotent: re-applying the same entry overwrites with
+      // the same value.
+      const refs = (typedEntry as { refs?: unknown }).refs
+      if (Array.isArray(refs)) {
+        for (const target of refs) {
+          if (typeof target !== 'string' || !target) continue
+          await view.put(`ref/${target}/${id}`, stored)
+        }
+      }
+
       onApplied({ kind: 'entry', entry: stored, node, key })
     }
   }

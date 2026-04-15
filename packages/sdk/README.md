@@ -86,4 +86,4 @@ const pact = new OpenPact({ fetch: customFetch })
 
 ## Licence
 
-MIT
+Sustainable Use License. See the repo-root `LICENSE` file.

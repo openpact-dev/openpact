@@ -61,4 +61,64 @@ export default async function adminRoute(
     await daemon.removeWriter(req.params.key)
     return { ok: true, key: req.params.key }
   })
+
+  // Dashboard-flavoured wrappers. Same underlying append, but gated on
+  // `daemon.role === 'creator'` and require an explicit confirmation
+  // body so a CSRF-style accidental click can't trigger them. The
+  // trust boundary is the loopback interface (`127.0.0.1`); these
+  // checks are belt-and-braces UI gating, not auth.
+  const promoteSchema = {
+    type: 'object',
+    properties: {
+      key: { type: 'string', pattern: '^[0-9a-f]{64}$' },
+      confirm: { type: 'boolean' },
+    },
+    required: ['key', 'confirm'],
+    additionalProperties: false,
+  }
+  app.post<{ Body: { key: string; confirm: boolean } }>(
+    '/v1/admin/promote',
+    { schema: { body: promoteSchema } },
+    async (req) => {
+      if (req.body.confirm !== true) {
+        throw new HttpError(
+          400,
+          'NOT_CONFIRMED',
+          'promote requires explicit { "confirm": true } in the request body',
+        )
+      }
+      if (daemon.role !== 'creator') {
+        throw new HttpError(
+          409,
+          'NOT_INDEXER',
+          `daemon.role is ${daemon.role}; only the creator may promote writers`,
+        )
+      }
+      await daemon.addWriter(req.body.key, { indexer: true })
+      return { ok: true, key: req.body.key, indexer: true }
+    },
+  )
+
+  app.post<{ Body: { key: string; confirm: boolean } }>(
+    '/v1/admin/remove',
+    { schema: { body: promoteSchema } },
+    async (req) => {
+      if (req.body.confirm !== true) {
+        throw new HttpError(
+          400,
+          'NOT_CONFIRMED',
+          'remove requires explicit { "confirm": true } in the request body',
+        )
+      }
+      if (daemon.role !== 'creator') {
+        throw new HttpError(
+          409,
+          'NOT_INDEXER',
+          `daemon.role is ${daemon.role}; only the creator may remove writers`,
+        )
+      }
+      await daemon.removeWriter(req.body.key)
+      return { ok: true, key: req.body.key }
+    },
+  )
 }

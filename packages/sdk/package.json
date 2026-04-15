@@ -2,7 +2,7 @@
   "name": "@openpact/sdk",
   "version": "0.0.1",
   "description": "TypeScript client for the OpenPact daemon REST API",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",

@@ -1,21 +1,96 @@
-MIT License
+Sustainable Use License
+Version 1.0
 
 Copyright (c) 2026 OpenPact contributors
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## Acceptance
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+By using the software, you agree to all of the terms and conditions below.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Copyright License
+
+The licensor grants you a non-exclusive, royalty-free, worldwide,
+non-sublicensable, non-transferable license to use, copy, distribute,
+make available, and prepare derivative works of the software, in each
+case subject to the limitations below.
+
+## Limitations
+
+You may use the software only for your own internal business purposes
+or for non-commercial or personal use.
+
+You may distribute the software or provide it to others only if you do
+so free of charge for non-commercial purposes.
+
+You may not alter, remove, or obscure any licensing, copyright, or
+other notices of the licensor in the software. Any use of the
+licensor's trademarks is subject to applicable law.
+
+## Fair Use Examples
+
+The following uses are allowed:
+- Using OpenPact internally within your organisation
+- Self-hosting OpenPact on your own servers
+- Modifying the source code for internal use
+- Offering consulting or support services related to OpenPact
+  (e.g. building workflows, integrations, or custom agents for clients)
+- Using OpenPact in academic or research settings
+- Using OpenPact for personal projects
+
+The following uses are NOT allowed without a separate commercial licence:
+- Hosting OpenPact and charging users for access
+- Embedding OpenPact in a paid product, service, or module where the
+  value derives entirely or substantially from OpenPact functionality
+- White-labelling OpenPact and offering it as your own product
+- Offering a managed OpenPact service that competes with official
+  OpenPact commercial offerings
+
+If you are unsure whether your use is permitted, contact
+license@openpact.dev.
+
+## Patents
+
+The licensor grants you a license, under any patent claims the licensor
+can license, or becomes able to license, to make, have made, use, sell,
+offer to sell, import and have imported the software, in each case
+subject to the limitations and conditions in this license. This license
+does not cover any patent claims that you cause to be infringed by
+modifications or additions to the software.
+
+## No Other Rights
+
+These terms do not imply any licenses other than those expressly
+granted in these terms.
+
+## Termination
+
+If you use the software in violation of these terms, such use is not
+licensed, and your license will automatically terminate. If the licensor
+provides you with a notice of your violation, and you cease all
+violation of this license no later than 30 days after you receive that
+notice, your license will be reinstated retroactively. However, if you
+violate these terms after such reinstatement, any additional violation
+of these terms will cause your license to terminate automatically and
+permanently.
+
+## No Liability
+
+As far as the law allows, the software comes as is, without any
+warranty or condition, and the licensor will not be liable to you for
+any damages arising out of these terms or the use or nature of the
+software, under any kind of legal claim.
+
+## Definitions
+
+The "licensor" is the entity offering these terms, and the "software"
+is the software the licensor makes available under these terms,
+including any portion of it.
+
+"You" refers to the individual or entity agreeing to these terms.
+
+"Your organisation" includes any entity that controls, is controlled
+by, or is under common control with you.
+
+"Internal business purposes" means use within your own organisation
+and does not include making the software available to third parties
+as a commercial offering.

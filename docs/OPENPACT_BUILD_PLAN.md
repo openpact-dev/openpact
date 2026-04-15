@@ -3,7 +3,7 @@
 > Reference: OPENPACT_DESIGN.md for full functional spec.
 > Stack: TypeScript on Node.js, Hypercore, Autobase, Hyperswarm, HyperDHT
 > Tests run via `tsx` (no build step in dev/CI); typecheck via `tsc --noEmit`.
-> Licence: MIT
+> Licence: Sustainable Use License (SUL)
 
 ---
 
@@ -192,7 +192,7 @@ GitHub Actions matrix:
       cli/
     examples/
     docs/
-    LICENSE (MIT)
+    LICENSE (Sustainable Use License)
     README.md
     package.json (workspace root)
   ```
@@ -1433,7 +1433,7 @@ The following must all be true before tagging v0.1.0:
 - [ ] The web dashboard shows all six screens and updates in near-real-time
 - [ ] A seed node can be deployed in under 5 minutes
 - [ ] The README explains what OpenPact is, why it exists, and how to get started in under 2 minutes of reading
-- [ ] The repo has an MIT licence, contributing guide, and code of conduct
+- [ ] The repo has a Sustainable Use License, contributing guide, and code of conduct
 - [ ] **Full test suite is green**: unit, integration, e2e, UI, security, chaos, examples
 - [ ] **Coverage gates met** across all packages (daemon 80/75, cli 70/65, sdk 90/85, dashboard server 80/75, `apply` 95/90)
 - [ ] **CI matrix passes** on Node 20 + 22 × Ubuntu + macOS for every commit on `main`

@@ -9,6 +9,8 @@ import messagesRoute from './routes/messages'
 import skillsRoute from './routes/skills'
 import tasksRoute from './routes/tasks'
 import adminRoute from './routes/admin'
+import entriesRoute from './routes/entries'
+import eventsRoute from './routes/events'
 
 export { HttpError, type ErrorEnvelope } from './errors'
 export { bind, DEFAULT_PORT, type BindOpts } from './bind'
@@ -31,5 +33,7 @@ export function createApi(daemon: Daemon, opts: ApiOpts = {}): FastifyInstance {
   app.register(skillsRoute, { daemon })
   app.register(tasksRoute, { daemon })
   app.register(adminRoute, { daemon })
+  app.register(entriesRoute, { daemon })
+  app.register(eventsRoute, { daemon })
   return app
 }

@@ -42,21 +42,21 @@ No central server is required. Data replicates directly between peers. The share
 
 ---
 
-## 3. Open source
+## 3. Source-available and fair-code
 
-OpenPact is open source under the MIT licence.
+OpenPact is source-available under the Sustainable Use License (SUL), a fair-code licence modelled on Elastic License 2.0.
 
-### Why open source
+### Why source-available
 
-OpenPact is infrastructure, not a platform. Its value comes from agents connecting to it. The more agents that speak OpenPact, the more useful every network becomes. Open source is the fastest path to that adoption.
+OpenPact is infrastructure, not a platform. Its value comes from agents connecting to it. The more agents that speak OpenPact, the more useful every network becomes. Broad access to the source is the fastest path to that adoption.
 
-Every piece of the stack underneath is already open source: Hypercore, Autobase, Hyperswarm, OpenClaw, LangChain, CrewAI. A closed-source coordination layer sitting in the middle of an open ecosystem would raise immediate suspicion. Agent developers will want to read the code before letting it anywhere near their agents' data.
+Every piece of the stack underneath is already open source: Hypercore, Autobase, Hyperswarm, OpenClaw, LangChain, CrewAI. The source code is fully available. Developers can read, audit, and modify it. The Sustainable Use License allows free use for internal and personal purposes while ensuring the project can sustain itself commercially.
 
 The daemon itself is a relatively thin layer on top of Autobase and Hyperswarm. There is no proprietary advantage in the code. The value is in adoption, network effects, and the community.
 
 ### Licence
 
-MIT. No restrictions on commercial use, modification, or redistribution.
+Sustainable Use License (SUL). Free to use, modify, and self-host for internal business purposes. Commercial restrictions apply to reselling or hosting OpenPact as a competing service. Consulting and support services are explicitly permitted. See the LICENSE file for full terms.
 
 ### Canonical locations
 
@@ -85,7 +85,9 @@ openpact/
 
 ### Potential future revenue (if needed)
 
-The protocol stays free forever. Revenue comes from services around it:
+The protocol stays free for internal use forever. The Sustainable Use License ensures that the core software cannot be packaged as a competing commercial service without a licence agreement, while remaining free for self-hosting, modification, and internal business use.
+
+Revenue comes from services around it:
 
 - **Managed seed nodes.** Always-on availability as a service. "Your OpenPact, always reachable, $5/month." One command to connect.
 - **Hosted dashboard.** Web UI for monitoring your network without running the local dashboard. Free for one network, paid for teams.
@@ -481,7 +483,7 @@ For any entry, see which peer wrote it, when, and what it references. For any ag
 - [ ] `openpact status` terminal UI
 - [ ] Local REST API on localhost:7666
 - [ ] Basic entry types: knowledge, task, message
-- [ ] README, MIT licence, contributing guide
+- [ ] README, Sustainable Use License, contributing guide
 
 ### Phase 2: Agent integrations (Week 3-4)
 - [ ] OpenClaw skill file (`openpact/SKILL.md`)

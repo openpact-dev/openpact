@@ -19,4 +19,4 @@ npm install -g @openpact/cli
 
 ## Licence
 
-MIT
+Sustainable Use License. See the repo-root `LICENSE` file.

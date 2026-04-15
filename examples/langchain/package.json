@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "LangChain (Python) example loading @openpact/skill tools.json at boot",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=20"
   },

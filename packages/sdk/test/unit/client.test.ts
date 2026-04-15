@@ -2,9 +2,12 @@ import test from 'brittle'
 import { OpenPactClient, buildQuery } from '../../src/client'
 import {
   BadRequestError,
+  BadSkillNameError,
   DaemonError,
   DaemonNotRunningError,
+  NotConfirmedError,
   NotFoundError,
+  NotIndexerError,
   SkillChecksumMismatchError,
   TaskNotOpenError,
 } from '../../src/errors'
@@ -74,6 +77,33 @@ test('client: maps 500 SKILL_CHECKSUM_MISMATCH → SkillChecksumMismatchError', 
   })
   const c = new OpenPactClient({ fetch: m.fetch })
   await t.exception(() => c.req('/v1/skills/x/content'), SkillChecksumMismatchError)
+})
+
+test('client: maps 409 NOT_INDEXER → NotIndexerError', async (t) => {
+  const m = mockFetch({
+    status: 409,
+    body: { error: 'NOT_INDEXER', message: 'role is reader, not creator' },
+  })
+  const c = new OpenPactClient({ fetch: m.fetch })
+  await t.exception(() => c.req('/v1/admin/promote'), NotIndexerError)
+})
+
+test('client: maps 400 BAD_SKILL_NAME → BadSkillNameError', async (t) => {
+  const m = mockFetch({
+    status: 400,
+    body: { error: 'BAD_SKILL_NAME', message: 'name must match …' },
+  })
+  const c = new OpenPactClient({ fetch: m.fetch })
+  await t.exception(() => c.req('/v1/skills/x/install'), BadSkillNameError)
+})
+
+test('client: maps 400 NOT_CONFIRMED → NotConfirmedError', async (t) => {
+  const m = mockFetch({
+    status: 400,
+    body: { error: 'NOT_CONFIRMED', message: 'confirm: true required' },
+  })
+  const c = new OpenPactClient({ fetch: m.fetch })
+  await t.exception(() => c.req('/v1/skills/x/install'), NotConfirmedError)
 })
 
 test('client: unknown error code → DaemonError', async (t) => {

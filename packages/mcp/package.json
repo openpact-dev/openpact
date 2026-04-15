@@ -2,7 +2,7 @@
   "name": "@openpact/mcp",
   "version": "0.0.1",
   "description": "Model Context Protocol server for the OpenPact daemon",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",

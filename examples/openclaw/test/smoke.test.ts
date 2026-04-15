@@ -97,7 +97,11 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
 
   // Seed a knowledge entry, a task, a skill, and a message so the
   // GET-by-id and PUT lifecycle tools have real ids to chase.
-  await call(base, 'POST', '/v1/knowledge', { topic: 'wiring', content: 'openclaw smoke' })
+  const k = await call(base, 'POST', '/v1/knowledge', {
+    topic: 'wiring',
+    content: 'openclaw smoke',
+  })
+  const knowledgeId: string = k.body.id
 
   const taskCreate = await call(base, 'POST', '/v1/tasks', { title: 'openclaw-smoke' })
   const taskId: string = taskCreate.body.id
@@ -132,6 +136,7 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
     if (url.includes(':id')) {
       if (tool.path.startsWith('/v1/tasks/')) url = url.replace(':id', taskId)
       else if (tool.path.startsWith('/v1/skills/')) url = url.replace(':id', skillId)
+      else if (tool.path.startsWith('/v1/entries/')) url = url.replace(':id', knowledgeId)
     }
 
     let body: unknown | undefined
@@ -140,6 +145,7 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
       else if (tool.name === 'create_task') body = { title: 'redo' }
       else if (tool.name === 'complete_task') body = { result: 'done' }
       else if (tool.name === 'send_message') body = { to: '*', content: 'redo' }
+      else if (tool.name === 'install_skill') body = { confirm: true }
       else if (tool.name === 'share_skill') {
         const c = 'redo-openclaw'
         body = {

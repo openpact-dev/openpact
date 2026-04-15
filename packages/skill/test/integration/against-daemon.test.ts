@@ -91,6 +91,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
     content: 'tools.json drove this',
   })
   t.is(k.status, 200)
+  const knowledgeId: string = k.body.id
 
   const taskCreate = await call(base, 'POST', '/v1/tasks', { title: 'tools-json-task' })
   t.is(taskCreate.status, 200)
@@ -129,6 +130,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
     if (url.includes(':id')) {
       if (tool.path.startsWith('/v1/tasks/')) url = url.replace(':id', taskId)
       else if (tool.path.startsWith('/v1/skills/')) url = url.replace(':id', skillId)
+      else if (tool.path.startsWith('/v1/entries/')) url = url.replace(':id', knowledgeId)
     }
 
     let body: unknown | undefined
@@ -139,6 +141,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
       else if (tool.name === 'create_task') body = { title: 'redo' }
       else if (tool.name === 'complete_task') body = { result: 'done' }
       else if (tool.name === 'send_message') body = { to: '*', content: 'redo' }
+      else if (tool.name === 'install_skill') body = { confirm: true }
       else if (tool.name === 'share_skill') {
         const c = 'redo-content'
         body = {

@@ -23,5 +23,26 @@ export function adminResource(client: OpenPactClient) {
         'DELETE',
       )
     },
+    /**
+     * POST /v1/admin/promote — addWriter(indexer=true) wrapper, requires
+     * `daemon.role === 'creator'` and explicit confirmation. Used by
+     * the dashboard's Network screen.
+     */
+    promote(key: string): Promise<{ ok: true; key: string; indexer: true }> {
+      return client.json<{ ok: true; key: string; indexer: true }>('/v1/admin/promote', 'POST', {
+        key,
+        confirm: true,
+      })
+    },
+    /**
+     * POST /v1/admin/remove — removeWriter wrapper, same gating as
+     * promote. Used by the dashboard's Network screen.
+     */
+    remove(key: string): Promise<{ ok: true; key: string }> {
+      return client.json<{ ok: true; key: string }>('/v1/admin/remove', 'POST', {
+        key,
+        confirm: true,
+      })
+    },
   }
 }

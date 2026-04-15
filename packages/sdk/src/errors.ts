@@ -86,6 +86,27 @@ export class SkillChecksumMismatchError extends OpenPactError {
   }
 }
 
+export class NotIndexerError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_INDEXER' })
+    this.name = 'NotIndexerError'
+  }
+}
+
+export class BadSkillNameError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'BAD_SKILL_NAME' })
+    this.name = 'BadSkillNameError'
+  }
+}
+
+export class NotConfirmedError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'NOT_CONFIRMED' })
+    this.name = 'NotConfirmedError'
+  }
+}
+
 export class DaemonError extends OpenPactError {
   constructor(message: string, status: number, code = 'INTERNAL') {
     super(message, { status, code })
@@ -121,6 +142,12 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new NotAWriterError(message)
     case 'SKILL_CHECKSUM_MISMATCH':
       return new SkillChecksumMismatchError(message, status)
+    case 'NOT_INDEXER':
+      return new NotIndexerError(message)
+    case 'BAD_SKILL_NAME':
+      return new BadSkillNameError(message)
+    case 'NOT_CONFIRMED':
+      return new NotConfirmedError(message)
     case 'INTERNAL':
       return new DaemonError(message, status, code)
     default:

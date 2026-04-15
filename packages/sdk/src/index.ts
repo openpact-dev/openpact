@@ -5,6 +5,7 @@ import { tasksResource } from './resources/tasks'
 import { skillsResource } from './resources/skills'
 import { messagesResource } from './resources/messages'
 import { adminResource } from './resources/admin'
+import { entriesResource } from './resources/entries'
 import type { StatusPayload, PeerPayload } from './types'
 
 export class OpenPact {
@@ -15,6 +16,7 @@ export class OpenPact {
   skills: ReturnType<typeof skillsResource>
   messages: ReturnType<typeof messagesResource>
   admin: ReturnType<typeof adminResource>
+  entries: ReturnType<typeof entriesResource>
 
   constructor(opts: ClientOpts = {}) {
     this.client = new OpenPactClient(opts)
@@ -25,6 +27,7 @@ export class OpenPact {
     this.skills = skillsResource(this.client)
     this.messages = messagesResource(this.client)
     this.admin = adminResource(this.client)
+    this.entries = entriesResource(this.client)
   }
 
   private _status: ReturnType<typeof statusResource>
@@ -81,5 +84,8 @@ export {
   NotClaimedError,
   NotAWriterError,
   SkillChecksumMismatchError,
+  NotIndexerError,
+  BadSkillNameError,
+  NotConfirmedError,
   DaemonError,
 } from './errors'

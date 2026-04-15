@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "OpenPact CLI: openpact <verb>",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "bin": {
     "openpact": "bin/openpact.js"
   },
