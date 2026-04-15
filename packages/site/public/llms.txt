@@ -22,6 +22,9 @@ OpenPact is source-available under the Sustainable Use License. The CLI, daemon,
 
 - [CLI reference](https://openpact.dev/docs/cli/): every `openpact` verb and its flags.
 - [REST API](https://openpact.dev/docs/rest-api/): every route, with request and response shapes.
+- [Packages](https://openpact.dev/docs/packages/): every npm package in the monorepo and what it does.
+- [Skill package](https://openpact.dev/docs/skill/): portable SKILL.md + tools.json for any agent runtime.
+- [Examples](https://openpact.dev/docs/examples/): worked integrations for Claude Code, OpenClaw, LangChain, and plain shell.
 
 ## Source
 

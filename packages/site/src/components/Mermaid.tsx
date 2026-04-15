@@ -89,6 +89,21 @@ export function Mermaid({ chart, caption, class: cls = '' }: Props) {
         const host = ref.current
         const svgNode = parseSvg(svg)
         if (host && svgNode) {
+          // Normalize every text element so flowcharts, state diagrams,
+          // and sequence diagrams all render at the same size/family.
+          // Mermaid's per-diagram defaults otherwise drift apart.
+          const MONO = "'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace"
+          const FONT_SIZE = '13px'
+          svgNode.querySelectorAll('text, tspan').forEach((el) => {
+            ;(el as SVGTextElement).style.fontFamily = MONO
+            ;(el as SVGTextElement).style.fontSize = FONT_SIZE
+          })
+          svgNode.querySelectorAll('foreignObject div, foreignObject span').forEach((el) => {
+            ;(el as HTMLElement).style.fontFamily = MONO
+            ;(el as HTMLElement).style.fontSize = FONT_SIZE
+            ;(el as HTMLElement).style.lineHeight = '1.45'
+          })
+
           while (host.firstChild) host.removeChild(host.firstChild)
           host.appendChild(svgNode)
           setErr(null)

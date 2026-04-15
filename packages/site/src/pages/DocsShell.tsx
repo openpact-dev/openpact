@@ -11,6 +11,11 @@ export interface DocMeta {
 export const DOC_NAV: DocMeta[] = [
   { slug: '/docs/', title: 'Overview', description: 'What OpenPact is and why.' },
   {
+    slug: '/docs/architecture/',
+    title: 'Architecture',
+    description: 'Entries, peers, roles, and the view.',
+  },
+  {
     slug: '/docs/getting-started/',
     title: 'Getting started',
     description: 'Install, seal a pact, pair two daemons.',
@@ -26,9 +31,19 @@ export const DOC_NAV: DocMeta[] = [
     description: 'Every route, with request and response shapes.',
   },
   {
-    slug: '/docs/architecture/',
-    title: 'Architecture',
-    description: 'Entries, peers, roles, and the view.',
+    slug: '/docs/packages/',
+    title: 'Packages',
+    description: 'The monorepo: daemon, CLI, SDK, MCP, skill, dashboard, site.',
+  },
+  {
+    slug: '/docs/skill/',
+    title: 'Skill package',
+    description: 'Portable SKILL.md + tools.json for any agent runtime.',
+  },
+  {
+    slug: '/docs/examples/',
+    title: 'Examples',
+    description: 'Worked integrations for every major agent framework.',
   },
 ]
 
