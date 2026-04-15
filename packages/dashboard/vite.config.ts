@@ -1,9 +1,21 @@
 import { defineConfig } from 'vite'
-import preact from '@preact/preset-vite'
 
+/**
+ * Vite config for the dashboard frontend.
+ *
+ * We deliberately don't load `@preact/preset-vite`. Its
+ * transform-hook-names plugin requires `zimmerframe`, which only
+ * ships an "import" condition in its exports map; under Vite's CJS
+ * loader the require() blows up. Esbuild's automatic JSX transform
+ * with `jsxImportSource: 'preact'` covers what we actually need:
+ * JSX → preact.h, no Fast Refresh (we live without HMR for slice C/D).
+ */
 export default defineConfig({
-  plugins: [preact()],
   root: 'src',
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'preact',
+  },
   build: {
     outDir: '../dist/browser',
     emptyOutDir: true,

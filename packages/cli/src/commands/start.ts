@@ -78,6 +78,10 @@ export async function startCmd(
   sp.succeed(c.brandBold('The daemon stirs.'))
 
   console.log(`  ${c.brandBold('Listening')}  ${c.bone(`http://127.0.0.1:${port}`)}`)
+  if (opts.dashboard !== false) {
+    const dashPort = Number(opts.dashboardPort ?? 7667)
+    console.log(`  ${c.brandBold('Dashboard')}  ${c.bone(`http://localhost:${dashPort}`)}`)
+  }
   console.log(`  ${c.brandBold('PID')}        ${child.pid}`)
   console.log(`  ${c.brandBold('Data dir')}   ${c.ash(dir)}`)
   console.log(`  ${c.brandBold('Logs')}       ${c.ash(logPath)}`)
