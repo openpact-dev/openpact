@@ -1,0 +1,26 @@
+{
+  "name": "@openpact/skill",
+  "version": "0.0.1",
+  "description": "Portable agent skill for the OpenPact daemon (SKILL.md + machine-readable tools.json)",
+  "license": "MIT",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openpact-dev/openpact.git",
+    "directory": "packages/skill"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "SKILL.md",
+    "tools.json",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "NODE_OPTIONS='--import tsx' brittle 'test/integration/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@openpact/daemon": "*"
+  }
+}

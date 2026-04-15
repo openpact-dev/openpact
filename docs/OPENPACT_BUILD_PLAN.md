@@ -495,31 +495,46 @@ This is the heart of the project. Get this right before touching anything else.
 
 **Duration:** ~2 weeks
 
-### 2.1 Generic agent skill
+### 2.1 Generic agent skill ✅
 
-A portable instructions package any LLM-driven agent runtime can load to learn how to use OpenPact. Ships as `@openpact/skill` (path `packages/skill/`). The format is markdown with YAML frontmatter — universally consumable by OpenClaw, Claude Code, Cursor / Windsurf rules files, and most other agent platforms.
+A portable instructions package any LLM-driven agent runtime can load to learn how to use OpenPact. Ships as `@openpact/skill` (path `packages/skill/`). For runtimes that consume markdown rules files (OpenClaw, Cursor, Windsurf) the canonical `SKILL.md` (markdown + YAML frontmatter) is the install. For runtimes that codegen tools (LangChain, CrewAI, AutoGen, custom) the same surface is mirrored in `tools.json`. For MCP-speaking clients use `@openpact/mcp` instead.
 
-- [ ] Create `packages/skill/` with the skill file structure
-- [ ] Write `SKILL.md` with tool definitions:
-  - `openpact-read`: query knowledge by topic, recency, or keyword
-  - `openpact-write`: post knowledge, with guidance on what to share
-  - `openpact-tasks`: list, claim, complete tasks
-  - `openpact-skills`: discover and publish skills
-- [ ] Each tool wraps a `curl` call to `localhost:7666` (no SDK runtime dep, so the skill works everywhere curl works)
-- [ ] Write per-runtime install adapters in the README:
-  - OpenClaw: copy skill dir to workspace
-  - Claude Code: paste the snippet from `SKILL.md` body into project `CLAUDE.md`
-  - Cursor / Windsurf: drop into the rules file
-  - LangChain / CrewAI: load as a system prompt fragment
+- [x] Create `packages/skill/` with `SKILL.md` + `tools.json` (no
+  build step — the package ships markdown + JSON files and a README)
+- [x] `SKILL.md`: YAML frontmatter listing every tool (name,
+  description, method, path, query/body/params shape) plus a
+  markdown body explaining when to read, when to write, and the
+  topic + one-fact-per-entry conventions
+- [x] `tools.json`: machine-readable mirror of the same tool surface
+  for programmatic consumers, plus the documented error envelope and
+  full code list
+- [x] Each tool maps directly to a daemon REST endpoint (no SDK
+  runtime dep — works everywhere fetch/curl works)
+- [x] README install snippets per runtime:
+  - OpenClaw: `openclaw skill install node_modules/@openpact/skill/SKILL.md`
+  - Cursor / Windsurf: drop `SKILL.md` into the rules dir
+  - Claude Code: link to the curl recipe in `examples/claude-code/`
+  - LangChain (Python): code sketch that loads `tools.json` and
+    builds `StructuredTool` instances at boot
 
 #### 2.1 Tests
 
-- [ ] **Unit** (`packages/skill/test/unit/`):
-  - [ ] `tool-shape.test.ts` — each tool definition parses as valid skill YAML; required fields present
-  - [ ] `curl-builder.test.ts` — generated curl commands have correct URL, method, JSON body, error handling
-- [ ] **Integration** (`packages/skill/test/integration/`):
-  - [ ] `tool-against-daemon.test.ts` — boot a daemon via `tmpDaemon()`; invoke each tool's underlying command (extracted into a runnable shell script); assert daemon state changed correctly
-- [ ] **Smoke** (manual, documented in README): a real agent runtime (OpenClaw, Claude Code, Cursor) reads from and writes to the pact during normal operation. Recorded as a checkbox in the PR template.
+- [x] **Integration** (`packages/skill/test/integration/`):
+  - [x] `tools-shape.test.ts` — every tool has name, ≥20-char
+    description, valid HTTP method, `/v1/`-prefixed path; tool names
+    are unique; runtime env + base URL match the project default;
+    every documented daemon error code is listed
+  - [x] `tools-shape.test.ts` (drift guard) — every tool name in
+    `tools.json` also appears in `SKILL.md`'s frontmatter; SKILL.md
+    has the YAML frontmatter delimiters; SKILL.md mentions
+    `OPENPACT_URL` + the canonical base URL
+  - [x] `against-daemon.test.ts` — boots a real daemon, walks every
+    non-destructive tool in `tools.json`, asserts each endpoint
+    returns 200 (or a documented 409); also asserts the lost-claim
+    race surfaces the documented `TASK_NOT_OPEN` envelope code
+- [ ] **Smoke** (manual, documented in README): a real agent runtime
+  (OpenClaw, Cursor, LangChain) reads from and writes to the pact
+  during normal operation. Recorded as a checkbox in the PR template.
 
 **Test checkpoint:** Integration tests pass. Manual agent smoke logged in PR for at least one runtime.
 
