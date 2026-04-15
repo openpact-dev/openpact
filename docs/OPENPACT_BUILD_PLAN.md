@@ -379,8 +379,8 @@ This is the heart of the project. Get this right before touching anything else.
   openpact init                -> Create a new pact (keypair + Autobase)
   openpact join <key>          -> Join an existing pact
   openpact invite              -> Print the join key for this pact
-  openpact start               -> Start the daemon in the foreground
-  openpact start --daemon      -> Start in background (detached)
+  openpact start               -> Start the daemon in the background (default)
+  openpact start --foreground  -> Start in the foreground (do not detach)
   openpact stop                -> Stop the background daemon
   openpact status              -> Print pact info, peers, entry counts
   openpact peers               -> List connected peers with roles
@@ -408,7 +408,7 @@ This is the heart of the project. Get this right before touching anything else.
 - [x] **End-to-end** (`packages/cli/test/e2e/`) — `execa` with isolated tmp dirs:
   - [x] `init-flow.test.ts` — `init` writes config; second `init` refuses without `--force`; `--force` works
   - [x] `invite-join.test.ts` — `init` then `invite` prints key; `join <key>` writes B's config; bad hex rejected
-  - [x] `start-stop.test.ts` — `start --daemon` writes PID and the process is alive; `stop` removes PID and kills the daemon cleanly
+  - [x] `start-stop.test.ts` — `start` writes PID and the process is alive (default is detached); `stop` removes PID and kills the daemon cleanly
   - [x] `double-start.test.ts` — second `start` while one is running errors with "already running"
   - [x] `log-tail.test.ts` — POST via fetch, `openpact log` prints it; `--type` filter works; "daemon not running" surfaces clearly
   - [x] `full-flow.test.ts` — two daemons on different ports, full lifecycle through the CLI (init → start → status → POST → log → stop)

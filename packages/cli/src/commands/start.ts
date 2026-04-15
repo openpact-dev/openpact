@@ -8,7 +8,7 @@ import { c } from '../lib/theme'
 import { spinner } from '../lib/spinner'
 
 export interface StartOpts {
-  daemon?: boolean
+  foreground?: boolean
   port?: string | number
   bootstrap?: string
 }
@@ -25,7 +25,7 @@ export async function startCmd(
     )
   }
 
-  if (!opts.daemon) {
+  if (opts.foreground) {
     await startForegroundCmd(opts, cmd)
     return
   }

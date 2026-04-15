@@ -12,9 +12,8 @@ export interface StartForegroundOpts {
 /**
  * Boot the daemon + REST API and block until SIGINT/SIGTERM.
  *
- * Used by both `openpact start` (foreground) and the detached child of
- * `openpact start --daemon`. Writes its own PID and removes it on clean
- * shutdown.
+ * Used by both `openpact start --foreground` and the detached child of
+ * `openpact start`. Writes its own PID and removes it on clean shutdown.
  */
 export async function startForegroundCmd(
   opts: StartForegroundOpts,

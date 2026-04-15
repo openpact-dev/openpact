@@ -25,11 +25,11 @@ test('buildProgram: --data-dir is a global option', (t) => {
   t.ok(opt, '--data-dir present')
 })
 
-test('buildProgram: start has --daemon and --port', (t) => {
+test('buildProgram: start has --foreground and --port', (t) => {
   const program = buildProgram()
   const start = program.commands.find((c) => c.name() === 'start')!
   const flags = start.options.map((o) => o.long)
-  t.ok(flags.includes('--daemon'))
+  t.ok(flags.includes('--foreground'))
   t.ok(flags.includes('--port'))
 })
 

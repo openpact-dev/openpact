@@ -33,7 +33,7 @@ export async function initCmd(
     console.log(`  ${c.brandBold('Pact key')}    ${c.bone(daemon.pactKey ?? '')}`)
     console.log(`  ${c.brandBold('Your mark')}   ${daemon.peerHandle}`)
     console.log()
-    console.log(c.ash('  next:  openpact start --daemon'))
+    console.log(c.ash('  next:  openpact start'))
     console.log(c.ash('         openpact invite              (share the pact key)'))
   } finally {
     await daemon.stop()

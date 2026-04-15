@@ -20,7 +20,7 @@ export async function statusCmd(
     if (err instanceof DaemonNotRunningError) {
       console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
       console.error(c.ash(`  data dir   ${dir}`))
-      console.error(c.ash(`  summon it  openpact start --daemon`))
+      console.error(c.ash(`  summon it  openpact start`))
       process.exit(1)
     }
     throw err

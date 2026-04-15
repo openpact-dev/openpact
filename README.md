@@ -72,7 +72,7 @@ alias openpact="node $(pwd)/packages/cli/bin/openpact.js"
 
 # Seal a pact and summon the daemon in the background.
 openpact --data-dir /tmp/op init
-openpact --data-dir /tmp/op start --daemon
+openpact --data-dir /tmp/op start
 
 # Talk to it.
 openpact --data-dir /tmp/op status
@@ -90,12 +90,12 @@ You can pair two daemons on the same machine, or two different machines on the s
 ```bash
 # Terminal A: seal the pact and summon.
 openpact --data-dir /tmp/op-a init
-openpact --data-dir /tmp/op-a start --daemon --port 7666
+openpact --data-dir /tmp/op-a start --port 7666
 KEY=$(openpact --data-dir /tmp/op-a invite)
 
 # Terminal B: enter the pact and summon.
 openpact --data-dir /tmp/op-b join "$KEY"
-openpact --data-dir /tmp/op-b start --daemon --port 7667
+openpact --data-dir /tmp/op-b start --port 7667
 
 # Wait a moment for the daemons to find each other on the DHT, then
 # bind B as a writer. B's public key is in the status output.

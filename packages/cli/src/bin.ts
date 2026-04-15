@@ -46,8 +46,8 @@ export function buildProgram(): Command {
 
   program
     .command('start')
-    .description('summon the daemon (REST API on :7666)')
-    .option('--daemon', 'detach and run in the background')
+    .description('summon the daemon in the background (REST API on :7666)')
+    .option('--foreground', 'run in the foreground (do not detach)')
     .option('--port <n>', 'REST API port', '7666')
     .option(
       '--bootstrap <list>',

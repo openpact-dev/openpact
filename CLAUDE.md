@@ -116,7 +116,7 @@ Optional dashboard runs on `:7667` (localhost only).
 openpact init                  # create pact (keypair + Autobase)
 openpact join <key>            # join existing pact
 openpact invite                # print join key
-openpact start [--daemon]      # foreground or detached
+openpact start [--foreground]  # detached by default; --foreground to block
 openpact stop                  # stop background daemon
 openpact status                # pact info, peers, entry counts (formatted)
 openpact peers                 # list connected peers + roles

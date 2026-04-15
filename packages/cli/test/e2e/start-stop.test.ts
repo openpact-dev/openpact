@@ -5,13 +5,13 @@ import { readPidFile, isAlive, pidPath } from '../../src/lib/pid'
 
 let nextPort = 17666
 
-test('start --daemon writes PID; stop removes it', async (t) => {
+test('start writes PID; stop removes it', async (t) => {
   const home = await tmpHome(t)
   const port = String(nextPort++)
 
   await runWithDir(home, ['init'])
 
-  const start = await runWithDir(home, ['start', '--daemon', '--port', port])
+  const start = await runWithDir(home, ['start', '--port', port])
   t.is(start.exitCode, 0)
   t.ok(start.stdout.includes('PID'))
   t.ok(start.stdout.includes('daemon stirs') || start.stdout.includes('Listening'))
