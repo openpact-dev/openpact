@@ -10,12 +10,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-**Phase 1.1 complete.** Monorepo skeleton, lint/format/test tooling, and CI
-matrix are wired up. No daemon, REST, CLI, or SDK code yet — those land in
-Phase 1.2 onward. Source of truth for what to build:
+**Phase 1 complete + Phase 2 mostly shipped.** Two daemons pair via the CLI, replicate entries through testnet, and three published-ready agent-integration packages cover the realistic adoption surface.
+
+Shipped:
+
+- **Phase 1.1–1.5** — daemon (Corestore + Autobase + Hyperswarm), REST on `:7666`, CLI (`init / start / log / add-writer / ...`), full pair-and-replicate flow.
+- **§2.1 `@openpact/skill`** — portable `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain Python, custom runtimes.
+- **§2.2 `@openpact/sdk`** — typed TypeScript client (CJS-only build), full error-class hierarchy, integration test against a real daemon.
+- **§2.3 partial** — Claude Code curl recipe at `examples/claude-code/CLAUDE.md` with a smoke test that runs every documented recipe against an in-process daemon.
+- **§2.6 `@openpact/mcp`** — MCP server (18 tools) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed.
+
+Remaining for Phase 2: §2.3 (OpenClaw / LangChain / shell examples), §2.4 (task TTL + 3-daemon claim race), §2.5 (skill checksum + `requires_approval`).
+
+Source of truth for what to build:
 
 - `docs/OPENPACT_DESIGN.md` — canonical functional design (product scope, architecture, data model, UX).
-- `docs/OPENPACT_BUILD_PLAN.md` — phased build plan with concrete tech picks, endpoints, CLI verbs, conventions, and the v0.1.0 definition of done.
+- `docs/OPENPACT_BUILD_PLAN.md` — phased build plan with concrete tech picks, endpoints, CLI verbs, conventions, and the v0.1.0 definition of done. Per-section ✅ marks reflect what's actually shipped.
 - `docs/0*.html` — static HTML mockups of planned UI screens.
 
 When asked to implement anything, **read both docs first**. Design doc is the *what/why*; build plan is the *how*. If a request contradicts either, raise it before writing code.
@@ -31,17 +41,20 @@ A P2P daemon giving software agents (OpenClaw, Claude Code, LangChain, CrewAI, s
 
 No central server. Eventually consistent. Tamper-proof. The daemon exposes a local REST API on `localhost:7666`.
 
-## Planned monorepo layout
+## Monorepo layout
 
 ```
 openpact/
   packages/
-    daemon/          # Autobase + Hyperswarm + fastify REST on :7666
-    cli/             # commander-based openpact <verb>
-    sdk/             # @openpact/sdk (Phase 2)
-    skill-openclaw/  # OpenClaw SKILL.md (Phase 2)
-    desktop/         # Pear desktop app (Phase 3)
-  examples/          # openclaw, langchain, claude-code, shell
+    daemon/          # Autobase + Hyperswarm + fastify REST on :7666     [shipped]
+    cli/             # commander-based openpact <verb>                    [shipped]
+    sdk/             # @openpact/sdk — typed TS client                    [shipped]
+    mcp/             # @openpact/mcp — MCP server wrapping the daemon     [shipped]
+    skill/           # @openpact/skill — portable SKILL.md + tools.json   [shipped]
+    desktop/         # Pear desktop app (Phase 3)                          [later]
+  examples/
+    claude-code/     # paste-into-CLAUDE.md curl + jq recipe              [shipped]
+    # openclaw/, langchain/, shell/                                       [Phase 2 remaining]
   docs/
 ```
 
@@ -56,7 +69,7 @@ Daemon class. Don't propose another language without strong justification.
 Load-bearing. Don't violate without explicit user sign-off:
 
 1. **No central server in the data path.** DHT bootstrap nodes and optional seed nodes for availability are fine; nothing else routes user data.
-2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK and OpenClaw skill are conveniences that wrap it, not the only way in.
+2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK, MCP server, and the generic skill are conveniences that wrap it, not the only way in.
 3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
 4. **Entry schema is fixed at four types**: `knowledge`, `task`, `skill`, `message`. Each entry: `{type, timestamp, agent_id, payload, refs, ttl}`. Adding a new top-level type requires a design-doc update first.
 5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
@@ -149,8 +162,8 @@ The CLI's themed copy (`sealed`, `summoned`, `banished`, `pact-bearer is bound`)
 
 Don't pull later-phase work forward until the current phase's test checkpoints pass.
 
-- **Phase 1** — daemon, REST, CLI; two daemons sync entries P2P. Test checkpoint: post via curl on machine A, see it via `openpact log` on machine B.
-- **Phase 2** — OpenClaw skill, `@openpact/sdk`, framework examples, task claim/release/timeout, skill format filtering + checksum verify.
+- **Phase 1** ✅ — daemon, REST, CLI; two daemons sync entries P2P. Test checkpoint: post via curl on machine A, see it via `openpact log` on machine B.
+- **Phase 2** 🩸 mostly shipped — `@openpact/skill`, `@openpact/sdk`, `@openpact/mcp`, Claude Code curl recipe all done. Remaining: OpenClaw / LangChain / shell examples, task claim TTL + 3-daemon race test, skill checksum + `requires_approval`.
 - **Phase 3** — Pear desktop app, all 6 screens (dashboard, knowledge, tasks, skills, network, entry trace), polls daemon every 5s.
 - **Phase 4** — docs site, seed-node Docker image, security review, demo video, v0.1.0 launch.
 
@@ -180,7 +193,8 @@ Run from the repo root unless noted. Requires Node.js ≥ 20.
 | `npm install`               | Install dev tooling and link workspaces.                      |
 | `npm test`                  | Unit + integration tests via `brittle` + `tsx`.               |
 | `npm run test:unit`         | Unit tests only.                                              |
-| `npm run test:e2e`          | End-to-end CLI tests (no tests until Phase 1.4).              |
+| `npm run test:e2e`          | End-to-end CLI tests via `execa` subprocesses.                |
+| `npm run test:examples`     | Smoke tests under `examples/*/test/`.                         |
 | `npm run test:watch`        | Re-run unit tests on file change.                             |
 | `npm run test:coverage`     | Run tests under `c8`; writes `coverage/lcov.info`. Enforces gates. |
 | `npm run typecheck`         | `tsc --noEmit` over the whole repo.                           |
@@ -190,8 +204,10 @@ Run from the repo root unless noted. Requires Node.js ≥ 20.
 Single test file:
 `NODE_OPTIONS='--import tsx' npx brittle packages/daemon/test/unit/<file>.test.ts`.
 
-Workspaces: `@openpact/daemon`, `@openpact/cli`, `openpact` (placeholder)
-under `packages/*`. Root scripts are canonical and what CI runs.
+Workspaces: `@openpact/daemon`, `@openpact/cli`, `@openpact/sdk`,
+`@openpact/mcp`, `@openpact/skill`, `openpact` (placeholder) under
+`packages/*`, plus `examples/*` (currently `examples-claude-code`).
+Root scripts are canonical and what CI runs.
 
 **TypeScript setup:**
 - Source + tests are all `.ts`, run via `tsx` (no build step for tests/CI;
@@ -203,9 +219,13 @@ under `packages/*`. Root scripts are canonical and what CI runs.
 - ESLint flat config (`eslint.config.js`) extended with `typescript-eslint`
 
 Coverage gate is enforced in CI:
-- `daemon` ≥ 80 / 75 lines/branches
+- Global ≥ 80 / 75 lines/branches (currently sitting at ~95 / 82)
 - `apply.ts` per-file ≥ 95 / 90 (post-test script `scripts/check-apply-coverage.js`)
 
-## When tooling lands
+`@openpact/sdk` and `@openpact/mcp` build CJS-only — `tsc -p
+tsconfig.cjs.json` per package emits `dist/cjs/` + `dist/types/`. Both
+get rebuilt as part of `test:all` so a stale dist doesn't ship.
 
-Once `package.json` + scripts exist, **update this file** with actual commands. Done as of Phase 1.1 — keep this section current as new scripts (daemon start, build, type-check) come online.
+## Keep this file current
+
+When new packages, scripts, or invariants land, **update this file in the same commit**. The Repository status, monorepo layout, and Commands tables are the parts most likely to drift. The architectural invariants and conventions are load-bearing — change them only with explicit user sign-off.

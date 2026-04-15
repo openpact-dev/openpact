@@ -35,7 +35,7 @@ Under the hood it uses the [Holepunch / Pear](https://pears.com) stack: Hypercor
 
 ## 🜏 Status
 
-Phase 1 is done. Two daemons can pair through the CLI, promote each other, and replicate entries. The full flow is covered by an end-to-end test.
+Phase 1 is done and Phase 2 is most of the way through. Two daemons can pair, replicate entries, and any agent that speaks HTTP, MCP, or markdown rules files can hook into a pact in one config block.
 
 Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_BUILD_PLAN.md`](docs/OPENPACT_BUILD_PLAN.md).
 
@@ -46,7 +46,12 @@ Version 0.1.0 ships when phases 2 to 4 are done. The plan is in [`docs/OPENPACT_
 | 1.3 REST API on `:7666`    | 🔥 shipped | Fastify. All v1 routes, including the task state machine. |
 | 1.4 CLI                    | 🔥 shipped | `openpact init / start / log` and friends. PID file management. |
 | 1.5 two-daemon flow        | 🔥 shipped | `--bootstrap` flag plus `add-writer` and `remove-writer` commands. Full pair-and-replicate via the CLI. |
-| 2.x agent integrations     | 🩸 next    | `@openpact/sdk`, OpenClaw skill, framework examples |
+| 2.1 generic agent skill    | 🔥 shipped | `@openpact/skill` — `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain, custom. |
+| 2.2 SDK                    | 🔥 shipped | `@openpact/sdk` — typed TS client, error-class hierarchy, full integration test against a real daemon. |
+| 2.3 example integrations   | 🩸 partial | Claude Code recipe shipped (curl + jq, smoke-tested). OpenClaw / LangChain / shell remaining. |
+| 2.4 task TTL + race test   | 🕯 later   | 24h auto-expire on claims; 3-daemon concurrent-claim test. |
+| 2.5 skill checksum         | 🕯 later   | Tampering test + `requires_approval` flag. |
+| 2.6 MCP server             | 🔥 shipped | `@openpact/mcp` — 18 MCP tools, one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed. |
 | 3.x desktop app            | 🕯 later   | Pear desktop, all 6 screens |
 | 4.x docs and launch        | 🕯 later   | seed-node Docker image, security review, demo video |
 
@@ -112,6 +117,18 @@ openpact --data-dir /tmp/op-a log
 To run on a private network without using the public DHT, pass `--bootstrap host:port,host:port` to `start`. You can also set `OPENPACT_BOOTSTRAP` in the environment.
 
 `@openpact/cli` will be on npm in phase 4. Until then, the `bin/openpact.js` shim runs the TypeScript entry through `tsx`.
+
+## 🪞 Agent integrations
+
+Three published-ready packages cover the realistic adoption surface. Pick the one your runtime speaks.
+
+| Package           | Use it when…                                                                 | Install                                |
+| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------- |
+| `@openpact/mcp`   | Your client speaks MCP (Claude Desktop, Claude Code, Cursor, Windsurf, Zed). | `npx -y @openpact/mcp` in `mcpServers` |
+| `@openpact/sdk`   | You're writing a Node / TS agent (custom, LangChain.js, CrewAI on Node).     | `npm i @openpact/sdk`                  |
+| `@openpact/skill` | Your runtime consumes markdown rules or codegens tools (OpenClaw, Cursor / Windsurf rules, LangChain Python, custom). | `npm i @openpact/skill` |
+
+For Claude Code without MCP, paste the curl recipe in [`examples/claude-code/CLAUDE.md`](examples/claude-code/CLAUDE.md) into your project — no SDK runtime dep.
 
 ## 📜 Documentation
 
