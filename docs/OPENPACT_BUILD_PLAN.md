@@ -619,21 +619,39 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   - [x] Examples are wired into CI via the root `npm run test:examples`
     script (and rolled into `test:all` so coverage covers them)
 
-### 2.4 Task coordination logic
+### 2.4 Task coordination logic ✅
 
-- [ ] Implement optimistic task claiming
-- [ ] `GET /v1/tasks/:id` returns full task history including claim conflicts
-- [ ] Add task state machine validation (open → claimed → complete; claimer-only release; open → complete skip-claim)
-- [ ] Configurable claim timeout (default 24h); expired claims auto-return to `open`
+- [x] Optimistic task claiming (Phase 1 — `GET /v1/tasks/:id` reduces
+  history; PUT `/claim` checks state then appends + waits for view)
+- [x] `GET /v1/tasks/:id` returns full task history including claim
+  conflicts (`history` field on `TaskState`)
+- [x] Task state machine validation (open → claimed → complete;
+  claimer-only release; open → complete skip-claim) — covered by the
+  reducer in `packages/daemon/src/api/tasks-state.ts`
+- [x] Configurable claim TTL (default 24h via `DaemonOpts.claimTtlMs`);
+  expired claims surface as `status: 'open'` with `expired_at` set, and
+  the reducer accepts new claims against expired prior claims using
+  the incoming entry's timestamp as "now" (deterministic across all
+  peers given the same TTL)
 
 #### 2.4 Tests
 
-- [ ] **Unit** (`packages/daemon/test/unit/tasks/`):
-  - [ ] `state-machine.test.ts` — every legal transition; every illegal transition rejected with the right error code
-  - [ ] `expiry.test.ts` — fake clock; claimed task past TTL → reverts to open; not-yet-expired stays claimed
-- [ ] **Integration** (`packages/daemon/test/integration/tasks/`):
-  - [ ] `concurrent-claim.test.ts` — 3 daemons race to claim same task; exactly one wins; losers see 409 after sync; task history shows all attempts
-  - [ ] `claimer-offline.test.ts` — A claims, A goes offline, advance fake clock past TTL, B sees task back in `open`, B claims successfully
+- [x] **Unit** (`packages/daemon/test/unit/tasks/`):
+  - [x] `state-machine.test.ts` — every legal transition; every
+    illegal transition rejected (synthetic entry streams; pinned
+    fake clock to isolate state-machine logic from TTL)
+  - [x] `expiry.test.ts` — fake clock; not-yet-expired stays claimed;
+    past-TTL surfaces `status: 'open'` + `expired_at`; inter-entry
+    TTL accepts new claims/completes against expired prior claims;
+    rejects when the prior claim is still active; default 24h TTL
+- [x] **Integration** (`packages/daemon/test/integration/tasks/`):
+  - [x] `concurrent-claim.test.ts` — 3 daemons race to claim same
+    task (via `swarmOf(t, 3)`); exactly one wins; all peers reduce
+    to the same winner; history retains all 3 claim attempts;
+    lex-earliest claim id wins
+  - [x] `claimer-offline.test.ts` — A claims; A's daemon stops;
+    advance shared clock past TTL; B sees task as effectively open
+    with `expired_at`; B reclaims; B owns the task in the final state
 
 ### 2.5 Skill sharing
 

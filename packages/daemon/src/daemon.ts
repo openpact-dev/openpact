@@ -15,6 +15,19 @@ export interface DaemonOpts {
   dataDir?: string
   port?: number
   swarm?: Record<string, unknown>
+  /**
+   * How long a `claimed` task remains effectively claimed before
+   * peers treat it as open again. All peers in a pact MUST agree on
+   * this value (the reducer is deterministic w.r.t. it). Default: 24h.
+   */
+  claimTtlMs?: number
+  /**
+   * Wall-clock source used by the route layer when deciding whether
+   * a stale claim has expired *now* (vs. the inter-entry checks
+   * inside the reducer, which use entry timestamps for determinism).
+   * Tests inject a fake clock here. Default: `Date.now`.
+   */
+  clockMs?: () => number
 }
 
 export interface JoinOpts extends DaemonOpts {
@@ -25,9 +38,13 @@ export interface WaitOpts {
   timeout?: number
 }
 
+const DEFAULT_CLAIM_TTL_MS = 24 * 60 * 60 * 1000
+
 export class Daemon extends EventEmitter {
   dataDir: string
   port: number
+  claimTtlMs: number
+  clockMs: () => number
   private _swarmOpts: Record<string, unknown>
   private _store: any = null
   private _base: any = null
@@ -35,11 +52,19 @@ export class Daemon extends EventEmitter {
   private _started = false
   private _role: Role | null = null
 
-  constructor({ dataDir, port = DEFAULT_PORT, swarm = {} }: DaemonOpts = {}) {
+  constructor({
+    dataDir,
+    port = DEFAULT_PORT,
+    swarm = {},
+    claimTtlMs = DEFAULT_CLAIM_TTL_MS,
+    clockMs = Date.now,
+  }: DaemonOpts = {}) {
     super()
     this.dataDir = dataDir || defaultDataDir()
     this.port = port
     this._swarmOpts = swarm
+    this.claimTtlMs = claimTtlMs
+    this.clockMs = clockMs
   }
 
   static async create(opts: DaemonOpts = {}): Promise<Daemon> {

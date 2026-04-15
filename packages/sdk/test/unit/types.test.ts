@@ -38,6 +38,11 @@ async function _shape(pact: OpenPact) {
   void k[0]?.payload.topic
   const t: TaskState = await pact.tasks.get('aaaa-1')
   void t.status
+  // TTL fields exist on TaskState (added in §2.4).
+  const _expiredAt: string | null = t.expired_at
+  const _claimedAt: string | null = t.claimed_at
+  void _expiredAt
+  void _claimedAt
 }
 
 // Bad arg types must be rejected.

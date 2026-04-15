@@ -67,6 +67,15 @@ export interface TaskState {
   description?: string
   status: TaskStatus
   claimed_by: string | null
+  /** ISO timestamp of the entry that established the current `claimed` status (if any). */
+  claimed_at: string | null
+  /**
+   * Set when the daemon's wall-clock observes that a `claimed` task
+   * has timed out. When set, `status` is reported as `open` and
+   * `claimed_by` as null, but `history` retains the original claim.
+   * Anyone may claim again.
+   */
+  expired_at: string | null
   result: string | null
   history: TaskEntry[]
 }

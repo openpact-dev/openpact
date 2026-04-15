@@ -1,11 +1,15 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { listByType } from '../views'
-import { getTaskState, reduceTaskHistory, type TaskState } from '../tasks-state'
+import { getTaskState, reduceTaskHistory, type TaskState, type ReduceOpts } from '../tasks-state'
 import { findRefs } from '../views'
 import { HttpError } from '../errors'
 
 const TASK_STATUSES = ['open', 'claimed', 'complete'] as const
+
+function ttlOpts(daemon: Daemon): ReduceOpts {
+  return { ttlMs: daemon.claimTtlMs, clockMs: daemon.clockMs }
+}
 
 const taskCreateSchema = {
   type: 'object',
@@ -91,7 +95,7 @@ export default async function tasksRoute(
 
   app.put<{ Params: IdParams }>('/v1/tasks/:id/claim', async (req) => {
     const taskId = req.params.id
-    const before = await getTaskState(daemon.view, taskId)
+    const before = await getTaskState(daemon.view, taskId, ttlOpts(daemon))
     if (!before) throw new HttpError(404, 'NOT_FOUND', `task ${taskId} not found`)
     if (before.status !== 'open') {
       throw new HttpError(409, 'TASK_NOT_OPEN', `task ${taskId} is ${before.status}`)
@@ -124,7 +128,7 @@ export default async function tasksRoute(
     { schema: { body: completeSchema } },
     async (req) => {
       const taskId = req.params.id
-      const before = await getTaskState(daemon.view, taskId)
+      const before = await getTaskState(daemon.view, taskId, ttlOpts(daemon))
       if (!before) throw new HttpError(404, 'NOT_FOUND', `task ${taskId} not found`)
       if (before.status === 'complete') {
         throw new HttpError(409, 'TASK_ALREADY_COMPLETE', `task ${taskId} is already complete`)
@@ -156,7 +160,7 @@ export default async function tasksRoute(
 
   app.put<{ Params: IdParams }>('/v1/tasks/:id/release', async (req) => {
     const taskId = req.params.id
-    const before = await getTaskState(daemon.view, taskId)
+    const before = await getTaskState(daemon.view, taskId, ttlOpts(daemon))
     if (!before) throw new HttpError(404, 'NOT_FOUND', `task ${taskId} not found`)
     if (before.status !== 'claimed') {
       throw new HttpError(409, 'NOT_CLAIMED', `task ${taskId} is ${before.status}, not claimed`)
@@ -187,17 +191,18 @@ export default async function tasksRoute(
  * local writes very quickly.
  */
 async function waitForView(daemon: Daemon, taskId: string, expectedId: string): Promise<TaskState> {
+  const opts = ttlOpts(daemon)
   const deadline = Date.now() + 2000
   while (Date.now() < deadline) {
     const entries = (await findRefs(daemon.view, 'task', taskId)) as any[]
     if (entries.some((e) => e.id === expectedId)) {
-      const state = reduceTaskHistory(entries)
+      const state = reduceTaskHistory(entries, opts)
       if (state) return state
     }
     await new Promise((r) => setTimeout(r, 25))
   }
   // Fallback: return whatever we have so the caller can inspect.
-  const state = await getTaskState(daemon.view, taskId)
+  const state = await getTaskState(daemon.view, taskId, opts)
   if (!state) throw new HttpError(500, 'INTERNAL', 'task vanished from view after append')
   return state
 }
