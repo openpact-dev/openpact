@@ -215,6 +215,12 @@ export class Daemon extends EventEmitter {
     pact.autobase?.on('writable', () => {
       void this._reconcilePactLinks(pact)
       announce()
+      // A joiner only becomes writable after admission has landed on
+      // their view. At swarm-connect time we bailed out of member-auth
+      // because we weren't yet a member; now that we are, retry for
+      // every live link. Three-wave schedule (0 / 250 / 1000 ms) matches
+      // the swarm-connect path, which absorbs any channel-handshake race.
+      for (const link of this._peerLinks) this._scheduleMemberAuth(link)
     })
     // Fire once for pacts that are already writable (creators, or
     // pre-admitted loaded pacts). The autobase 'writable' event only
@@ -696,6 +702,11 @@ export class Daemon extends EventEmitter {
           this._clearRevocationTimer(link, pactId)
           link.authenticatedMembers.set(pactId, claimedMemberKey)
           this._attachPactToLink(pact, link)
+          this.emit('member-online', {
+            pactId: pact.pactKey,
+            alias: this._aliasForPactKey(pact.pactKey),
+            member_key: claimedMemberKey,
+          })
           continue
         }
         await this._requestMemberAuth(link, pact)

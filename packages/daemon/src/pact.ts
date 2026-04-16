@@ -247,20 +247,23 @@ export class Pact extends EventEmitter {
    * time this code runs.
    */
   async announceDisplayNameIfStale(): Promise<void> {
+    // Guard must flip BEFORE any await, otherwise the autobase 'update'
+    // that fires mid-view.get can re-enter here with the index still
+    // stale, and both callers end up appending a second rename message.
     if (this._announcing) return
     if (!this._base?.writable) return
     const current = this._displayName
     if (!current) return
     const handle = this.peerHandle
     if (!handle) return
-    const existing = await this.view?.get?.(`${AGENT_NAME_PREFIX}${handle}`)
-    const existingName =
-      existing && typeof existing.value === 'object' && existing.value
-        ? ((existing.value as { name?: unknown }).name as string | undefined)
-        : undefined
-    if (existingName === current) return
     this._announcing = true
     try {
+      const existing = await this.view?.get?.(`${AGENT_NAME_PREFIX}${handle}`)
+      const existingName =
+        existing && typeof existing.value === 'object' && existing.value
+          ? ((existing.value as { name?: unknown }).name as string | undefined)
+          : undefined
+      if (existingName === current) return
       await this._announceDisplayName(current, existingName ?? null)
     } catch {
       // Best-effort auto-heal. Autobase/hypercore can reject the append
