@@ -10,6 +10,14 @@ const MEMBER_RANGE_END = '_members0'
 
 export const INVITE_PREFIX = '_invites/'
 
+// Advisory display_name index: `_agents/<agent_id> = { name, ts }`.
+// Populated from every valid entry that carries a non-empty display_name
+// (including admin + invite-redeemed, which aren't stored as browsable
+// `<type>/...` keys). Lets the peers endpoint resolve names even when a
+// peer has yet to post a user-facing entry.
+export const AGENT_NAME_PREFIX = '_agents/'
+export const AGENT_NAME_RANGE_END = '_agents0'
+
 export interface ApplyNode {
   value: unknown
   from?: { key?: Buffer | null } | null
@@ -89,6 +97,8 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
         continue
       }
       const writerKeyHex = b4a.toString(writerKey, 'hex') as string
+
+      await upsertAgentName(entry, view)
 
       // First writer implicitly becomes the first member.
       let isMember = await isMemberKey(view, writerKeyHex)
@@ -191,6 +201,30 @@ async function isIndexerKey(view: ApplyView, writerKeyHex: string): Promise<bool
 async function isMemberKey(view: ApplyView, writerKeyHex: string): Promise<boolean> {
   const got = await view.get(`${MEMBER_PREFIX}${writerKeyHex}`)
   return got != null
+}
+
+/**
+ * Upsert `_agents/<agent_id>` with the entry's display_name if present and
+ * newer than any existing record. Keeps the index authoritative across
+ * every entry type without forcing admin/invite-redeemed into the
+ * browsable `<type>/<ts>/<id>` space.
+ */
+async function upsertAgentName(entry: unknown, view: ApplyView): Promise<void> {
+  if (!entry || typeof entry !== 'object') return
+  const e = entry as { agent_id?: unknown; display_name?: unknown; timestamp?: unknown }
+  if (typeof e.agent_id !== 'string' || !e.agent_id) return
+  if (typeof e.display_name !== 'string') return
+  const name = e.display_name.trim()
+  if (!name) return
+  const ts = typeof e.timestamp === 'string' ? e.timestamp : ''
+  const key = `${AGENT_NAME_PREFIX}${e.agent_id}`
+  const existing = await view.get(key)
+  const existingTs =
+    existing && typeof existing.value === 'object' && existing.value
+      ? ((existing.value as { ts?: unknown }).ts as string | undefined) || ''
+      : ''
+  if (ts && existingTs && ts <= existingTs) return
+  await view.put(key, { name, ts })
 }
 
 async function applyAdmin(

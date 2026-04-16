@@ -223,6 +223,7 @@ test('POST /invites/redeem: expired token returns 410 INVITE_EXPIRED', async (t)
     nonce: 'a'.repeat(48),
     expiresAt: new Date(Date.now() - 1000).toISOString(),
     pactName: null,
+    pactPurpose: null,
     issuerDisplay: null,
   }
   const token = invites.encodeToken(pastPayload)
@@ -261,6 +262,7 @@ test('POST /invites/redeem: wrong-pact token returns 400 INVITE_WRONG_PACT', asy
     nonce: invites.newNonce(),
     expiresAt: new Date(Date.now() + 100_000).toISOString(),
     pactName: null,
+    pactPurpose: null,
     issuerDisplay: null,
   })
   const res = await app.inject({

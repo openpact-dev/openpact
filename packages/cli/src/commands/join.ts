@@ -15,6 +15,7 @@ interface Decoded {
   nonce: string
   expiresAt: string
   pactName: string | null
+  pactPurpose: string | null
   issuerDisplay: string | null
 }
 
@@ -55,6 +56,7 @@ function decodeToken(token: string): Decoded {
     nonce: p.nonce,
     expiresAt: p.expiresAt,
     pactName: typeof p.pactName === 'string' ? p.pactName : null,
+    pactPurpose: typeof p.pactPurpose === 'string' ? p.pactPurpose : null,
     issuerDisplay: typeof p.issuerDisplay === 'string' ? p.issuerDisplay : null,
   }
 }
@@ -129,6 +131,7 @@ export async function joinCmd(
       alias: chosenAlias,
       display_name: displayName,
       pact_name: decoded.pactName,
+      pact_purpose: decoded.pactPurpose,
     })
     joined = { alias: res.alias, pact_id: res.pact_id }
   } catch (err) {

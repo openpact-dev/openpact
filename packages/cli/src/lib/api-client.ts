@@ -148,6 +148,7 @@ export class ApiClient {
       alias?: string
       display_name?: string | null
       pact_name?: string | null
+      pact_purpose?: string | null
     } = {},
   ): Promise<{
     ok: true

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import b4a from 'b4a'
 import type { Daemon } from '../../daemon'
 import { derive } from '../../peer-handle'
-import { INDEXER_PREFIX } from '../../apply'
+import { AGENT_NAME_PREFIX, AGENT_NAME_RANGE_END, INDEXER_PREFIX } from '../../apply'
 import { resolvePact } from '../pact-resolver'
 
 interface PeerInfo {
@@ -13,28 +13,24 @@ interface PeerInfo {
   online: boolean
 }
 
-const ENTRY_TYPES = ['knowledge', 'task', 'skill', 'message', 'invite-redeemed', 'admin'] as const
-
+/**
+ * Read the `_agents/<agent_id>` index populated by apply.ts. Every
+ * valid entry with a non-empty display_name — including admin and
+ * invite-redeemed — updates this map, so peers show their name even
+ * before posting user-facing content.
+ */
 async function buildDisplayNameIndex(view: any): Promise<Map<string, string>> {
-  const latest = new Map<string, { ts: string; name: string }>()
-  for (const type of ENTRY_TYPES) {
-    const range = { gte: `${type}/`, lt: `${type}0` }
-    for await (const row of view.createReadStream(range)) {
-      const v = row && row.value
-      if (!v || typeof v !== 'object') continue
-      const agentId = (v as { agent_id?: unknown }).agent_id
-      const name = (v as { display_name?: unknown }).display_name
-      if (typeof agentId !== 'string' || typeof name !== 'string' || !name) continue
-      const ts =
-        typeof (v as { timestamp?: unknown }).timestamp === 'string'
-          ? (v as { timestamp: string }).timestamp
-          : ''
-      const existing = latest.get(agentId)
-      if (!existing || ts > existing.ts) latest.set(agentId, { ts, name })
-    }
-  }
   const out = new Map<string, string>()
-  for (const [k, v] of latest) out.set(k, v.name)
+  const range = { gte: AGENT_NAME_PREFIX, lt: AGENT_NAME_RANGE_END }
+  for await (const row of view.createReadStream(range)) {
+    const v = row && row.value
+    if (!v || typeof v !== 'object') continue
+    const name = (v as { name?: unknown }).name
+    if (typeof name !== 'string' || !name) continue
+    const agentId = typeof row.key === 'string' ? row.key.slice(AGENT_NAME_PREFIX.length) : ''
+    if (!agentId) continue
+    out.set(agentId, name)
+  }
   return out
 }
 

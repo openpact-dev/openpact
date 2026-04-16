@@ -36,6 +36,7 @@ test('encode/decode round-trips a valid payload', (t) => {
     nonce: newNonce(),
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
     pactName: 'crimson-covenant',
+    pactPurpose: 'binding an oath',
     issuerDisplay: 'Ana',
   }
   const token = encodeToken(payload)

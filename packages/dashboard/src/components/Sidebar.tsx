@@ -12,6 +12,7 @@ import { PactSwitcher } from './PactSwitcher'
 import { useTheme } from '../hooks/useTheme'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
+import { useSse } from '../hooks/useSse'
 
 const DOCS_URL = 'https://openpact.dev/docs/overview/'
 const GITHUB_URL = 'https://github.com/openpact-dev/openpact'
@@ -95,15 +96,26 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   }, [])
 
   const pact = usePact()
+  const sse = useSse()
+  const trigger = sse.last?.seq ?? 0
   // Per-pact status — keyed by current alias so the cache invalidates
   // on switch and re-fetches against the new pact.
   const status = useQuery(() => pact.status(), {
     key: `sidebar:status:${current ?? 'none'}`,
+    trigger,
+  })
+  // Pact-scoped writer list. We count self + remote writers so the
+  // sidebar reports "agents in this pact" rather than raw swarm
+  // connections (daemon.connections is host-wide and includes peers
+  // not yet admitted to the current pact).
+  const peers = useQuery(() => pact.peers(), {
+    key: `sidebar:peers:${current ?? 'none'}`,
+    trigger,
   })
   const peerHandle = status.data?.peer_handle ?? null
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
-  const peerCount = status.data?.peers ?? 0
+  const agentCount = (Array.isArray(peers.data) ? peers.data.length : 0) + (status.data ? 1 : 0)
   // Reflect the active pact name in the browser tab so multiple
   // dashboards open against different pacts are distinguishable.
   useEffect(() => {
@@ -179,11 +191,11 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
               <span class="absolute inset-0 animate-ember-pulse rounded-full" />
             </span>
             <span class="text-[13px] text-[var(--color-ink2)]">
-              {peerCount === 0
-                ? 'No peers yet'
-                : peerCount === 1
-                  ? '1 peer connected'
-                  : `${peerCount} peers connected`}
+              {agentCount === 0
+                ? 'No pact selected'
+                : agentCount === 1
+                  ? 'Just you'
+                  : `${agentCount} agents`}
             </span>
           </div>
         </div>

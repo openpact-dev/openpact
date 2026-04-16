@@ -2,6 +2,7 @@ import test from 'brittle'
 import b4a from 'b4a'
 import {
   makeApply,
+  AGENT_NAME_PREFIX,
   INDEXER_PREFIX,
   INVITE_PREFIX,
   MEMBER_PREFIX,
@@ -509,6 +510,140 @@ test('display_name null is preserved', async (t) => {
   const kKey = view._keys().find((k) => k.startsWith('knowledge/'))!
   const stored = view._data.get(kKey) as { display_name?: string | null }
   t.is(stored.display_name, null)
+})
+
+test('display_name is indexed under _agents/<agent_id>', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'sales', content: 'hi' }, { handle: 'anon-lynx-1234' }),
+          display_name: 'Asmodeus',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-lynx-1234`) as
+    | {
+        name?: string
+        ts?: string
+      }
+    | undefined
+  t.ok(stored, 'agent name entry was written')
+  t.is(stored?.name, 'Asmodeus')
+  t.is(stored?.ts, TS)
+})
+
+test('_agents/ index ignores entries without display_name', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: entry('knowledge', { topic: 'x', content: 'y' }),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  t.absent(view._keys().some((k) => k.startsWith(AGENT_NAME_PREFIX)))
+})
+
+test('_agents/ index prefers newer timestamp over older', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  const older = '2026-04-10T00:00:00.000Z'
+  const newer = '2026-04-15T00:00:00.000Z'
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry(
+            'knowledge',
+            { topic: 't', content: 'c' },
+            { handle: 'anon-newt-abcd', ts: newer },
+          ),
+          display_name: 'Recent Name',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  // A later apply with an older timestamp must not clobber.
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: {
+          ...entry(
+            'knowledge',
+            { topic: 't2', content: 'c2' },
+            { handle: 'anon-newt-abcd', ts: older },
+          ),
+          display_name: 'Old Name',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-newt-abcd`) as { name?: string }
+  t.is(stored?.name, 'Recent Name', 'older entry did not clobber newer')
+})
+
+test('_agents/ index is populated by admin entries too', async (t) => {
+  const view = fakeView()
+  const host = fakeHost()
+  const apply = makeApply()
+  // First entry so KEY_A is bootstrapped as indexer.
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'seed', content: 'seed' }, { handle: 'anon-raven-0001' }),
+          display_name: 'Creator',
+        },
+      }),
+    ],
+    view,
+    host,
+  )
+  // Admin entry by the same indexer. Apply writes _agents/<handle>
+  // even though the admin entry itself isn't stored under admin/.
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: {
+          ...entry(
+            'admin',
+            { action: 'addWriter', key: KEY_B, indexer: false },
+            { handle: 'anon-raven-0001', ts: '2026-04-16T00:00:00.000Z' },
+          ),
+          display_name: 'Creator Updated',
+        },
+      }),
+    ],
+    view,
+    host,
+  )
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-raven-0001`) as { name?: string }
+  t.is(stored?.name, 'Creator Updated')
 })
 
 test('display_name missing field is preserved (backward compat from pre-4a pacts)', async (t) => {

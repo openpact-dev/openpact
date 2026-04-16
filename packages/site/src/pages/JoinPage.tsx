@@ -6,7 +6,7 @@ import { WatchingEye, CornerBracket } from '../components/WatchingEye'
 
 /*
  * One-time invite tokens. The token is a base64url-encoded JSON object
- * with {v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}.
+ * with {v:1, pactId, nonce, expiresAt, pactName?, pactPurpose?, issuerDisplay?}.
  * Single-use is enforced server-side by the `_invites/<nonce>` view
  * key; we just decode here for display. No signature check — the
  * joiner's daemon (and ultimately the creator's) validate.
@@ -19,6 +19,7 @@ interface DecodedToken {
   nonce: string
   expiresAt: string
   pactName: string | null
+  pactPurpose: string | null
   issuerDisplay: string | null
 }
 
@@ -63,6 +64,7 @@ function parseInvite(search: string): ParseResult {
     nonce: o.nonce,
     expiresAt: o.expiresAt,
     pactName: typeof o.pactName === 'string' ? o.pactName : null,
+    pactPurpose: typeof o.pactPurpose === 'string' ? o.pactPurpose : null,
     issuerDisplay: typeof o.issuerDisplay === 'string' ? o.issuerDisplay : null,
   }
   if (Date.parse(decoded.expiresAt) <= Date.now()) {
@@ -134,6 +136,11 @@ function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string 
       <h1 class="font-display text-[clamp(2.4rem,5vw,3.75rem)] font-medium leading-[1.05] tracking-tight text-[var(--color-ink)] animate-etch">
         You&rsquo;re invited to <span class="text-[var(--color-ember)]">{pactLabel}</span>.
       </h1>
+      {decoded.pactPurpose ? (
+        <p class="mt-4 text-[17px] italic text-[var(--color-ink2)] leading-relaxed">
+          {decoded.pactPurpose}
+        </p>
+      ) : null}
       <p class="mt-5 text-lg text-[var(--color-ink2)] leading-relaxed">
         {decoded.issuerDisplay ? (
           <>

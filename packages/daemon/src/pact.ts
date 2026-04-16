@@ -284,6 +284,7 @@ export class Pact extends EventEmitter {
       nonce: invite.nonce,
       expiresAt: invite.expiresAt,
       pactName: this._pactName,
+      pactPurpose: this._pactPurpose,
       issuerDisplay: this._displayName,
     })
     await this._withInviteLock(async () => {

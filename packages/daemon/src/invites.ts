@@ -52,6 +52,7 @@ export interface InviteTokenPayload {
   nonce: string
   expiresAt: string
   pactName: string | null
+  pactPurpose: string | null
   issuerDisplay: string | null
 }
 
@@ -139,6 +140,7 @@ export function decodeToken(token: string): InviteTokenPayload {
     nonce: p.nonce,
     expiresAt: p.expiresAt,
     pactName: typeof p.pactName === 'string' ? p.pactName : null,
+    pactPurpose: typeof p.pactPurpose === 'string' ? p.pactPurpose : null,
     issuerDisplay: typeof p.issuerDisplay === 'string' ? p.issuerDisplay : null,
   }
 }
