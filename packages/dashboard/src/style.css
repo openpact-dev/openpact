@@ -300,13 +300,12 @@ select:focus-visible {
 }
 
 /* Toasts — four ember L-brackets hugging the corners (same motif as
-   the site's CornerBracket), a thin ember ledger-edge on the left,
-   and a soft ember glow behind. Shape is cut with SVG masks so the
-   bracket colour tracks --color-ember across themes. */
+   the site's CornerBracket), plus a soft ember glow behind. Shape is
+   cut with SVG masks so the bracket colour tracks --color-ember
+   across themes. */
 .op-toast {
   position: relative !important;
   overflow: visible !important;
-  padding-left: 1.1rem !important;
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 4%),
     0 12px 32px -8px var(--color-ember-glow),
@@ -337,17 +336,6 @@ select:focus-visible {
       no-repeat bottom right / 14px 14px,
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' width='14' height='14' fill='none' stroke='white' stroke-width='0.9'><path d='M0.5 7V13.5H7'/><circle cx='0.5' cy='13.5' r='1' fill='white' stroke='none'/></svg>")
       no-repeat bottom left / 14px 14px;
-}
-.op-toast::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  width: 2px;
-  background: var(--color-ember);
-  opacity: 0.7;
-  pointer-events: none;
 }
 
 /* Ember-glow underline used on hover-eligible items. */

@@ -92,9 +92,8 @@ function ThemedToaster() {
         classNames: {
           toast:
             'op-toast pointer-events-auto flex items-start gap-3 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3 w-[340px] backdrop-blur-sm',
-          title:
-            'font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink)] leading-[1.4]',
-          description: 'mt-1.5 font-display text-[14px] leading-[1.45] text-[var(--color-ink2)]',
+          title: 'font-display text-[14px] leading-tight text-[var(--color-ink)]',
+          description: 'mt-1 text-[12px] leading-[1.4] text-[var(--color-ink2)]',
           icon: 'mt-0.5 text-[var(--color-ember)]',
           closeButton:
             'border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] text-[var(--color-ink2)] hover:text-[var(--color-ember)]',
