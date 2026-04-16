@@ -41,7 +41,7 @@ export function PactlessState({
         <button
           type="button"
           onClick={() => route('/pacts')}
-          class="border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-white"
+          class="border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-[#fff]"
         >
           Go to Pacts
         </button>

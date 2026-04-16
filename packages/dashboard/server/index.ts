@@ -119,7 +119,14 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
         return
       }
       const html = await readFile(indexPath, 'utf8')
-      reply.header('content-type', 'text/html; charset=utf-8').send(html)
+      // index.html pins hashed asset URLs. If the browser caches it,
+      // a rebuild (new hash) can't reach users until they hard-refresh.
+      // Asset files have hashed names and can be cached forever; the
+      // HTML shell must not.
+      reply
+        .header('content-type', 'text/html; charset=utf-8')
+        .header('cache-control', 'no-cache, no-store, must-revalidate')
+        .send(html)
     })
   }
 
