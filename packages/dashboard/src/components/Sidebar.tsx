@@ -114,7 +114,12 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   const peerHandle = status.data?.peer_handle ?? null
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
-  const agentCount = (Array.isArray(peers.data) ? peers.data.length : 0) + (status.data ? 1 : 0)
+  const peerList = (Array.isArray(peers.data) ? peers.data : []) as Array<{ online?: boolean }>
+  // Self is always online from our own vantage; add it when a pact is
+  // loaded. For remotes we count only those the daemon is currently
+  // authenticated to (onlineMembers-derived).
+  const onlineCount =
+    (status.data ? 1 : 0) + peerList.filter((p) => p.online === true).length
   // Reflect the active pact name in the browser tab so multiple
   // dashboards open against different pacts are distinguishable.
   useEffect(() => {
@@ -190,11 +195,11 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
               <span class="absolute inset-0 animate-ember-pulse rounded-full" />
             </span>
             <span class="text-[13px] text-[var(--color-ink2)]">
-              {agentCount === 0
+              {onlineCount === 0
                 ? 'No pact selected'
-                : agentCount === 1
-                  ? 'Just you'
-                  : `${agentCount} agents`}
+                : onlineCount === 1
+                  ? 'Just you online'
+                  : `${onlineCount} agents online`}
             </span>
           </div>
         </div>
