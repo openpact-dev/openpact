@@ -6,7 +6,7 @@ export const INDEXER_PREFIX = '_indexers/'
 // '/' is 0x2F, '0' is 0x30, so '_indexers0' bounds the prefix range exactly.
 const INDEXER_RANGE_END = '_indexers0'
 export const MEMBER_PREFIX = '_members/'
-const MEMBER_RANGE_END = '_members0'
+export const MEMBER_RANGE_END = '_members0'
 
 export const INVITE_PREFIX = '_invites/'
 

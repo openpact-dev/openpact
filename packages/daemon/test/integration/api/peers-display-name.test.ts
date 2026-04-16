@@ -84,6 +84,43 @@ test('rename propagates: setDisplayName on A is visible on B without A posting c
   t.is(peers[0]?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
 })
 
+test('GET /peers keeps members after they stop (marked offline, not removed)', async (t) => {
+  const { a, b } = await pair(t, {
+    a: { displayName: 'Alice' },
+    b: { displayName: 'Bob' },
+  })
+  const aApi = createApi(a.daemon)
+  t.teardown(() => aApi.close())
+
+  await admitMember(a.daemon, b.daemon)
+  // Capture B's canonical writer key before stopping — publicKey is
+  // null once the pact is closed.
+  const bKey = b.daemon.publicKey!
+
+  // Wait for B to show up in A's peer list at all.
+  const deadline = Date.now() + 15_000
+  while (Date.now() < deadline) {
+    await a.daemon.update()
+    const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+    const list = JSON.parse(res.body) as Array<{ remote_key: string }>
+    if (list.length >= 1) break
+    await new Promise((r) => setTimeout(r, 100))
+  }
+
+  // B stops cleanly without a self-leave (regular `op stop`). On A,
+  // autobase will eventually GC B's writer from activeWriters, but
+  // `_members/<B>` stays intact on the ledger.
+  await b.daemon.stop()
+
+  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+  const peers = JSON.parse(res.body) as Array<{
+    remote_key: string
+    online: boolean
+  }>
+  t.is(peers.length, 1, 'B is still listed after stopping')
+  t.is(peers[0].remote_key, bKey, 'same canonical key')
+})
+
 test('GET /peers is empty when the peer has not yet been admitted as member', async (t) => {
   const { a } = await pair(t)
   const aApi = createApi(a.daemon)

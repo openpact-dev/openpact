@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify'
 import b4a from 'b4a'
 import type { Daemon } from '../../daemon'
 import { derive } from '../../peer-handle'
-import { AGENT_NAME_PREFIX, AGENT_NAME_RANGE_END, INDEXER_PREFIX } from '../../apply'
+import {
+  AGENT_NAME_PREFIX,
+  AGENT_NAME_RANGE_END,
+  INDEXER_PREFIX,
+  MEMBER_PREFIX,
+  MEMBER_RANGE_END,
+} from '../../apply'
 import { resolvePact } from '../pact-resolver'
 
 interface PeerInfo {
@@ -43,15 +49,16 @@ export default async function peersRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  // Peers scoped to one pact. We walk the pact's autobase active-writer
-  // set rather than every Hyperswarm connection, so switching pacts on
-  // the dashboard shows the right peer list even when a single daemon
-  // holds several pacts over one shared swarm.
+  // Peers scoped to one pact. We walk the ledger's `_members/` index so
+  // peers stay on the list regardless of whether autobase is currently
+  // tracking their writer core — autobase GCs inactive writers out of
+  // `activeWriters` once they've flushed, but the member entry on the
+  // ledger is authoritative until an explicit admin.removeWriter lands.
   //
-  // The writer key (writer.core.key) is the canonical identity on the
-  // ledger — admin.addWriter entries reference it, and agent_id is
-  // derived from it. Online status reads the active replication peer
-  // count on the hypercore backing each writer.
+  // For online status we cross-reference `autobase.activeWriters`: if a
+  // writer is tracked and its hypercore has remote peers, we call that
+  // online. A member who's been GC'd or has no peers on their core is
+  // "offline" — but still present in the list.
   app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/peers', async (req) => {
     const pact = await resolvePact(daemon, req)
     const view = pact.view
@@ -61,20 +68,28 @@ export default async function peersRoute(
     const selfKeyHex = pact.publicKey ?? ''
     const nameByAgent = await buildDisplayNameIndex(view)
 
-    const peers: PeerInfo[] = []
+    // Snapshot the currently-tracked writers so we can cross-reference
+    // them by key. `activeWriters` is a live set; iterating it during
+    // async work risks tearing, and we only need it for presence.
+    const activeByKey = new Map<string, any>()
     for (const writer of autobase.activeWriters) {
-      // Writers self-revoked (via admin.removeWriter targeting themselves
-      // when they leave) or removed by an indexer linger in activeWriters
-      // with isRemoved=true; skip them so they disappear from the list.
-      if (writer?.isRemoved) continue
-      const core = writer?.core
+      if (!writer || writer.isRemoved) continue
+      const core = writer.core
       if (!core || !core.key) continue
-      const keyBuf: Buffer = core.key
-      const keyHex = b4a.toString(keyBuf, 'hex') as string
-      if (keyHex === selfKeyHex) continue
+      activeByKey.set(b4a.toString(core.key, 'hex') as string, writer)
+    }
+
+    const peers: PeerInfo[] = []
+    const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
+    for await (const row of view.createReadStream(range)) {
+      const keyHex = typeof row?.key === 'string' ? row.key.slice(MEMBER_PREFIX.length) : ''
+      if (!keyHex || keyHex === selfKeyHex) continue
+      const keyBuf = b4a.from(keyHex, 'hex') as Buffer
       const agentId = derive(keyBuf)
       const role: 'indexer' | 'member' = (await isIndexer(view, keyHex)) ? 'indexer' : 'member'
-      const online = Array.isArray(core.peers) ? core.peers.length > 0 : false
+      const writer = activeByKey.get(keyHex)
+      const core = writer?.core
+      const online = core && Array.isArray(core.peers) ? core.peers.length > 0 : false
       peers.push({
         id: agentId,
         remote_key: keyHex,
