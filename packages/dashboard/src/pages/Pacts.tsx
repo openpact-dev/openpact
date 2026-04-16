@@ -344,7 +344,6 @@ function JoinPactDialog({
 }) {
   const host = hostPact()
   const [key, setKey] = useState('')
-  const [alias, setAlias] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -359,13 +358,15 @@ function JoinPactDialog({
     setSaving(true)
     setError(null)
     try {
+      // Alias omitted on purpose — the daemon slugs `joined-<first8>`
+      // of the pact key. Users can rename it after the fact via the
+      // pact card's menu; forcing a choice here just slows the path
+      // through the dialog.
       const res = await host.pacts.join({
         key: key.trim(),
-        alias: alias.trim() || undefined,
         display_name: displayName.trim() || null,
       })
       setKey('')
-      setAlias('')
       setDisplayName('')
       setSaving(false)
       onJoined(res.alias)
@@ -378,13 +379,6 @@ function JoinPactDialog({
   return (
     <Modal title="Join an existing pact" onClose={onClose}>
       <Field label="Pact key (64 hex)" value={key} onInput={setKey} placeholder="0000…" mono />
-      <Field
-        label="Local alias (optional)"
-        value={alias}
-        onInput={setAlias}
-        placeholder="(joined-<first8>)"
-        max={48}
-      />
       <Field
         label="Agent display name"
         value={displayName}

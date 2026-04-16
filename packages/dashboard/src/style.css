@@ -24,6 +24,12 @@
   --color-mist: #e8e0cd;
   --color-deckle: #d8ccab;
 
+  /* Plain white: needed for hover:text-white on ember-background buttons.
+     Tailwind v4 emits `color: var(--color-white)` for that utility, and
+     without this declaration the variable has no fallback and the text
+     collapses to the inherited (default browser) colour. */
+  --color-white: #ffffff;
+
   /* Hairlines + rules — ink, not grey */
   --color-line: rgb(38 28 12 / 14%);
   --color-line-h: rgb(127 29 29 / 35%);
