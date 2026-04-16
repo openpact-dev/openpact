@@ -11,6 +11,8 @@ import { Trace } from './pages/Trace'
 import { Pacts } from './pages/Pacts'
 import { useCurrentPact } from './hooks/useCurrentPact'
 import { PactContext, pactClient, hostPact } from './hooks/usePact'
+import { DashboardConnectionProvider, useDashboardConnection } from './hooks/useDashboardConnection'
+import { SseProvider } from './hooks/useSse'
 import { useTheme } from './hooks/useTheme'
 import { useActivityToasts } from './hooks/useActivityToasts'
 
@@ -29,12 +31,25 @@ function NotFound() {
 }
 
 export function App() {
+  return (
+    <SseProvider>
+      <DashboardConnectionProvider>
+        <AppShell />
+      </DashboardConnectionProvider>
+    </SseProvider>
+  )
+}
+
+function AppShell() {
   // The pact switcher state lives at the top so a single context covers
   // both the sidebar and the page. Switching the pact updates `current`
   // and, via the keyed PactContext below, every consumer's `usePact()`
   // call returns the new client (which bumps useQuery cache keys).
-  const { current, pacts, setCurrent, refresh } = useCurrentPact()
+  const { current, pacts, setCurrent, refresh, loading } = useCurrentPact()
+  const connection = useDashboardConnection()
   const client = current ? pactClient(current) : hostPact()
+  const showDisconnectedState =
+    !loading && connection.daemonReachable === false && current === null && pacts.length === 0
 
   return (
     <PactContext.Provider value={client}>
@@ -49,17 +64,27 @@ export function App() {
           />
         </div>
         <main class="min-w-0 flex-1 px-10 py-8" key={current ?? '__no-pact__'}>
-          <Router>
-            <Dashboard path="/" />
-            <Knowledge path="/knowledge" />
-            <Tasks path="/tasks" />
-            <Messages path="/messages" />
-            <Skills path="/skills" />
-            <Network path="/network" />
-            <Pacts path="/pacts" current={current} pacts={pacts} onChange={() => void refresh()} />
-            <Trace path="/trace/:id" />
-            <NotFound default />
-          </Router>
+          <ConnectionBanner />
+          {showDisconnectedState ? (
+            <DaemonUnavailableState />
+          ) : (
+            <Router>
+              <Dashboard path="/" />
+              <Knowledge path="/knowledge" />
+              <Tasks path="/tasks" />
+              <Messages path="/messages" />
+              <Skills path="/skills" />
+              <Network path="/network" />
+              <Pacts
+                path="/pacts"
+                current={current}
+                pacts={pacts}
+                onChange={() => void refresh()}
+              />
+              <Trace path="/trace/:id" />
+              <NotFound default />
+            </Router>
+          )}
         </main>
       </div>
       <ActivityBridge />
@@ -72,6 +97,50 @@ export function App() {
 function ActivityBridge() {
   useActivityToasts(true)
   return null
+}
+
+function ConnectionBanner() {
+  const connection = useDashboardConnection()
+  if (connection.daemonReachable === false) {
+    return (
+      <div
+        class="mb-5 border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-4 py-3 text-[13px] text-[var(--color-ink)]"
+        role="status"
+      >
+        OpenPact daemon is unavailable. Showing last known state if cached. Run{' '}
+        <code>openpact start</code> to restore live data.
+      </div>
+    )
+  }
+  if (connection.sseReconnecting) {
+    return (
+      <div
+        class="mb-5 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/70 px-4 py-3 text-[13px] text-[var(--color-ink2)]"
+        role="status"
+      >
+        Live updates are reconnecting. HTTP requests still work, but this view may be momentarily
+        stale.
+      </div>
+    )
+  }
+  return null
+}
+
+function DaemonUnavailableState() {
+  return (
+    <section class="mx-auto max-w-[720px] pt-16 text-center">
+      <div class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
+        Connection lost
+      </div>
+      <h1 class="mt-2 font-display text-[36px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
+        The local daemon is offline
+      </h1>
+      <p class="mt-4 text-[14px] leading-[1.6] text-[var(--color-ink2)]">
+        Start it with <code>openpact start</code>, then reload this page or wait for the dashboard
+        to reconnect.
+      </p>
+    </section>
+  )
 }
 
 /**

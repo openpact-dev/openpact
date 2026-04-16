@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { toast } from 'sonner'
-import { useSse, type SseEvent } from './useSse'
+import { useSharedSse, type SseEvent } from './useSse'
 import { usePact } from './usePact'
 import { useQuery } from './useQuery'
+import { eventBelongsToPact, eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
 
 type EntryAppliedData = {
@@ -32,20 +33,26 @@ const PUBLIC_KINDS = new Set(['knowledge', 'task', 'skill', 'message'])
  */
 export function useActivityToasts(enabled = true): void {
   const pact = usePact()
-  const sse = useSse({ enabled })
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, [
+    'entry-applied',
+    'member-online',
+    'member-offline',
+    'update',
+  ])
   // Pactless hosts have no per-pact endpoints; resolve stub values so
   // the hook can mount on /pacts and the PactlessState screen without
   // the SDK throwing "no pactId set".
   const status = useQuery(() => (pact.pactId ? pact.status() : Promise.resolve(null)), {
     key: `toast:status:${pact.pactId}`,
-    trigger: sse.last?.seq ?? 0,
+    trigger,
   })
   // Peers refetch on every SSE event so member-online/offline toasts
   // can resolve the just-authenticated agent's display_name and
   // remote_key into a friendly name.
   const peers = useQuery(() => (pact.pactId ? pact.peers() : Promise.resolve([] as unknown[])), {
     key: `toast:peers:${pact.pactId}`,
-    trigger: sse.last?.seq ?? 0,
+    trigger,
   })
   const selfHandle = status.data?.peer_handle ?? null
   const nameByKey = useRef<Map<string, string>>(new Map())
@@ -85,6 +92,7 @@ export function useActivityToasts(enabled = true): void {
     const ev = sse.last
     if (!ev || ev.seq <= lastSeq.current) return
     lastSeq.current = ev.seq
+    if (!eventBelongsToPact(ev, pact.pactId)) return
 
     // Suppress member-online/offline during startup catch-up. Real
     // state changes after that still toast normally.

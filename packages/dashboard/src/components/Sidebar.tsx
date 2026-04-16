@@ -9,10 +9,12 @@ import { useEffect, useState } from 'preact/hooks'
 import { ThemeDial } from './ThemeDial'
 import { WatchingEye } from './Ornament'
 import { PactSwitcher } from './PactSwitcher'
+import { useDashboardConnection } from '../hooks/useDashboardConnection'
 import { useTheme } from '../hooks/useTheme'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
+import { eventSeqForPact } from '../lib/events'
 
 const DOCS_URL = 'https://openpact.dev/docs/overview/'
 const GITHUB_URL = 'https://github.com/openpact-dev/openpact'
@@ -96,8 +98,14 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   }, [])
 
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const connection = useDashboardConnection()
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, [
+    'entry-applied',
+    'member-online',
+    'member-offline',
+    'update',
+  ])
   // Per-pact status — keyed by current alias so the cache invalidates
   // on switch and re-fetches against the new pact. When the host has
   // no pact at all, both SDK calls throw (no pactId set); resolve null
@@ -118,7 +126,8 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   // Self is always online from our own vantage; add it when a pact is
   // loaded. For remotes we count only those the daemon is currently
   // authenticated to (onlineMembers-derived).
-  const onlineCount = (status.data ? 1 : 0) + peerList.filter((p) => p.online === true).length
+  const selfOnline = !!status.data && connection.daemonReachable !== false
+  const onlineCount = (selfOnline ? 1 : 0) + peerList.filter((p) => p.online === true).length
   // Reflect the active pact name in the browser tab so multiple
   // dashboards open against different pacts are distinguishable.
   useEffect(() => {
@@ -194,11 +203,13 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
               <span class="absolute inset-0 animate-ember-pulse rounded-full" />
             </span>
             <span class="text-[13px] text-[var(--color-ink2)]">
-              {onlineCount === 0
-                ? 'No pact selected'
-                : onlineCount === 1
-                  ? 'Just you online'
-                  : `${onlineCount} agents online`}
+              {connection.daemonReachable === false
+                ? 'Daemon offline'
+                : onlineCount === 0
+                  ? 'No pact selected'
+                  : onlineCount === 1
+                    ? 'Just you online'
+                    : `${onlineCount} agents online`}
             </span>
           </div>
         </div>

@@ -99,6 +99,7 @@ export interface StatusPayload {
   display_name: string | null
   role: string | null
   public_key: string | null
+  /** Count of currently online remote peers for this pact only. Excludes self. */
   peers: number
   entries: number
   is_member: boolean

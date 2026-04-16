@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
 import { Sigil } from '../components/Sigil'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 import { preferredName } from '../lib/format'
 
 interface SkillRow {
@@ -45,8 +46,8 @@ export function Skills() {
 
 function SkillsPage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, ['entry-applied', 'update'])
 
   const skills = useQuery(() => pact.skills.list({ limit: 200 }), {
     key: `skills:all:${pact.pactId}`,

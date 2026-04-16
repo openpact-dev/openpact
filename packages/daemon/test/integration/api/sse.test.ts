@@ -104,5 +104,6 @@ test('GET /v1/events streams an SSE entry-applied frame after a knowledge POST',
   const applied = frames.find((f) => f.event === 'entry-applied')
   t.ok(applied, 'received an entry-applied frame')
   const payload = JSON.parse(applied!.data!)
+  t.is(payload.pact_id, daemon.pactKey, 'frame includes the pact id')
   t.is(payload.entry?.payload?.content, 'live update')
 })

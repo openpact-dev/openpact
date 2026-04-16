@@ -15,8 +15,9 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 import { relTime, preferredName, shortHandle } from '../lib/format'
 
 interface MessageRow {
@@ -53,15 +54,20 @@ export function Messages() {
 
 function MessagesPage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, [
+    'entry-applied',
+    'member-online',
+    'member-offline',
+    'update',
+  ])
 
   const messages = useQuery(() => pact.messages.list({ limit: 500 }), {
     key: `messages:500:${pact.pactId}`,
     trigger,
   })
-  const status = useQuery(() => pact.status(), { key: `msg:status:${pact.pactId}` })
-  const peers = useQuery(() => pact.peers(), { key: `msg:peers:${pact.pactId}` })
+  const status = useQuery(() => pact.status(), { key: `msg:status:${pact.pactId}`, trigger })
+  const peers = useQuery(() => pact.peers(), { key: `msg:peers:${pact.pactId}`, trigger })
 
   const [filter, setFilter] = useState<Filter>('all')
 

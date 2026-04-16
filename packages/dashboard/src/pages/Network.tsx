@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useDashboardConnection } from '../hooks/useDashboardConnection'
+import { useSharedSse } from '../hooks/useSse'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { InviteDialog } from '../components/InviteDialog'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
 
 interface PeerRow {
@@ -43,8 +45,14 @@ export function Network() {
 
 function NetworkPage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const sse = useSharedSse()
+  const connection = useDashboardConnection()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, [
+    'entry-applied',
+    'member-online',
+    'member-offline',
+    'update',
+  ])
 
   const status = useQuery(() => pact.status(), { key: `net:status:${pact.pactId}`, trigger })
   const peers = useQuery(() => pact.peers(), { key: `net:peers:${pact.pactId}`, trigger })
@@ -63,16 +71,18 @@ function NetworkPage() {
   const selfRole = s?.role ?? 'Pending'
   const selfPublicKey = s?.public_key ?? ''
   const isCreator = selfRole === 'creator'
+  const selfOnline = !!s && connection.daemonReachable !== false
 
   // Fold self + remote peers into one list so the self-agent sits in the
   // table like any other row. The self-row is always pinned to the top.
   const rows: UnifiedRow[] = useMemo(() => {
+    if (!s) return []
     const self: UnifiedRow = {
       handle: selfHandle,
       displayName: selfDisplay,
       publicKey: selfPublicKey,
       role: selfRole,
-      online: true,
+      online: selfOnline,
       isSelf: true,
     }
     const others: UnifiedRow[] = (peers.data ?? []).map((p: PeerRow) => ({
@@ -84,7 +94,7 @@ function NetworkPage() {
       isSelf: false,
     }))
     return [self, ...others]
-  }, [peers.data, selfHandle, selfDisplay, selfPublicKey, selfRole])
+  }, [peers.data, s, selfHandle, selfDisplay, selfPublicKey, selfRole, selfOnline])
 
   return (
     <section data-testid="page-network" class="mx-auto max-w-[1180px]">
@@ -131,6 +141,10 @@ function NetworkPage() {
         </div>
         {status.loading && !s ? (
           <p class="px-1 py-4 text-[13px] text-[var(--color-ink3)]">Loading…</p>
+        ) : status.error && !s ? (
+          <p class="px-1 py-4 text-[13px] text-[var(--color-ember)]">
+            Couldn&apos;t load the network right now.
+          </p>
         ) : (
           <div class="border-y-[0.5px] border-[var(--color-line)]">
             <div class="grid grid-cols-[1.4fr_0.9fr_0.7fr_0.7fr_0.9fr] items-center gap-3 border-b-[0.5px] border-[var(--color-line)] px-5 py-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">

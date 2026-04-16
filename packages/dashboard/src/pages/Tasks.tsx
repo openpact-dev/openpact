@@ -2,9 +2,10 @@ import { useMemo } from 'preact/hooks'
 import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
 import { Sigil } from '../components/Sigil'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
 
 type TaskStatus = 'open' | 'claimed' | 'complete'
@@ -40,8 +41,8 @@ export function Tasks() {
 
 function TasksPage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, ['entry-applied', 'update'])
 
   const tasks = useQuery(() => pact.tasks.list({ limit: 500 }), {
     key: `tasks:all:${pact.pactId}`,

@@ -126,3 +126,11 @@ test('close() unbinds the port', async (t) => {
   }
   t.ok(threw, 'fetch against the closed port rejects')
 })
+
+test('GET /api/v1/ping returns an upstream error when the daemon is unavailable', async (t) => {
+  const dash = await startDashboard({ daemonPort: 65530, port: 0 })
+  t.teardown(() => dash.close())
+
+  const res = await fetch(`${dash.url}/api/v1/ping`)
+  t.ok(res.status >= 500, `expected an upstream failure, got ${res.status}`)
+})

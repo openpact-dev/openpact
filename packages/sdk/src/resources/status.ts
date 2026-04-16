@@ -3,6 +3,7 @@ import type { StatusPayload, PeerPayload } from '../types'
 
 export interface HostStatus {
   current: string | null
+  /** Host-wide swarm connection count across every pact on this daemon. */
   peers: number
   pact_count: number
 }
@@ -13,11 +14,11 @@ export function statusResource(client: OpenPactClient) {
     ping(): Promise<{ ok: boolean }> {
       return client.req<{ ok: boolean }>('/v1/ping')
     },
-    /** GET /v1/status — host-level summary (current pact, peer + pact counts). */
+    /** GET /v1/status — host-level summary (current pact, host-wide connection count, pact count). */
     host(): Promise<HostStatus> {
       return client.req<HostStatus>('/v1/status')
     },
-    /** GET /v1/pacts/:pactId/status — fat per-pact status payload. */
+    /** GET /v1/pacts/:pactId/status — fat per-pact status payload, including pact-scoped online peers. */
     get(): Promise<StatusPayload> {
       return client.req<StatusPayload>(client.pactPath('/status'))
     },

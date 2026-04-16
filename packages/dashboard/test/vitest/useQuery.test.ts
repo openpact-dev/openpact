@@ -28,6 +28,7 @@ describe('useQuery', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.error?.message).toBe('boom')
     expect(result.current.data).toBeUndefined()
+    expect(result.current.stale).toBe(false)
   })
 
   test('two hooks with the same key share one in-flight call (dedupe)', async () => {
@@ -74,5 +75,25 @@ describe('useQuery', () => {
     rerender()
     await waitFor(() => expect(result.current.data).toBe(2))
     expect(calls).toBe(2)
+  })
+
+  test('marks stale when a refetch fails after earlier data loaded', async () => {
+    let calls = 0
+    const fn = async () => {
+      calls++
+      if (calls === 1) return 42
+      throw new Error('offline')
+    }
+    const { result } = renderHook(() => useQuery(fn, { key: 'k6' }))
+    await waitFor(() => expect(result.current.data).toBe(42))
+
+    await act(async () => {
+      result.current.refetch()
+    })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.data).toBe(42)
+    expect(result.current.error?.message).toBe('offline')
+    expect(result.current.stale).toBe(true)
   })
 })

@@ -79,6 +79,16 @@ export async function joinCmd(
   opts: JoinOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
+  const transientRedeemCodes = new Set(['NO_PEERS', 'NO_INDEXER_REACHABLE', 'PEER_DISCONNECTED'])
+  const terminalRedeemCodes = new Set([
+    'INVITE_SPENT',
+    'INVITE_EXPIRED',
+    'INVITE_REVOKED',
+    'UNKNOWN_INVITE',
+    'INVITE_WRONG_PACT',
+    'INVITE_BAD_SHAPE',
+  ])
+
   let decoded: Decoded
   try {
     decoded = decodeToken(tokenArg)
@@ -159,7 +169,9 @@ export async function joinCmd(
   const status = await pactApi.status()
   const memberKey = status.public_key as string
 
-  // 3. Wait for at least one peer, then redeem.
+  // 3. Wait for at least one online peer in this pact, then redeem.
+  // `status.peers` is pact-scoped: authenticated remote members only,
+  // not the daemon's host-wide connection count.
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown = null
   while (Date.now() < deadline) {
@@ -172,8 +184,10 @@ export async function joinCmd(
       } catch (err) {
         lastErr = err
         const code = (err as { code?: string }).code
-        // Transient / retry-worthy codes: NO_PEERS, NO_INDEXER_REACHABLE, TIMEOUT.
-        if (code === 'INVITE_SPENT' || code === 'INVITE_EXPIRED' || code === 'INVITE_REVOKED') {
+        if (code && terminalRedeemCodes.has(code)) {
+          throw err
+        }
+        if (code && !transientRedeemCodes.has(code)) {
           throw err
         }
       }

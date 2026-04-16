@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
 import { TopicChips } from '../components/TopicChips'
 import { EntryCard, type Entry } from '../components/EntryCard'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 
 const RECENCY_OPTIONS = [
   { value: 'all', label: 'All time', ms: Number.POSITIVE_INFINITY },
@@ -39,8 +40,8 @@ export function Knowledge() {
  */
 function KnowledgePage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.event === 'entry-applied' ? sse.last.seq : 0
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, ['entry-applied', 'update'])
 
   const knowledge = useQuery(() => pact.knowledge.list({ limit: 200 }), {
     key: `knowledge:200:${pact.pactId}`,

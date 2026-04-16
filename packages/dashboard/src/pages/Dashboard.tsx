@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
-import { useSse } from '../hooks/useSse'
+import { useSharedSse } from '../hooks/useSse'
 import { MetricCard } from '../components/MetricCard'
 import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
 import { Sigil } from '../components/Sigil'
 import { InviteDialog } from '../components/InviteDialog'
 import { PactlessState } from '../components/PactlessState'
+import { eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
 import type { Entry } from '../components/EntryCard'
 
@@ -21,8 +22,13 @@ export function Dashboard() {
 
 function DashboardPage() {
   const pact = usePact()
-  const sse = useSse()
-  const trigger = sse.last?.seq ?? 0
+  const sse = useSharedSse()
+  const trigger = eventSeqForPact(sse.last, pact.pactId, [
+    'entry-applied',
+    'member-online',
+    'member-offline',
+    'update',
+  ])
 
   const status = useQuery(() => pact.status(), { key: `status:${pact.pactId}`, trigger })
   const peers = useQuery(() => pact.peers(), { key: `peers:${pact.pactId}`, trigger })
