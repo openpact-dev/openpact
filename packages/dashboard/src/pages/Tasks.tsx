@@ -4,6 +4,7 @@ import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { Sigil } from '../components/Sigil'
+import { PactlessState } from '../components/PactlessState'
 import { shortHandle } from '../lib/format'
 
 type TaskStatus = 'open' | 'claimed' | 'complete'
@@ -25,6 +26,19 @@ const COLUMNS: Array<{ key: TaskStatus; label: string; accent: string }> = [
 ]
 
 export function Tasks() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Tasks"
+        action="The task board needs a pact. Create one or join an existing pact first."
+      />
+    )
+  }
+  return <TasksPage />
+}
+
+function TasksPage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0

@@ -2,9 +2,23 @@ import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { Sigil, type SigilKind } from '../components/Sigil'
+import { PactlessState } from '../components/PactlessState'
 import { relTime, preferredName } from '../lib/format'
 
 export function Trace({ id }: { id?: string }) {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Trace"
+        action="Entry traces come from a pact's ledger. Open a pact to explore its entries."
+      />
+    )
+  }
+  return <TracePage id={id} />
+}
+
+function TracePage({ id }: { id?: string }) {
   const pact = usePact()
   const entry = useQuery(() => pact.entries.get(id ?? ''), { key: `trace:${pact.pactId}:${id}` })
   const refs = useQuery(() => pact.entries.referencedBy(id ?? ''), {

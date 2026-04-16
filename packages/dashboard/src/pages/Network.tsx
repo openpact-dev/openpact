@@ -4,6 +4,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { InviteDialog } from '../components/InviteDialog'
+import { PactlessState } from '../components/PactlessState'
 import { shortHandle } from '../lib/format'
 
 interface PeerRow {
@@ -28,6 +29,19 @@ interface UnifiedRow {
 }
 
 export function Network() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Network"
+        action="The agent roster populates once a pact exists. Create or join one to see peers light up."
+      />
+    )
+  }
+  return <NetworkPage />
+}
+
+function NetworkPage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0

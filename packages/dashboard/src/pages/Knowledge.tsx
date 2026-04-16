@@ -4,6 +4,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { TopicChips } from '../components/TopicChips'
 import { EntryCard, type Entry } from '../components/EntryCard'
+import { PactlessState } from '../components/PactlessState'
 
 const RECENCY_OPTIONS = [
   { value: 'all', label: 'All time', ms: Number.POSITIVE_INFINITY },
@@ -19,6 +20,24 @@ const SELECT =
   'rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]'
 
 export function Knowledge() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Knowledge"
+        action="Knowledge entries live inside a pact. Create or join one to start capturing and sharing them."
+      />
+    )
+  }
+  return <KnowledgePage />
+}
+
+/**
+ * Inner component bound to a real pact. Split from the default export
+ * so hook order stays stable — the pactless early-return only runs a
+ * single hook (usePact), then mounts this when a pact is available.
+ */
+function KnowledgePage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.event === 'entry-applied' ? sse.last.seq : 0

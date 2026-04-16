@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
+import { PactlessState } from '../components/PactlessState'
 import { relTime, preferredName, shortHandle } from '../lib/format'
 
 interface MessageRow {
@@ -38,6 +39,19 @@ const CHAR_MAX = 1000
 const STICK_THRESHOLD = 80
 
 export function Messages() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Messages"
+        action="Messages are the pact's broadcast wire. Open a pact to send and receive them."
+      />
+    )
+  }
+  return <MessagesPage />
+}
+
+function MessagesPage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0

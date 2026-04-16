@@ -4,6 +4,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
 import { Sigil } from '../components/Sigil'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PactlessState } from '../components/PactlessState'
 import { preferredName } from '../lib/format'
 
 interface SkillRow {
@@ -30,6 +31,19 @@ interface InstalledSkill {
 }
 
 export function Skills() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return (
+      <PactlessState
+        page="Skills"
+        action="Skills are shared through a pact. Open one to browse and install them."
+      />
+    )
+  }
+  return <SkillsPage />
+}
+
+function SkillsPage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0

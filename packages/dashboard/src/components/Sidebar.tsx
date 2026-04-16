@@ -99,16 +99,15 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0
   // Per-pact status — keyed by current alias so the cache invalidates
-  // on switch and re-fetches against the new pact.
-  const status = useQuery(() => pact.status(), {
+  // on switch and re-fetches against the new pact. When the host has
+  // no pact at all, both SDK calls throw (no pactId set); resolve null
+  // in that case so the sidebar renders a pactless footer instead of
+  // a loud error envelope.
+  const status = useQuery(() => (pact.pactId ? pact.status() : Promise.resolve(null)), {
     key: `sidebar:status:${current ?? 'none'}`,
     trigger,
   })
-  // Pact-scoped writer list. We count self + remote writers so the
-  // sidebar reports "agents in this pact" rather than raw swarm
-  // connections (daemon.connections is host-wide and includes peers
-  // not yet admitted to the current pact).
-  const peers = useQuery(() => pact.peers(), {
+  const peers = useQuery(() => (pact.pactId ? pact.peers() : Promise.resolve([] as unknown[])), {
     key: `sidebar:peers:${current ?? 'none'}`,
     trigger,
   })

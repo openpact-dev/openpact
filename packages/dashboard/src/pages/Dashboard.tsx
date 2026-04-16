@@ -7,10 +7,19 @@ import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
 import { Sigil } from '../components/Sigil'
 import { InviteDialog } from '../components/InviteDialog'
+import { PactlessState } from '../components/PactlessState'
 import { shortHandle } from '../lib/format'
 import type { Entry } from '../components/EntryCard'
 
 export function Dashboard() {
+  const pact = usePact()
+  if (!pact.pactId) {
+    return <PactlessState page="Dashboard" />
+  }
+  return <DashboardPage />
+}
+
+function DashboardPage() {
   const pact = usePact()
   const sse = useSse()
   const trigger = sse.last?.seq ?? 0

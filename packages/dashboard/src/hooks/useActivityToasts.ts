@@ -33,14 +33,17 @@ const PUBLIC_KINDS = new Set(['knowledge', 'task', 'skill', 'message'])
 export function useActivityToasts(enabled = true): void {
   const pact = usePact()
   const sse = useSse({ enabled })
-  const status = useQuery(() => pact.status(), {
+  // Pactless hosts have no per-pact endpoints; resolve stub values so
+  // the hook can mount on /pacts and the PactlessState screen without
+  // the SDK throwing "no pactId set".
+  const status = useQuery(() => (pact.pactId ? pact.status() : Promise.resolve(null)), {
     key: `toast:status:${pact.pactId}`,
     trigger: sse.last?.seq ?? 0,
   })
   // Peers refetch on every SSE event so member-online/offline toasts
   // can resolve the just-authenticated agent's display_name and
   // remote_key into a friendly name.
-  const peers = useQuery(() => pact.peers(), {
+  const peers = useQuery(() => (pact.pactId ? pact.peers() : Promise.resolve([] as unknown[])), {
     key: `toast:peers:${pact.pactId}`,
     trigger: sse.last?.seq ?? 0,
   })
