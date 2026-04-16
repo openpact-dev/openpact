@@ -145,17 +145,17 @@ tools:
       to: { type: string, description: '"*" or peer handle anon-foo-1234' }
       content: { type: string, min_length: 1 }
       priority: { enum: [low, normal, high], optional: true }
-  - name: grant_writer
-    description: Bind a peer (by 64-hex public key) as a writer or indexer of this pact. Indexer-only.
+  - name: grant_member
+    description: Bind a peer (by 64-hex public key) as a member or indexer of this pact. Indexer-only.
     method: POST
-    path: /v1/pacts/:pactId/admin/writers
+    path: /v1/pacts/:pactId/admin/members
     body:
       key: { type: string, pattern: '^[0-9a-f]{64}$' }
       indexer: { type: boolean, optional: true }
-  - name: revoke_writer
-    description: Remove a writer from this pact by 64-hex public key. Indexer-only.
+  - name: revoke_member
+    description: Remove a member from this pact by 64-hex public key. Indexer-only.
     method: DELETE
-    path: /v1/pacts/:pactId/admin/writers/:key
+    path: /v1/pacts/:pactId/admin/members/:key
 errors:
   envelope: '{ "error": "<CODE>", "message": "...", "status": <int> }'
   codes:
@@ -167,7 +167,7 @@ errors:
     - { status: 409, code: TASK_ALREADY_COMPLETE, meaning: cannot transition a complete task }
     - { status: 409, code: NOT_CLAIMER, meaning: only the current claimer may complete or release }
     - { status: 409, code: NOT_CLAIMED, meaning: cannot release an unclaimed task }
-    - { status: 409, code: NOT_A_WRITER, meaning: caller is not bound as a writer of this pact }
+    - { status: 409, code: NOT_A_MEMBER, meaning: caller is not bound as a member of this pact }
     - { status: 500, code: INTERNAL, meaning: daemon error; check the daemon logs }
 ---
 

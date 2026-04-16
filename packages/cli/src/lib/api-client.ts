@@ -85,16 +85,16 @@ export class ApiClient {
     return res.entries ?? []
   }
 
-  async addWriter(key: string, indexer = false): Promise<any> {
-    return this.req(this.pactPath('/admin/writers'), {
+  async addMember(key: string, indexer = false): Promise<any> {
+    return this.req(this.pactPath('/admin/members'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ key, indexer }),
     })
   }
 
-  async removeWriter(key: string): Promise<any> {
-    return this.req(this.pactPath(`/admin/writers/${key}`), { method: 'DELETE' })
+  async removeMember(key: string): Promise<any> {
+    return this.req(this.pactPath(`/admin/members/${key}`), { method: 'DELETE' })
   }
 
   async createInvite(opts: { ttl_ms?: number } = {}): Promise<{
@@ -134,15 +134,22 @@ export class ApiClient {
     })
   }
 
-  async redeemInvite(token: string, writerKey: string): Promise<{ ok: true; nonce: string }> {
+  async redeemInvite(token: string, memberKey: string): Promise<{ ok: true; nonce: string }> {
     return this.req(this.pactPath('/invites/redeem'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, writer_key: writerKey, confirm: true }),
+      body: JSON.stringify({ token, writer_key: memberKey, confirm: true }),
     })
   }
 
-  async joinPact(key: string, opts: { alias?: string; display_name?: string | null } = {}): Promise<{
+  async joinPact(
+    key: string,
+    opts: {
+      alias?: string
+      display_name?: string | null
+      pact_name?: string | null
+    } = {},
+  ): Promise<{
     ok: true
     alias: string
     pact_id: string

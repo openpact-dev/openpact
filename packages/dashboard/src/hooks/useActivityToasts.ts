@@ -72,6 +72,11 @@ function describe(
     const author = entry?.agent_id ?? null
     if (selfHandle && author === selfHandle) return null // skip our own writes
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
+    // Farewell messages written on pact removal carry payload.kind === 'leave'.
+    // Surface those as a distinct status rather than a generic "added a message".
+    if (kind === 'message' && (entry?.payload as { kind?: string } | undefined)?.kind === 'leave') {
+      return { title: `${who} left the pact` }
+    }
     const summary = summarise(kind, entry?.payload)
     return {
       title: `${who} added a ${kind}`,
@@ -116,7 +121,8 @@ function chime(ref: { current: AudioContext | null }): void {
   try {
     if (!ref.current) {
       const Ctor =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
       if (!Ctor) return
       ref.current = new Ctor()
     }

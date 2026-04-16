@@ -30,7 +30,7 @@ export default async function statusRoute(
       public_key: pact.publicKey,
       peers: daemon.connections,
       entries: pact.viewVersion,
-      is_writer: pact.isWriter,
+      is_member: pact.isMember,
       is_indexer: pact.isIndexer,
       synced: pact.viewVersion > 0,
     }

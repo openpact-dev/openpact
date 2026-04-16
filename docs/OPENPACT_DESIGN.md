@@ -263,10 +263,9 @@ const base = new Autobase(store, bootstrapKey, {
 |------|-------------|------------|
 | **Creator** | Started the OpenPact instance | Full admin, initial indexer, mints invite tokens |
 | **Indexer** | Participates in ordering consensus | Write + helps advance confirmed checkpoints + can redeem invites on behalf of joiners |
-| **Writer** | Regular participant | Write entries, read shared view |
-| **Reader** | Transient: pre-redemption or post-demotion | Read-only access to shared view |
+| **Member** | Regular participant | Write entries and replicate the shared view |
 
-A majority of indexers must be online for the "confirmed" frontier to advance. Writers can always append locally regardless.
+A majority of indexers must be online for the "confirmed" frontier to advance. Members can always append locally regardless.
 
 ### 5.4.1 Invite-based admission
 
@@ -274,24 +273,24 @@ New peers are never readers by default. Admission is a one-step redemption of a 
 
 1. **Creator mints**: `openpact invite [--ttl 7d]` emits a base64url JSON token carrying `{v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`. The token is written to the creator's per-pact `invites.json` with its expiry and initial revocation state. The share URL is `openpact.dev/join?invite=<token>`.
 
-2. **Joiner presents**: `openpact join <token>` decodes the token, joins the swarm on the embedded `pactId`, and calls the local daemon's `POST /invites/redeem`. The joiner's daemon is a reader and cannot append entries, so the request is forwarded over the `openpact/invites/v1` protomux channel (registered on the same Noise stream Corestore uses) to every peer currently connected.
+2. **Joiner presents**: `openpact join <token>` decodes the token, joins the swarm on the embedded `pactId`, and calls the local daemon's `POST /invites/redeem`. The joiner is not allowed to replicate yet, so the request is forwarded over the `openpact/invites/v1` protomux channel (registered on the same Noise stream Corestore uses) to every peer currently connected.
 
-3. **Indexer validates**: the first indexer to receive the request checks (a) expiry, (b) nonce not already in `_invites/<nonce>` in its local view, (c) its local `invites.json` says the nonce is live and unspent. If all three pass, it appends two entries from its own writer core: `invite-redeemed {nonce, redeemed_by}` then `admin.addWriter {key: writerKey}`.
+3. **Indexer validates**: the first indexer to receive the request checks (a) expiry, (b) nonce not already in `_invites/<nonce>` in its local view, (c) its local `invites.json` says the nonce is live and unspent. If all three pass, it appends two entries from its own writer core: `invite-redeemed {nonce, redeemed_by}` then `admin.addWriter {key: memberKey}`.
 
-4. **`apply()` locks in**: the invite-redeemed entry writes `_invites/<nonce>` in the Hyperbee view. Any subsequent indexer attempting the same nonce is rejected with `invite-already-spent`. The admin entry adds the joiner to the writers set. Both propagate to every peer.
+4. **`apply()` locks in**: the invite-redeemed entry writes `_invites/<nonce>` in the Hyperbee view. Any subsequent indexer attempting the same nonce is rejected with `invite-already-spent`. The admin entry adds the joiner to the active member set. Both propagate to every peer.
 
-5. **Joiner becomes writer**: its own `apply()` sees the `admin.addWriter` for its pubkey and its Autobase local core becomes writable.
+5. **Joiner becomes member**: its own `apply()` sees the `admin.addWriter` for its public key, its Autobase local core becomes writable, and future replication is allowed on subsequent member-auth handshakes.
 
 Revocation is creator-local for MVP: `openpact invite --revoke <nonce>` marks the entry revoked in `invites.json`, blocking future redemptions against that creator. A phase-2 extension can add a replicated `invite-revoked` entry for global revocation.
 
-**Threat model.** The token is a bearer credential: whoever holds it can become a writer exactly once. Short TTLs and explicit revocation bound leaked-URL risk. The pact's discovery key is derivable from the token and remains a durable read capability — the same property the pre-token model had, not a regression.
+**Threat model.** The token is a bearer credential: whoever holds it can become a member exactly once. Short TTLs and explicit revocation bound leaked-URL risk. Removed peers keep any history they already replicated locally, but future replication is cut off because swarm replication is gated on active membership.
 
 ### 5.5 Network topology
 
 ```
 Agent A (Indexer)  <--P2P-->  Agent B (Indexer)
        |                              |
-Agent C (Writer)   <--P2P-->  Agent D (Writer)
+Agent C (Member)   <--P2P-->  Agent D (Member)
        |
 Seed Node (optional, for availability)
 ```
@@ -509,7 +508,7 @@ For any entry, see which peer wrote it, when, and what it references. For any ag
 - All connections use Noise protocol encryption (built into HyperDHT)
 - Each agent's Hypercore is signed with its keypair, so entries cannot be forged
 - The Autobase view is deterministic: all peers compute the same ordering
-- Writer permissions are managed via Autobase's `addWriter` / `removeWriter`
+- Member permissions are managed via Autobase's `addWriter` / `removeWriter`
 - Skills from the network should be sandboxed and require user approval before installation
 
 ### 9.2 Privacy

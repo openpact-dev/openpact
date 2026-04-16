@@ -77,14 +77,16 @@ export function Dashboard() {
         code={`openpact start                 # daemon + dashboard on :7666 / :7667
 openpact dashboard             # open the dashboard URL in your default browser`}
       />
-      <p>Flags on <code>openpact start</code>:</p>
+      <p>
+        Flags on <code>openpact start</code>:
+      </p>
       <ul>
         <li>
           <code>--no-dashboard</code> — run headless. Useful for servers and seed nodes.
         </li>
         <li>
-          <code>--dashboard-port &lt;n&gt;</code> — bind the dashboard to a different port. Defaults to{' '}
-          <code>7667</code>.
+          <code>--dashboard-port &lt;n&gt;</code> — bind the dashboard to a different port. Defaults
+          to <code>7667</code>.
         </li>
         <li>
           <code>--foreground</code> — block the terminal instead of detaching. Dashboard logs to the
@@ -96,8 +98,8 @@ openpact dashboard             # open the dashboard URL in your default browser`
       <p>The UI has three persistent regions:</p>
       <ul>
         <li>
-          <strong>Sidebar</strong> — a pact switcher at the top, main navigation in the middle, and a
-          brass theme dial at the bottom. The switcher shows every pact this daemon holds with the
+          <strong>Sidebar</strong> — a pact switcher at the top, main navigation in the middle, and
+          a brass theme dial at the bottom. The switcher shows every pact this daemon holds with the
           current one highlighted. Pick any pact to make it the default for the session; the URL
           updates so you can bookmark per-pact views.
         </li>
@@ -148,17 +150,19 @@ openpact dashboard             # open the dashboard URL in your default browser`
 
       <h2>Destructive actions</h2>
       <p>
-        Three actions change state on the shared pact and are gated behind the <code>ConfirmDialog</code>:
+        Three actions change state on the shared pact and are gated behind the{' '}
+        <code>ConfirmDialog</code>:
       </p>
       <ul>
         <li>
           <strong>Install a skill</strong> (<code>POST /skills/:id/install</code>). Pulls the
-          sha256-verified content into <code>~/.openpact/pacts/&lt;alias&gt;/installed-skills.json</code>.
-          No skill ever auto-executes.
+          sha256-verified content into{' '}
+          <code>~/.openpact/pacts/&lt;alias&gt;/installed-skills.json</code>. No skill ever
+          auto-executes.
         </li>
         <li>
-          <strong>Promote a peer to writer</strong> (<code>POST /admin/promote</code>). Creator only.
-          Issues an <code>admin</code> entry that every indexer verifies.
+          <strong>Promote a peer to writer</strong> (<code>POST /admin/promote</code>). Creator
+          only. Issues an <code>admin</code> entry that every indexer verifies.
         </li>
         <li>
           <strong>Remove a writer</strong> (<code>POST /admin/remove</code>). Creator only. Revokes
@@ -172,12 +176,10 @@ openpact dashboard             # open the dashboard URL in your default browser`
 
       <h2>Keyboard and URL</h2>
       <ul>
+        <li>Every screen has a stable URL. Bookmarks and deep links survive daemon restarts.</li>
         <li>
-          Every screen has a stable URL. Bookmarks and deep links survive daemon restarts.
-        </li>
-        <li>
-          <code>/trace/:id</code> accepts the full entry ID (for example{' '}
-          <code>a7f2-412</code>) and is the canonical share link for an entry.
+          <code>/trace/:id</code> accepts the full entry ID (for example <code>a7f2-412</code>) and
+          is the canonical share link for an entry.
         </li>
         <li>
           <code>Esc</code> closes any open confirm dialog or entry drawer.
@@ -195,8 +197,8 @@ openpact dashboard             # open the dashboard URL in your default browser`
 
       <h2>Bundle budget</h2>
       <p>
-        Enforced in CI: <strong>≤ 100 KB of JavaScript and ≤ 20 KB of CSS</strong>, both gzipped. The
-        dashboard is Preact 10 on Vite with esbuild&rsquo;s automatic JSX transform. Styling is
+        Enforced in CI: <strong>≤ 100 KB of JavaScript and ≤ 20 KB of CSS</strong>, both gzipped.
+        The dashboard is Preact 10 on Vite with esbuild&rsquo;s automatic JSX transform. Styling is
         Tailwind v4 with CSS-first tokens. If you send a PR that pushes either number over the
         limit, the CI <code>dashboard</code> job fails.
       </p>

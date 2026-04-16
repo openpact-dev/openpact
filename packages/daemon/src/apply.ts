@@ -5,6 +5,8 @@ import * as entryId from './entry-id'
 export const INDEXER_PREFIX = '_indexers/'
 // '/' is 0x2F, '0' is 0x30, so '_indexers0' bounds the prefix range exactly.
 const INDEXER_RANGE_END = '_indexers0'
+export const MEMBER_PREFIX = '_members/'
+const MEMBER_RANGE_END = '_members0'
 
 export const INVITE_PREFIX = '_invites/'
 
@@ -88,6 +90,16 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
       }
       const writerKeyHex = b4a.toString(writerKey, 'hex') as string
 
+      // First writer implicitly becomes the first member.
+      let isMember = await isMemberKey(view, writerKeyHex)
+      if (!isMember) {
+        const anyMember = await view.peek({ gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END })
+        if (!anyMember) {
+          await view.put(`${MEMBER_PREFIX}${writerKeyHex}`, true)
+          isMember = true
+        }
+      }
+
       // Indexer check with implicit-creator bootstrap.
       let isIndexer = await isIndexerKey(view, writerKeyHex)
       if (!isIndexer) {
@@ -106,7 +118,16 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
       }
 
       if (typedEntry.type === 'admin') {
-        if (!isIndexer) {
+        // Self-removal is the one admin action a non-indexer writer may
+        // issue — used by `openpact remove` / the dashboard's Leave flow
+        // so a peer can revoke their own writer rights when walking away
+        // from a pact. Any other admin action still requires indexer
+        // authority.
+        const selfRevoke =
+          typedEntry.payload.action === 'removeWriter' &&
+          typeof typedEntry.payload.key === 'string' &&
+          typedEntry.payload.key.toLowerCase() === writerKeyHex.toLowerCase()
+        if (!isIndexer && !selfRevoke) {
           onInvalid({ reason: 'admin-from-non-indexer', node, entry })
           continue
         }
@@ -167,6 +188,11 @@ async function isIndexerKey(view: ApplyView, writerKeyHex: string): Promise<bool
   return got != null
 }
 
+async function isMemberKey(view: ApplyView, writerKeyHex: string): Promise<boolean> {
+  const got = await view.get(`${MEMBER_PREFIX}${writerKeyHex}`)
+  return got != null
+}
+
 async function applyAdmin(
   entry: { payload: { action?: string; key?: string; indexer?: boolean } },
   view: ApplyView,
@@ -177,11 +203,13 @@ async function applyAdmin(
   if (entry.payload.action === 'addWriter') {
     const indexer = !!entry.payload.indexer
     await host.addWriter(keyBuf, { indexer })
+    await view.put(`${MEMBER_PREFIX}${keyHex}`, true)
     if (indexer) {
       await view.put(`${INDEXER_PREFIX}${keyHex}`, true)
     }
   } else if (entry.payload.action === 'removeWriter') {
     await host.removeWriter(keyBuf)
+    await view.del(`${MEMBER_PREFIX}${keyHex}`)
     await view.del(`${INDEXER_PREFIX}${keyHex}`)
   }
 }

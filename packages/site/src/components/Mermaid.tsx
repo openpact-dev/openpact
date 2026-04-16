@@ -258,7 +258,7 @@ export function Mermaid({ chart, caption, class: cls = '' }: Props) {
                 </div>
               ) : null}
             </div>,
-            document.body
+            document.body,
           )
         : null}
     </figure>

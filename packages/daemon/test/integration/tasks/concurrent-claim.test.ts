@@ -8,16 +8,14 @@
 import test from 'brittle'
 import { swarmOf } from '../../helpers/pair'
 import { getTaskState } from '../../../src/api/tasks-state'
+import type { Daemon } from '../../../src/daemon'
 
 test('3 daemons race to claim one task; exactly one wins', async (t) => {
   const { all, first } = await swarmOf(t, 3)
   const [a, b, c] = all
 
-  // Promote B and C to writers via A (the creator).
-  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: false })
-  await a.daemon.addWriter(c.daemon.publicKey!, { indexer: false })
-  await b.daemon.waitForWritable({ timeout: 15000 })
-  await c.daemon.waitForWritable({ timeout: 15000 })
+  await admitMember(a.daemon, b.daemon)
+  await admitMember(a.daemon, c.daemon)
 
   // A creates the task.
   const create = await first.daemon.append({
@@ -77,3 +75,12 @@ test('3 daemons race to claim one task; exactly one wins', async (t) => {
   const lexFirstClaim = [...claimEntries].sort((x, y) => x.id.localeCompare(y.id))[0]
   t.is(states[0]!.claimed_by, lexFirstClaim.agent_id, 'lex-earliest claim wins')
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}

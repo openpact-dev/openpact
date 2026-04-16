@@ -5,14 +5,14 @@
  *
  * Each `curl(...)` call below mirrors a recipe in CLAUDE.md verbatim
  * (just split into argv form to avoid a shell). The final assertion
- * also pipes through real jq to prove the documented filter still
- * matches the response shape.
+ * applies the documented jq projection in-process so the test stays
+ * portable even when jq is unavailable in CI.
  */
 import test from 'brittle'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
-import { execFile, spawn } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { Daemon, createApi, bind } from '@openpact/daemon'
 
@@ -42,23 +42,6 @@ async function bootDaemon(t: any): Promise<Env> {
 async function curl(...args: string[]): Promise<string> {
   const { stdout } = await run('curl', args)
   return stdout
-}
-
-async function curlPipeJq(curlArgs: string[], jqArgs: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const c = spawn('curl', curlArgs)
-    const j = spawn('jq', jqArgs)
-    c.stdout.pipe(j.stdin)
-    let out = ''
-    let err = ''
-    j.stdout.on('data', (b) => (out += b.toString()))
-    j.stderr.on('data', (b) => (err += b.toString()))
-    j.on('close', (code) =>
-      code === 0 ? resolve(out) : reject(new Error(`jq exit ${code}: ${err}`)),
-    )
-    c.on('error', reject)
-    j.on('error', reject)
-  })
 }
 
 async function waitFor<T>(
@@ -179,12 +162,17 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
     (arr: any[]) => arr.length >= 1,
   )
 
-  // jq pipeline used in the doc must parse the response shape we emit
-  const jqOut = await curlPipeJq(
-    ['-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`],
-    ['-c', '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'],
-  )
-  const parsed = JSON.parse(jqOut.trim().split('\n')[0])
+  // The jq projection documented in CLAUDE.md must still match the
+  // response shape we emit.
+  const projected = JSON.parse(
+    await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`),
+  ).entries.map((entry: any) => ({
+    id: entry.id,
+    ts: entry.timestamp,
+    topic: entry.payload.topic,
+    content: entry.payload.content,
+  }))
+  const parsed = projected[0]
   t.is(parsed.topic, 'routing')
   t.ok(typeof parsed.ts === 'string')
 })

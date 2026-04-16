@@ -1,9 +1,8 @@
 import test from 'brittle'
 import createTestnet from 'hyperdht/testnet'
+import net from 'net'
 import { tmpHome, runCli } from './helpers/run-cli'
 import { readPidFile, isAlive } from '../../src/lib/pid'
-
-let nextPort = 17600
 
 async function ensureKilled(pid: number | null) {
   if (pid && isAlive(pid)) {
@@ -30,7 +29,7 @@ async function waitForPing(base: string, timeout = 15_000): Promise<void> {
 }
 
 test(
-  'full flow: A creates pact, B joins; A promotes B; B writes; A sees',
+  'full flow: A creates pact, B joins; A admits B; B writes; A sees',
   { timeout: 90_000 },
   async (t) => {
     // Spin up an in-memory DHT testnet so the two daemons find each other
@@ -40,8 +39,8 @@ test(
 
     const homeA = await tmpHome(t)
     const homeB = await tmpHome(t)
-    const portA = nextPort++
-    const portB = nextPort++
+    const portA = await getFreePort()
+    const portB = await getFreePort()
 
     // A: init + start with the testnet bootstrap. Pin alias to
     // "default" so the REST URLs below stay stable (auto-slug from
@@ -61,13 +60,17 @@ test(
     t.teardown(() => ensureKilled(pidA))
     t.teardown(() => runCli(['--data-dir', homeA, 'stop']).catch(() => {}))
 
-    // A: invite → key
-    const inv = await runCli(['--data-dir', homeA, 'invite'])
-    const key = inv.stdout.trim()
-    t.ok(/^[0-9a-f]+$/.test(key), 'invite emitted a hex key')
+    // A: invite → share URL carrying a one-time token
+    const inv = await runCli(['--data-dir', homeA, 'invite', '--port', String(portA)])
+    const inviteOut = inv.stdout.trim()
+    const token = inviteOut.startsWith('http')
+      ? (new URL(inviteOut).searchParams.get('invite') ?? '')
+      : inviteOut
+    t.ok(token.length > 0, 'invite emitted a redeemable token')
 
-    // B: join + start with the same bootstrap. Same alias pinning as A.
-    await runCli(['--data-dir', homeB, 'join', key, '--alias', 'default'])
+    // B: seed a local host with one pact so `start` has a registry to load,
+    // then join the real pact into that running host.
+    await runCli(['--data-dir', homeB, 'init', '--alias', 'scratch'])
     await runCli([
       '--data-dir',
       homeB,
@@ -85,9 +88,29 @@ test(
     await waitForPing(`http://127.0.0.1:${portA}`)
     await waitForPing(`http://127.0.0.1:${portB}`)
 
-    // Get B's writer public key from its status (so A can promote it).
-    // B's autobase may take a moment to populate `local` after start —
-    // poll until publicKey is available.
+    const join = await runCli([
+      '--data-dir',
+      homeB,
+      'join',
+      token,
+      '--no-interactive',
+      '--alias',
+      'default',
+      '--port',
+      String(portB),
+    ])
+    const joined = JSON.parse(join.stdout || '{}') as {
+      alias?: string
+      pact_id?: string
+      member?: boolean
+      peer_handle?: string
+    }
+    t.is(join.stderr, '')
+    t.is(joined.alias, 'default', `join output: ${join.stdout}`)
+    t.is(joined.member, true, `join output: ${join.stdout}`)
+
+    // Get B's member public key from its status so later assertions can
+    // match the author identity shown in A's log.
     let bStatus: { public_key: string; peer_handle: string } = {
       public_key: '',
       peer_handle: '',
@@ -101,7 +124,7 @@ test(
     }
     t.ok(/^[0-9a-f]{64}$/.test(bStatus.public_key), 'B reports a 64-hex public key')
 
-    // Wait for A to see B as a peer (so the admin entry can replicate).
+    // The redeem path should have already formed the live swarm connection.
     const peersDeadline = Date.now() + 15_000
     let aPeers: number = 0
     while (Date.now() < peersDeadline) {
@@ -116,37 +139,23 @@ test(
     }
     t.ok(aPeers >= 1, 'A sees B as a peer')
 
-    // A promotes B as an indexer (so B can append; needed because the system
-    // core needs quorum to advance signedLength when there are multiple writers).
-    const promote = await runCli([
-      '--data-dir',
-      homeA,
-      'add-writer',
-      bStatus.public_key,
-      '--indexer',
-      '--port',
-      String(portA),
-    ])
-    t.is(promote.exitCode, 0, 'add-writer succeeded')
-    t.ok(promote.stdout.includes('pact-bearer is bound') || promote.stdout.includes('bound'))
-
-    // Wait for B's autobase to recognise itself as writable, then have B post
-    // a knowledge entry via its own REST API.
+    // Join already redeemed the invite, so B should be writable without a
+    // second manual admission step.
     const writableDeadline = Date.now() + 30_000
-    let bIsWriter = false
+    let bIsMember = false
     while (Date.now() < writableDeadline) {
       const bs = (await (
         await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`)
       ).json()) as {
-        is_writer: boolean
+        is_member: boolean
       }
-      if (bs.is_writer) {
-        bIsWriter = true
+      if (bs.is_member) {
+        bIsMember = true
         break
       }
       await new Promise((r) => setTimeout(r, 200))
     }
-    t.ok(bIsWriter, 'B is now a writer')
+    t.ok(bIsMember, 'B is now a member')
 
     const post = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/knowledge`, {
       method: 'POST',
@@ -168,3 +177,19 @@ test(
     t.ok(aLog.includes(bStatus.peer_handle), `log line shows B's handle`)
   },
 )
+
+async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.listen(0, '127.0.0.1', () => {
+      const addr = server.address()
+      if (!addr || typeof addr === 'string') {
+        server.close(() => reject(new Error('failed to allocate free port')))
+        return
+      }
+      const { port } = addr
+      server.close((err) => (err ? reject(err) : resolve(port)))
+    })
+    server.on('error', reject)
+  })
+}

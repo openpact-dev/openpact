@@ -86,12 +86,12 @@ test('remove: from a creator daemon succeeds', async (t) => {
   t.is(body.key, KEY_B)
 })
 
-test('promote: non-creator daemon (reader) returns 409 NOT_INDEXER', async (t) => {
-  // Manually construct a daemon with role 'reader' to exercise the gate.
+test('promote: non-creator daemon (member) returns 409 NOT_INDEXER', async (t) => {
+  // Manually construct a daemon with role 'member' to exercise the gate.
   // The simpler route: the existing tmpDaemon defaults to creator;
   // override `role` directly on the instance for this assertion.
   const { app, daemon } = await bootApi(t)
-  ;(daemon as any).current._role = 'reader'
+  ;(daemon as any).current._role = 'member'
 
   const res = await app.inject({
     method: 'POST',
@@ -102,9 +102,9 @@ test('promote: non-creator daemon (reader) returns 409 NOT_INDEXER', async (t) =
   t.is(JSON.parse(res.body).error, 'NOT_INDEXER')
 })
 
-test('remove: non-creator daemon (reader) returns 409 NOT_INDEXER', async (t) => {
+test('remove: non-creator daemon (member) returns 409 NOT_INDEXER', async (t) => {
   const { app, daemon } = await bootApi(t)
-  ;(daemon as any).current._role = 'reader'
+  ;(daemon as any).current._role = 'member'
 
   const res = await app.inject({
     method: 'POST',

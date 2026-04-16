@@ -3,7 +3,7 @@ import { daemonConfigPath, pactConfigPath, pactConfigDir, pactsRoot } from './da
 
 export const DEFAULT_PORT = 7666
 
-export const ROLES = ['creator', 'indexer', 'writer', 'reader'] as const
+export const ROLES = ['creator', 'indexer', 'member'] as const
 export type Role = (typeof ROLES)[number]
 
 export const DISPLAY_NAME_MAX = 64
@@ -50,7 +50,11 @@ export async function loadPactConfig(pactDir: string): Promise<PactConfig> {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error(`pact config at ${file} must contain a JSON object`)
   }
-  return { ...pactDefaults(), ...(parsed as Partial<PactConfig>) }
+  const merged = { ...pactDefaults(), ...(parsed as Partial<PactConfig>) }
+  return {
+    ...merged,
+    role: normaliseRole(merged.role),
+  }
 }
 
 export async function savePactConfig(pactDir: string, config: PactConfig): Promise<void> {
@@ -176,6 +180,13 @@ function validateOptionalString(value: unknown, field: string, max: number): voi
   if (value.length > max) {
     throw new Error(`${field} must be ≤${max} chars`)
   }
+}
+
+function normaliseRole(value: unknown): Role | null {
+  if (value === 'writer') return 'member'
+  if (value === 'reader') return null
+  if (value === null || value === undefined) return null
+  return value as Role
 }
 
 // re-export path helpers so callers can `import * as config` and reach

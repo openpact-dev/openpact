@@ -34,43 +34,56 @@ case "$cmd" in
     status="${2:-}"
     q=""
     [[ -n "$status" ]] && q="?status=${status}"
-    curl -sf "${base}/v1/pacts/${pact}/tasks${q}" | jq
+    curl -sf "${base}/v1/pacts/${pact}/tasks${q}" | python3 -m json.tool
     ;;
 
   create)
     title="${2:?title required}"
     description="${3:-}"
     if [[ -n "$description" ]]; then
-      body="$(jq -n --arg t "$title" --arg d "$description" '{title:$t, description:$d}')"
+      body="$(python3 - "$title" "$description" <<'PY'
+import json, sys
+title, description = sys.argv[1], sys.argv[2]
+print(json.dumps({"title": title, "description": description}))
+PY
+)"
     else
-      body="$(jq -n --arg t "$title" '{title:$t}')"
+      body="$(python3 - "$title" <<'PY'
+import json, sys
+print(json.dumps({"title": sys.argv[1]}))
+PY
+)"
     fi
     curl -sf -X POST "${base}/v1/pacts/${pact}/tasks" \
       -H 'content-type: application/json' \
-      -d "$body" | jq
+      -d "$body" | python3 -m json.tool
     ;;
 
   claim)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/claim" | jq
+    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/claim" | python3 -m json.tool
     ;;
 
   complete)
     id="${2:?task id required}"
     result="${3:-}"
     if [[ -n "$result" ]]; then
-      body="$(jq -n --arg r "$result" '{result:$r}')"
+      body="$(python3 - "$result" <<'PY'
+import json, sys
+print(json.dumps({"result": sys.argv[1]}))
+PY
+)"
     else
       body="{}"
     fi
     curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/complete" \
       -H 'content-type: application/json' \
-      -d "$body" | jq
+      -d "$body" | python3 -m json.tool
     ;;
 
   release)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/release" | jq
+    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/release" | python3 -m json.tool
     ;;
 
   *)

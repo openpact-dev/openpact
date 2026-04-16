@@ -262,7 +262,6 @@ function CreatePactDialog({
   const [name, setName] = useState('')
   const [purpose, setPurpose] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [alias, setAlias] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -272,7 +271,6 @@ function CreatePactDialog({
     setName('')
     setPurpose('')
     setDisplayName('')
-    setAlias('')
     setError(null)
     setSaving(false)
   }
@@ -289,7 +287,6 @@ function CreatePactDialog({
         name: name.trim(),
         purpose: purpose.trim() || null,
         display_name: displayName.trim() || null,
-        alias: alias.trim() || undefined,
       })
       reset()
       onCreated(res.alias)
@@ -321,13 +318,6 @@ function CreatePactDialog({
         onInput={setDisplayName}
         placeholder="Cinnabar"
         max={64}
-      />
-      <Field
-        label="Local alias (optional)"
-        value={alias}
-        onInput={setAlias}
-        placeholder="(slug of pact name)"
-        max={48}
       />
       {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
       <ModalFooter

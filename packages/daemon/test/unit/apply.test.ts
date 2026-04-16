@@ -4,6 +4,7 @@ import {
   makeApply,
   INDEXER_PREFIX,
   INVITE_PREFIX,
+  MEMBER_PREFIX,
   type ApplyView,
   type ApplyHost,
   type ApplyNode,
@@ -107,8 +108,10 @@ test('valid knowledge entry is appended to view', async (t) => {
     fakeHost(),
   )
   const keys = view._keys()
-  t.is(keys.length, 2)
+  t.is(keys.length, 3)
   t.ok(keys.some((k) => k.startsWith('knowledge/')))
+  t.ok(keys.some((k) => k.startsWith(MEMBER_PREFIX)))
+  t.ok(keys.some((k) => k.startsWith(INDEXER_PREFIX)))
 })
 
 test('apply tolerates non-object node.value (drop)', async (t) => {

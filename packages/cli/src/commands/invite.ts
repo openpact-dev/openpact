@@ -82,11 +82,9 @@ export async function inviteCmd(
 
     if (process.stdout.isTTY) {
       process.stderr.write('\n')
+      process.stderr.write(`  ${emoji.brand} ${c.brandBold('One-time invite minted.')}\n`)
       process.stderr.write(
-        `  ${emoji.brand} ${c.brandBold('One-time invite minted.')}\n`,
-      )
-      process.stderr.write(
-        c.ash(`  Expires ${relative(invite.expires_at)}. Redeem once to promote a new writer.\n`),
+        c.ash(`  Expires ${relative(invite.expires_at)}. Redeem once to admit a new member.\n`),
       )
       process.stderr.write(c.ash(`  Nonce   ${invite.nonce}\n`))
       process.stderr.write(c.ash(`  Revoke  openpact invite --revoke ${invite.nonce}\n`))
@@ -109,7 +107,15 @@ function parseTtl(input: string): number {
   const n = Number(m[1])
   const unit = m[2]
   const mult =
-    unit === 'ms' ? 1 : unit === 's' ? 1000 : unit === 'm' ? 60_000 : unit === 'h' ? 3_600_000 : 86_400_000
+    unit === 'ms'
+      ? 1
+      : unit === 's'
+        ? 1000
+        : unit === 'm'
+          ? 60_000
+          : unit === 'h'
+            ? 3_600_000
+            : 86_400_000
   return n * mult
 }
 

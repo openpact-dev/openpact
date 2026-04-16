@@ -22,11 +22,21 @@ content="$2"
 confidence="${3:-}"
 
 if [[ -n "$confidence" ]]; then
-  body="$(jq -n --arg t "$topic" --arg c "$content" --argjson n "$confidence" '{topic:$t, content:$c, confidence:$n}')"
+  body="$(python3 - "$topic" "$content" "$confidence" <<'PY'
+import json, sys
+topic, content, confidence = sys.argv[1], sys.argv[2], float(sys.argv[3])
+print(json.dumps({"topic": topic, "content": content, "confidence": confidence}))
+PY
+)"
 else
-  body="$(jq -n --arg t "$topic" --arg c "$content" '{topic:$t, content:$c}')"
+  body="$(python3 - "$topic" "$content" <<'PY'
+import json, sys
+topic, content = sys.argv[1], sys.argv[2]
+print(json.dumps({"topic": topic, "content": content}))
+PY
+)"
 fi
 
 curl -sf -X POST "${base}/v1/pacts/${pact}/knowledge" \
   -H 'content-type: application/json' \
-  -d "$body" | jq
+  -d "$body" | python3 -m json.tool

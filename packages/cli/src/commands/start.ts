@@ -110,9 +110,7 @@ export async function startCmd(
       const overlap = theirs.some((id) => ourPactIds.has(id))
       if (!overlap) {
         const summary =
-          theirs.length === 0
-            ? 'no pacts'
-            : `${theirs.length} pact(s), none matching this host`
+          theirs.length === 0 ? 'no pacts' : `${theirs.length} pact(s), none matching this host`
         await bail(
           `port :${port} is already held by a different daemon (${summary}). run \`openpact stop\` in that dataDir first, or pass \`--port <n>\` to use a different port.`,
         )

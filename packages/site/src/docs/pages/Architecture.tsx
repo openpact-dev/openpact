@@ -106,15 +106,15 @@ const INVITE_REDEEM = `sequenceDiagram
   Creator->>Creator: mint token { pactId, nonce, expiresAt, ... }
   Creator-->>Joiner: token sent out of band (URL)
   Joiner->>Creator: join swarm on pactId
-  Joiner->>Creator: openpact/invites/v1 · redeem-request { token, writerKey }
+  Joiner->>Creator: openpact/invites/v1 · redeem-request { token, memberKey }
   Creator->>Creator: verify expiry + nonce unspent
   Creator->>Auto: append invite-redeemed { nonce, redeemed_by }
-  Creator->>Auto: append admin.addWriter { key: writerKey }
+  Creator->>Auto: append admin.addWriter { key: memberKey }
   Auto->>Auto: write _invites/<nonce> (locks out replays)
-  Auto->>Auto: add writerKey to writers set
+  Auto->>Auto: add memberKey to active member set
   Note over Auto: Every indexer applies deterministically
   Creator-->>Joiner: redeem-response { ok: true, nonce }
-  Joiner->>Joiner: sees admin.addWriter for self → becomes writer
+  Joiner->>Joiner: sees admin.addWriter for self → becomes member
 `
 
 const DATA_LAYOUT = `~/.openpact/
@@ -138,7 +138,7 @@ export function Architecture() {
       currentSlug="/docs/architecture/"
       eyebrow="Docs"
       title="Architecture"
-      lede="Append-only logs under a deterministic merge. Four entry types. Four peer roles. No central server in the data path."
+      lede="Append-only logs under a deterministic merge. Four user-facing entry types. Three peer roles. No central server in the data path."
     >
       <h2>The picture</h2>
       <p>
@@ -224,11 +224,11 @@ export function Architecture() {
         </pre>
       </div>
       <p>
-        The first four types are user-facing. <code>admin</code> and{' '}
-        <code>invite-redeemed</code> are infrastructure entries written only by indexers:{' '}
-        <code>admin</code> carries <code>addWriter</code> / <code>removeWriter</code> actions,
-        and <code>invite-redeemed</code> records the spent nonce so a token can only ever
-        promote one peer.
+        The first four types are user-facing. <code>admin</code> and <code>invite-redeemed</code>{' '}
+        are infrastructure entries written only by indexers: <code>admin</code> carries membership
+        actions (<code>addWriter</code> / <code>removeWriter</code> in the wire format), and{' '}
+        <code>invite-redeemed</code> records the spent nonce so a token can only ever admit one
+        peer.
       </p>
       <p>
         Adding a new top-level type is a design-doc-level change. Optional fields on existing types
@@ -238,58 +238,55 @@ export function Architecture() {
 
       <h2>Peer roles</h2>
       <p>
-        Four roles, granted by the creator through <code>admin</code> entries in Autobase.
+        Three roles. Membership changes are granted by the creator through <code>admin</code>{' '}
+        entries in Autobase.
       </p>
       <ul>
         <li>
-          <strong>Creator</strong> — set at pact init. Can promote or remove writers, rename the
-          pact, and edit purpose.
+          <strong>Creator</strong> — set at pact init. Can admit or remove members, promote members
+          to indexer, rename the pact, and edit purpose.
         </li>
         <li>
           <strong>Indexer</strong> — votes on the confirmed frontier. A majority of indexers must be
-          online for the view to advance. Writers are typically indexers too.
+          online for the view to advance. Indexers are also members, so they can append entries and
+          redeem invite tokens on behalf of joiners.
         </li>
         <li>
-          <strong>Writer</strong> — can append entries. Granted by <code>POST /admin/promote</code>.
-        </li>
-        <li>
-          <strong>Reader</strong> — replicates the log, can query, cannot write. A new joiner
-          sits here for the seconds between swarm-connect and invite redemption, or after a
-          <code>remove-writer</code> demotion.
+          <strong>Member</strong> — can append the user-facing entry types and replicate the pact
+          while their membership remains active.
         </li>
       </ul>
 
-      <h3>Promoting a new writer via invite token</h3>
+      <h3>Admitting a new member via invite token</h3>
       <Mermaid chart={INVITE_REDEEM} caption="Figure 4 · Redeeming a one-time invite token" />
       <p>
-        The creator mints a bearer token with <code>openpact invite</code>. The token is a
-        base64url JSON blob: <code>{`{v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`}</code>.
-        No signature — the nonce <em>is</em> the secret, and single-use is enforced at
-        apply-time by the <code>_invites/&lt;nonce&gt;</code> view key. TTL defaults to 7 days.
+        The creator mints a bearer token with <code>openpact invite</code>. The token is a base64url
+        JSON blob: <code>{`{v:1, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`}</code>. No
+        signature — the nonce <em>is</em> the secret, and single-use is enforced at apply-time by
+        the <code>_invites/&lt;nonce&gt;</code> view key. TTL defaults to 7 days.
       </p>
       <p>
-        A joiner daemon can&rsquo;t append entries until it&rsquo;s a writer, so the redemption
-        travels over a dedicated protomux channel
-        (<code>openpact/invites/v1</code>) that rides the same Noise stream Corestore uses for
-        replication. The indexer receiving the request validates, appends the{' '}
-        <code>invite-redeemed</code> + <code>admin.addWriter</code> pair from its own writer
-        core, and responds with the outcome. Every peer&rsquo;s <code>apply()</code> sees both
-        entries in the same deterministic order, so two indexers redeeming the same nonce
+        A joiner daemon can&rsquo;t append entries until it&rsquo;s a member, so the redemption
+        travels over a dedicated protomux channel (<code>openpact/invites/v1</code>) that rides the
+        same Noise stream Corestore uses for replication. The indexer receiving the request
+        validates, appends the <code>invite-redeemed</code> + <code>admin.addWriter</code> pair from
+        its own writer core, and responds with the outcome. Every peer&rsquo;s <code>apply()</code>{' '}
+        sees both entries in the same deterministic order, so two indexers redeeming the same nonce
         concurrently end in a single winner with <code>INVITE_SPENT</code> for the loser.
       </p>
       <p>
-        The creator can still manually admit or demote peers via{' '}
-        <code>openpact add-writer</code> and <code>openpact remove-writer</code> (or the
-        dashboard&rsquo;s Network screen). Demotion is how bad actors are handled after
-        promotion — historical entries stay on the log (they&rsquo;re signed) but future writes
-        from that key are rejected.
+        The creator can still manage the active member set via <code>openpact add-member</code> and{' '}
+        <code>openpact remove-member</code> (or the dashboard&rsquo;s Network screen). Removal is
+        how bad actors are handled after admission. Historical entries stay on the log because
+        they&rsquo;re signed, but future replication and future writes from that key are cut off.
       </p>
       <p>
-        <strong>Threat model.</strong> The join URL is a bearer credential. Whoever holds the
-        token can become a writer, once. Short TTLs and explicit revocation bound the damage
-        from a leaked URL. The raw discovery key (derivable from the token) remains a durable
-        read capability for the pact&rsquo;s lifetime — the same property the old
-        reader-by-default model had, not a regression.
+        <strong>Threat model.</strong> The join URL is a bearer credential. Whoever holds the token
+        can become a member, once. Short TTLs and explicit revocation bound the damage from a leaked
+        URL. The raw pact ID is no longer enough to keep replicating forever: peers must prove
+        control of an active member key on <code>openpact/members/v1</code> before future pact
+        replication is allowed. Removed peers keep anything they already copied locally, but they do
+        not keep receiving new data through OpenPact.
       </p>
 
       <h2>Task lifecycle</h2>
@@ -338,18 +335,18 @@ export function Architecture() {
           The REST API binds to <code>127.0.0.1</code> only. Never <code>0.0.0.0</code>.
         </li>
         <li>
-          <code>apply()</code> is the single ordering authority for entry validation, writer
-          permissions, and view shape.
+          <code>apply()</code> is the single ordering authority for entry validation, membership
+          changes, and view shape.
         </li>
         <li>
           Entry schema is fixed at six types:{' '}
-          <code>knowledge · task · skill · message · admin · invite-redeemed</code>. The first
-          four are user-facing; the last two are indexer-only infrastructure.
+          <code>knowledge · task · skill · message · admin · invite-redeemed</code>. The first four
+          are user-facing; the last two are indexer-only infrastructure.
         </li>
         <li>
-          New peers are admitted by redeeming a one-time, time-limited invite token. The
-          creator mints tokens with <code>openpact invite</code> and can demote a misbehaving
-          writer with <code>openpact remove-writer</code>.
+          New peers are admitted by redeeming a one-time, time-limited invite token. The creator
+          mints tokens with <code>openpact invite</code> and can remove a misbehaving member with{' '}
+          <code>openpact remove-member</code>.
         </li>
         <li>
           Source-available under the Sustainable Use License. No proprietary modules in the daemon

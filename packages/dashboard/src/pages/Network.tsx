@@ -46,7 +46,7 @@ export function Network() {
   const pactPurpose = s?.pact_purpose ?? null
   const selfHandle = s?.peer_handle ?? ''
   const selfDisplay = s?.display_name ?? null
-  const selfRole = s?.role ?? 'reader'
+  const selfRole = s?.role ?? 'Pending'
   const selfPublicKey = s?.public_key ?? ''
   const isCreator = selfRole === 'creator'
 
@@ -65,7 +65,7 @@ export function Network() {
       handle: p.id ?? p.remote_key ?? '',
       displayName: p.display_name ?? null,
       publicKey: p.remote_key ?? null,
-      role: p.role ?? 'reader',
+      role: p.role ?? 'member',
       online: !!p.online,
       isSelf: false,
     }))
@@ -173,7 +173,7 @@ export function Network() {
           pending?.kind === 'promote'
             ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will be allowed to confirm the frontier. They can be demoted again later.`
             : pending
-              ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will lose write access. Existing entries remain in the ledger.`
+              ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will lose future pact access. Existing entries remain in the ledger.`
               : ''
         }
         confirmLabel={pending?.kind === 'promote' ? 'Promote' : 'Remove'}
@@ -189,10 +189,10 @@ export function Network() {
           const key = pending.peer.remote_key ?? ''
           if (!key) throw new Error('No remote key for this peer')
           if (pending.kind === 'promote') {
-            await pact.admin.promote(key)
+            await pact.admin.promoteToIndexer(key)
             setToast(`Promoted ${shortHandle(pending.peer.id ?? key)}.`)
           } else {
-            await pact.admin.remove(key)
+            await pact.admin.removeMemberAsCreator(key)
             setToast(`Removed ${shortHandle(pending.peer.id ?? key)}.`)
           }
           setPending(null)
@@ -253,7 +253,7 @@ function AgentRowView({
         </div>
       </div>
       <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)]">
-        {row.role || 'reader'}
+        {row.role || 'Pending'}
       </span>
       <span class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)]">
         {rightsLabel}
@@ -315,10 +315,10 @@ function describeRights(role: string): string {
     case 'creator':
     case 'indexer':
       return 'Write + index'
-    case 'writer':
-      return 'Write only'
+    case 'member':
+      return 'Write'
     default:
-      return 'Read only'
+      return 'Pending'
   }
 }
 
@@ -542,4 +542,3 @@ function RenameAgentDialog({
     </div>
   )
 }
-

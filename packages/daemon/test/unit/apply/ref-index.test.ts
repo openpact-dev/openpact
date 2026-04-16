@@ -79,21 +79,24 @@ function entry(type: string, payload: unknown, refs?: string[]): Record<string, 
 
 const TYPE_KEY_RE = /^(knowledge|task|skill|message)\/.+/
 
+function dataKeys(view: FakeView): string[] {
+  return view._keys().filter((k) => !k.startsWith('_indexers/') && !k.startsWith('_members/'))
+}
+
 test('entry with no refs writes exactly one key', async (t) => {
   const view = fakeView()
   const apply = makeApply()
   await apply([node(entry('knowledge', { topic: 'x', content: 'y' }), 0)], view, noopHost)
-  const dataKeys = view._keys().filter((k) => !k.startsWith('_indexers/'))
-  t.is(dataKeys.length, 1, 'one entry key, no ref keys')
-  t.ok(TYPE_KEY_RE.test(dataKeys[0]))
+  const keys = dataKeys(view)
+  t.is(keys.length, 1, 'one entry key, no ref keys')
+  t.ok(TYPE_KEY_RE.test(keys[0]))
 })
 
 test('entry with empty refs array writes exactly one key', async (t) => {
   const view = fakeView()
   const apply = makeApply()
   await apply([node(entry('knowledge', { topic: 'x', content: 'y' }, []), 0)], view, noopHost)
-  const dataKeys = view._keys().filter((k) => !k.startsWith('_indexers/'))
-  t.is(dataKeys.length, 1)
+  t.is(dataKeys(view).length, 1)
 })
 
 test('entry with one ref writes one ref/<target>/<source> key alongside', async (t) => {
@@ -104,8 +107,7 @@ test('entry with one ref writes one ref/<target>/<source> key alongside', async 
     view,
     noopHost,
   )
-  const dataKeys = view._keys().filter((k) => !k.startsWith('_indexers/'))
-  const refKeys = dataKeys.filter((k) => k.startsWith('ref/'))
+  const refKeys = dataKeys(view).filter((k) => k.startsWith('ref/'))
   t.is(refKeys.length, 1, 'one ref key written')
   t.ok(refKeys[0].startsWith('ref/target-1/'), 'ref key is ref/<target>/<source>')
   // The ref key's value is the source entry, with id stamped.

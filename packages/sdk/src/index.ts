@@ -77,11 +77,7 @@ export class OpenPact {
 export type { ClientOpts } from './client'
 export type { HostStatus } from './resources/status'
 export type { PactSummary, PactListPayload, CreatePactBody, JoinPactBody } from './resources/pacts'
-export type {
-  InviteSummary,
-  MintInviteOpts,
-  MintInviteResult,
-} from './resources/invites'
+export type { InviteSummary, MintInviteOpts, MintInviteResult } from './resources/invites'
 export type {
   AppendResult,
   BaseEntry,
@@ -113,7 +109,7 @@ export {
   TaskAlreadyCompleteError,
   NotClaimerError,
   NotClaimedError,
-  NotAWriterError,
+  NotAMemberError,
   SkillChecksumMismatchError,
   NotIndexerError,
   BadSkillNameError,

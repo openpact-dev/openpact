@@ -27,4 +27,18 @@ if [[ -n "$topic" ]]; then
   query="${query}&topic=${topic}"
 fi
 
-curl -sf "${base}/v1/pacts/${pact}/knowledge${query}" | jq '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
+curl -sf "${base}/v1/pacts/${pact}/knowledge${query}" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+entries = [
+    {
+        "id": entry["id"],
+        "ts": entry["timestamp"],
+        "topic": entry["payload"]["topic"],
+        "content": entry["payload"]["content"],
+    }
+    for entry in data.get("entries", [])
+]
+json.dump(entries, sys.stdout, indent=2)
+sys.stdout.write("\n")
+'

@@ -12,7 +12,7 @@ async function mkDir(t: any, prefix: string): Promise<string> {
   return dir
 }
 
-test('invite: daemon B redeems a token via protomux and becomes a writer on daemon A', async (t) => {
+test('invite: daemon B redeems a token via protomux and becomes a member on daemon A', async (t) => {
   const testnet = await createTestnet(3, t.teardown)
   const swarm = { bootstrap: testnet.bootstrap }
 
@@ -56,34 +56,34 @@ test('invite: daemon B redeems a token via protomux and becomes a writer on daem
   t.is(mintRes.statusCode, 200)
   const { token } = JSON.parse(mintRes.body)
 
-  // ---- get B's writer key from /status
+  // ---- get B's member key from /status
   const statusRes = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/status' })
   t.is(statusRes.statusCode, 200)
   const status = JSON.parse(statusRes.body)
-  const writerKey = status.public_key as string
-  t.ok(/^[0-9a-f]{64}$/.test(writerKey))
+  const memberKey = status.public_key as string
+  t.ok(/^[0-9a-f]{64}$/.test(memberKey))
 
   // ---- redeem on B's daemon — should forward to A over protomux
   const redeemRes = await bApi.inject({
     method: 'POST',
     url: '/v1/pacts/default/invites/redeem',
-    payload: { token, writer_key: writerKey, confirm: true },
+    payload: { token, writer_key: memberKey, confirm: true },
   })
   t.is(redeemRes.statusCode, 200, redeemRes.body)
   const redeem = JSON.parse(redeemRes.body)
   t.ok(redeem.ok)
   t.ok(typeof redeem.nonce === 'string')
 
-  // ---- wait for the admin.addWriter to propagate so B sees itself as writer
+  // ---- wait for the admin.addWriter to propagate so B sees itself as a member
   const deadline = Date.now() + 20_000
   while (Date.now() < deadline) {
     const s = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/status' })
-    if (JSON.parse(s.body).is_writer === true) break
+    if (JSON.parse(s.body).is_member === true) break
     await new Promise((r) => setTimeout(r, 100))
   }
   const finalStatus = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/status' })
   const sb = JSON.parse(finalStatus.body)
-  t.is(sb.is_writer, true, 'B should be a writer after the redeemed admin.addWriter confirms')
+  t.is(sb.is_member, true, 'B should be a member after the redeemed admin.addWriter confirms')
 })
 
 test('invite: second redeem of the same token from B returns 409 INVITE_SPENT', async (t) => {
@@ -122,19 +122,19 @@ test('invite: second redeem of the same token from B returns 409 INVITE_SPENT', 
   })
   const { token } = JSON.parse(mintRes.body)
   const status = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/status' })
-  const writerKey = JSON.parse(status.body).public_key as string
+  const memberKey = JSON.parse(status.body).public_key as string
 
   const first = await bApi.inject({
     method: 'POST',
     url: '/v1/pacts/default/invites/redeem',
-    payload: { token, writer_key: writerKey, confirm: true },
+    payload: { token, writer_key: memberKey, confirm: true },
   })
   t.is(first.statusCode, 200)
 
   const second = await bApi.inject({
     method: 'POST',
     url: '/v1/pacts/default/invites/redeem',
-    payload: { token, writer_key: writerKey, confirm: true },
+    payload: { token, writer_key: memberKey, confirm: true },
   })
   t.is(second.statusCode, 409)
   t.is(JSON.parse(second.body).error, 'INVITE_SPENT')

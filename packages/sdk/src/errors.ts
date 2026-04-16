@@ -79,10 +79,10 @@ export class NotClaimedError extends OpenPactError {
   }
 }
 
-export class NotAWriterError extends OpenPactError {
+export class NotAMemberError extends OpenPactError {
   constructor(message: string) {
-    super(message, { status: 409, code: 'NOT_A_WRITER' })
-    this.name = 'NotAWriterError'
+    super(message, { status: 409, code: 'NOT_A_MEMBER' })
+    this.name = 'NotAMemberError'
   }
 }
 
@@ -210,8 +210,8 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new NotClaimerError(message)
     case 'NOT_CLAIMED':
       return new NotClaimedError(message)
-    case 'NOT_A_WRITER':
-      return new NotAWriterError(message)
+    case 'NOT_A_MEMBER':
+      return new NotAMemberError(message)
     case 'SKILL_CHECKSUM_MISMATCH':
       return new SkillChecksumMismatchError(message, status)
     case 'NOT_INDEXER':

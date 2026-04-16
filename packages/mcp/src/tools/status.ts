@@ -19,7 +19,7 @@ export function registerStatusTools(server: McpServer, pact: OpenPact): void {
     'pact_status',
     {
       description:
-        'Report this pact: pact_id, this peer handle, role, entry count, peer count, and whether we are a writer or indexer. Use this to orient at session start.',
+        'Report this pact: pact_id, this peer handle, role, entry count, peer count, and whether we are a member or indexer. Use this to orient at session start.',
       inputSchema: {},
     },
     async () => safeHandler(async () => jsonContent(await pact.status())),

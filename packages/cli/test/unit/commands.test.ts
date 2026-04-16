@@ -75,10 +75,7 @@ test('joinCmd: rejects an expired token before contacting the daemon', async (t)
     }),
     'utf8',
   ).toString('base64url')
-  await t.exception(
-    () => joinCmd(expired, { interactive: false }, ctx(dir)),
-    /expired/,
-  )
+  await t.exception(() => joinCmd(expired, { interactive: false }, ctx(dir)), /expired/)
 })
 
 // Happy-path invite / join live in

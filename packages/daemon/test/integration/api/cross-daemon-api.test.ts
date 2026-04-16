@@ -28,6 +28,7 @@ test('POST knowledge to A; GET knowledge on B sees it', async (t) => {
   const { a, b } = await pair(t)
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
+  await admitMember(a.daemon, b.daemon)
 
   const post = await postJson(`${apiA}/v1/pacts/default/knowledge`, {
     topic: 'sales',
@@ -53,6 +54,7 @@ test('GET status on B reflects entries written via A', async (t) => {
   const { a, b } = await pair(t)
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
+  await admitMember(a.daemon, b.daemon)
 
   await postJson(`${apiA}/v1/pacts/default/knowledge`, { topic: 't', content: '1' })
 
@@ -67,3 +69,12 @@ test('GET status on B reflects entries written via A', async (t) => {
   }
   t.ok(entries > 0)
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}

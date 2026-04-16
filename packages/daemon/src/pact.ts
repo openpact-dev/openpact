@@ -2,20 +2,17 @@ import EventEmitter from 'events'
 import b4a from 'b4a'
 import Corestore from 'corestore'
 import Autobase from 'autobase'
+import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
+import crypto from 'hypercore-crypto'
 
 import { pactStorePath } from './data-dir'
 import { loadPactConfig, savePactConfig, type Role, type PactConfig } from './config'
-import { makeApply, INVITE_PREFIX } from './apply'
+import { makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
 import * as peerHandle from './peer-handle'
 import * as entryId from './entry-id'
 import * as invites from './invites'
-import {
-  DEFAULT_TTL_MS,
-  InviteDecodeError,
-  type Invite,
-  type InviteSummary,
-} from './invites'
+import { DEFAULT_TTL_MS, InviteDecodeError, type Invite, type InviteSummary } from './invites'
 
 export interface PactOpts {
   /** Directory holding the pact's config.json + data/ store. */
@@ -74,7 +71,7 @@ export class Pact extends EventEmitter {
     return p
   }
 
-  /** Join an existing pact by its hex key. Writes config.json as reader. */
+  /** Join an existing pact by its hex key. Writes config.json without membership. */
   static async join(opts: PactJoinOpts): Promise<Pact> {
     if (!opts.joinKey) throw new Error('joinKey is required to join an existing pact')
     const p = new Pact(opts)
@@ -82,7 +79,6 @@ export class Pact extends EventEmitter {
     const bootstrap = b4a.from(opts.joinKey, 'hex')
     p._base = new Autobase(p._store, bootstrap, p._autobaseOpts())
     await p._base.ready()
-    p._role = 'reader'
     await p._persistConfig()
     return p
   }
@@ -98,7 +94,7 @@ export class Pact extends EventEmitter {
     const bootstrap = b4a.from(cfg.pactKey, 'hex')
     p._base = new Autobase(p._store, bootstrap, p._autobaseOpts())
     await p._base.ready()
-    p._role = cfg.role
+    p._role = cfg.role === 'creator' ? 'creator' : null
     p._pactName = opts.pactName ?? cfg.pactName ?? null
     p._pactPurpose = opts.pactPurpose ?? cfg.pactPurpose ?? null
     p._displayName = opts.displayName ?? cfg.displayName ?? null
@@ -134,7 +130,7 @@ export class Pact extends EventEmitter {
   private async _persistConfig(): Promise<void> {
     const cfg = await loadPactConfig(this.dataDir)
     cfg.pactKey = b4a.toString(this._base.key, 'hex')
-    if (this._role) cfg.role = this._role
+    cfg.role = this.role
     cfg.pactName = this._pactName
     cfg.pactPurpose = this._pactPurpose
     cfg.displayName = this._displayName
@@ -188,11 +184,18 @@ export class Pact extends EventEmitter {
   }
 
   get role(): Role | null {
-    return this._role
+    if (this._role === 'creator') return 'creator'
+    if (this.isIndexer) return 'indexer'
+    if (this.isMember) return 'member'
+    return null
   }
 
   get isWriter(): boolean {
     return this._base ? !!this._base.writable : false
+  }
+
+  get isMember(): boolean {
+    return this.isWriter
   }
 
   get isIndexer(): boolean {
@@ -221,7 +224,7 @@ export class Pact extends EventEmitter {
   }
 
   async append(entry: Record<string, unknown>): Promise<{ id: string; timestamp: string }> {
-    if (!this._base.writable) throw new Error('this peer is not a writer for the pact')
+    if (!this._base.writable) throw new Error('this peer is not a member of the pact')
     await this._base.append(entry)
     const seq = this._base.local.length
     const id = entryId.encode({ writerKey: this._base.local.key, seq })
@@ -326,11 +329,7 @@ export class Pact extends EventEmitter {
   async redeemInvite(token: string, writerKeyHex: string): Promise<{ nonce: string }> {
     if (!this._base || !this.pactKey) throw new Error('pact is not open')
     if (!/^[0-9a-f]{64}$/i.test(writerKeyHex)) {
-      throw new invites.RedeemError(
-        'INVITE_BAD_SHAPE',
-        'writer key must be 64-hex',
-        400,
-      )
+      throw new invites.RedeemError('INVITE_BAD_SHAPE', 'member key must be 64-hex', 400)
     }
     let payload: invites.InviteTokenPayload
     try {
@@ -434,6 +433,108 @@ export class Pact extends EventEmitter {
     })
   }
 
+  /**
+   * Append a self-targeted `admin.removeWriter` so this peer relinquishes
+   * its writer rights on the pact. apply.ts has a carve-out allowing
+   * self-revocation without indexer authority; used when a peer leaves
+   * a pact locally so remote peers can drop it from their writer set.
+   */
+  async leaveAsWriter(): Promise<void> {
+    if (!this._base || !this._base.writable) return
+    const keyHex = this.publicKey
+    if (!keyHex) return
+    await this._base.append({
+      type: 'admin',
+      timestamp: new Date().toISOString(),
+      agent_id: this.peerHandle,
+      display_name: this.displayName,
+      payload: { action: 'removeWriter', key: keyHex },
+    })
+  }
+
+  async hasActiveMemberKey(keyHex: string): Promise<boolean> {
+    const target = keyHex.toLowerCase()
+    const member = await this.view?.get?.(`${MEMBER_PREFIX}${target}`)
+    return member != null
+  }
+
+  signMembershipChallenge(
+    challenge: Buffer,
+    pactId: string,
+  ): {
+    memberKey: string
+    signerKey: string
+    signerNamespace?: string
+    compat: boolean
+    signature: Buffer
+  } {
+    if (!this._base) {
+      throw new Error('pact is not open')
+    }
+    const keyPair = this._base.local?.keyPair
+    const memberKey = this.publicKey
+    const signerKey = keyPair?.publicKey
+    const signerNamespace = this._base.local?.manifest?.signers?.[0]?.namespace
+    const compat = !!this._base.local?.core?.compat
+    if (!keyPair?.secretKey || !signerKey || !memberKey) {
+      throw new Error('local member keypair is unavailable')
+    }
+    const message = membershipChallengeMessage(pactId, challenge)
+    return {
+      memberKey,
+      signerKey: b4a.toString(signerKey, 'hex') as string,
+      signerNamespace: signerNamespace
+        ? (b4a.toString(signerNamespace, 'hex') as string)
+        : undefined,
+      compat,
+      signature: crypto.sign(message, keyPair.secretKey),
+    }
+  }
+
+  verifyMembershipChallenge(
+    challenge: Buffer,
+    pactId: string,
+    signature: Buffer,
+    memberKey: string,
+    signerKey: string,
+    signerNamespace?: string,
+    compat = false,
+  ): boolean {
+    if (!/^[0-9a-f]{64}$/i.test(memberKey) || !/^[0-9a-f]{64}$/i.test(signerKey)) return false
+    const message = membershipChallengeMessage(pactId, challenge)
+    if (!crypto.verify(message, signature, b4a.from(signerKey, 'hex'))) return false
+    const derivedKey = Hypercore.key(
+      {
+        version: 1,
+        hash: 'blake2b',
+        allowPatch: false,
+        quorum: 1,
+        signers: [
+          {
+            publicKey: b4a.from(signerKey, 'hex'),
+            namespace: signerNamespace ? b4a.from(signerNamespace, 'hex') : undefined,
+          },
+        ],
+        prologue: null,
+        linked: null,
+        userData: null,
+      },
+      { compat },
+    )
+    return b4a.toString(derivedKey, 'hex').toLowerCase() === memberKey.toLowerCase()
+  }
+
+  async waitForMemberRemoval(keyHex: string, opts: { timeout?: number } = {}): Promise<void> {
+    const timeout = opts.timeout ?? 5000
+    const deadline = Date.now() + timeout
+    while (Date.now() < deadline) {
+      if (!(await this.hasActiveMemberKey(keyHex))) return
+      await this.update()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    throw new Error(`waitForMemberRemoval timeout for ${keyHex}`)
+  }
+
   async update(): Promise<void> {
     if (this._base) await this._base.update()
   }
@@ -452,4 +553,12 @@ export class Pact extends EventEmitter {
       this._store = null
     }
   }
+}
+
+function membershipChallengeMessage(pactId: string, challenge: Buffer): Buffer {
+  return b4a.concat([
+    b4a.from('openpact-member-auth-v1', 'utf8'),
+    b4a.from(pactId.toLowerCase(), 'utf8'),
+    challenge,
+  ]) as Buffer
 }

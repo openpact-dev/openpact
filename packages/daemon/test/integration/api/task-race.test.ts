@@ -47,13 +47,12 @@ test('two writers concurrently claim same task; eventual single winner', async (
   const { a, b } = await pair(t)
   const apiA = await bootApi(t, a.daemon)
   const apiB = await bootApi(t, b.daemon)
+  await admitMember(a.daemon, b.daemon)
 
   const created = await postJson(`${apiA}/v1/pacts/default/tasks`, { title: 'race me' })
   t.is(created.status, 200)
   const taskId = created.body.id as string
 
-  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: false })
-  await b.daemon.waitForWritable({ timeout: 30000 })
   await waitForTask(apiB, taskId)
 
   // Race: both try to claim simultaneously. With optimistic claiming,
@@ -84,3 +83,12 @@ test('two writers concurrently claim same task; eventual single winner', async (
   t.is(retry.status, 409)
   t.is(retry.body.error, 'TASK_NOT_OPEN')
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}

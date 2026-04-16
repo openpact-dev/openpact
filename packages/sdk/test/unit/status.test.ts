@@ -19,7 +19,7 @@ test('status.get returns full status payload', async (t) => {
     public_key: 'def',
     peers: 2,
     entries: 14,
-    is_writer: true,
+    is_member: true,
     is_indexer: true,
     synced: true,
   }

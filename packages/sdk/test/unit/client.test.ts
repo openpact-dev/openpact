@@ -82,7 +82,7 @@ test('client: maps 500 SKILL_CHECKSUM_MISMATCH → SkillChecksumMismatchError', 
 test('client: maps 409 NOT_INDEXER → NotIndexerError', async (t) => {
   const m = mockFetch({
     status: 409,
-    body: { error: 'NOT_INDEXER', message: 'role is reader, not creator' },
+    body: { error: 'NOT_INDEXER', message: 'role is member, not creator' },
   })
   const c = new OpenPactClient({ fetch: m.fetch, pactId: 'default' })
   await t.exception(() => c.req('/v1/admin/promote'), NotIndexerError)
@@ -148,7 +148,7 @@ test('client: json POST sets content-type and body', async (t) => {
 test('client: json DELETE without body omits content-type', async (t) => {
   const m = mockFetch({ status: 200, body: { ok: true } })
   const c = new OpenPactClient({ fetch: m.fetch, pactId: 'default' })
-  await c.json('/v1/admin/writers/abc', 'DELETE')
+  await c.json('/v1/admin/members/abc', 'DELETE')
   t.is(m.calls[0].method, 'DELETE')
   t.absent(m.calls[0].headers['content-type'])
   t.absent(m.calls[0].body)

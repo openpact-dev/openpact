@@ -1,18 +1,18 @@
 import type { OpenPactClient } from '../client'
 
-export interface AddWriterOpts {
+export interface AddMemberOpts {
   indexer?: boolean
 }
 
 export function adminResource(client: OpenPactClient) {
   return {
-    /** POST /v1/pacts/:pactId/admin/writers — bind a peer as writer or indexer. */
-    addWriter(
+    /** POST /v1/pacts/:pactId/admin/members — bind a peer as member or indexer. */
+    addMember(
       key: string,
-      opts: AddWriterOpts = {},
+      opts: AddMemberOpts = {},
     ): Promise<{ ok: true; key: string; indexer: boolean }> {
       return client.json<{ ok: true; key: string; indexer: boolean }>(
-        client.pactPath('/admin/writers'),
+        client.pactPath('/admin/members'),
         'POST',
         {
           key,
@@ -20,15 +20,15 @@ export function adminResource(client: OpenPactClient) {
         },
       )
     },
-    /** DELETE /v1/pacts/:pactId/admin/writers/:key — remove a writer. */
-    removeWriter(key: string): Promise<{ ok: true; key: string }> {
+    /** DELETE /v1/pacts/:pactId/admin/members/:key — remove a member. */
+    removeMember(key: string): Promise<{ ok: true; key: string }> {
       return client.json<{ ok: true; key: string }>(
-        client.pactPath(`/admin/writers/${encodeURIComponent(key)}`),
+        client.pactPath(`/admin/members/${encodeURIComponent(key)}`),
         'DELETE',
       )
     },
-    /** POST /v1/pacts/:pactId/admin/promote — addWriter(indexer=true) creator-only wrapper. */
-    promote(key: string): Promise<{ ok: true; key: string; indexer: true }> {
+    /** POST /v1/pacts/:pactId/admin/promote — addMember(indexer=true) creator-only wrapper. */
+    promoteToIndexer(key: string): Promise<{ ok: true; key: string; indexer: true }> {
       return client.json<{ ok: true; key: string; indexer: true }>(
         client.pactPath('/admin/promote'),
         'POST',
@@ -38,8 +38,8 @@ export function adminResource(client: OpenPactClient) {
         },
       )
     },
-    /** POST /v1/pacts/:pactId/admin/remove — removeWriter creator-only wrapper. */
-    remove(key: string): Promise<{ ok: true; key: string }> {
+    /** POST /v1/pacts/:pactId/admin/remove — creator-only member removal wrapper. */
+    removeMemberAsCreator(key: string): Promise<{ ok: true; key: string }> {
       return client.json<{ ok: true; key: string }>(client.pactPath('/admin/remove'), 'POST', {
         key,
         confirm: true,

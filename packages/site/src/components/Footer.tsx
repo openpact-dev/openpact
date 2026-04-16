@@ -116,13 +116,7 @@ export function Footer() {
             <span class="smallcaps text-[var(--color-ink3)] transition-colors group-hover:text-[#B0D944]">
               Built on
             </span>
-            <img
-              src="/logos/pears.svg"
-              alt=""
-              width="14"
-              height="20"
-              class="h-5 w-auto"
-            />
+            <img src="/logos/pears.svg" alt="" width="14" height="20" class="h-5 w-auto" />
             <span class="font-display text-[15px] font-medium leading-none">Pears</span>
           </a>
           <span class="hidden smallcaps text-[var(--color-ink3)] md:inline" aria-hidden="true">

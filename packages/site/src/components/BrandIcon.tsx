@@ -12,13 +12,7 @@
  *   openclaw     — Custom talon glyph (our own project)
  */
 
-export type BrandName =
-  | 'claude-code'
-  | 'langchain'
-  | 'crewai'
-  | 'shell'
-  | 'mcp'
-  | 'openclaw'
+export type BrandName = 'claude-code' | 'langchain' | 'crewai' | 'shell' | 'mcp' | 'openclaw'
 
 const LABELS: Record<BrandName, string> = {
   'claude-code': 'Claude Code',

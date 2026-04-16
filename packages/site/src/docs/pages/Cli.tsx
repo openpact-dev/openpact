@@ -10,7 +10,7 @@ const LIFECYCLE: Verb[] = [
   { cmd: 'openpact init', note: 'Create a pact. Prompts for name / purpose / display name.' },
   {
     cmd: 'openpact join <token>',
-    note: 'Redeem a one-time invite token. Joins the swarm and is auto-promoted to writer.',
+    note: 'Redeem a one-time invite token. Joins the swarm and becomes a member.',
   },
   {
     cmd: 'openpact start [--foreground]',
@@ -38,12 +38,12 @@ const PERPACT: Verb[] = [
   { cmd: 'openpact invite --list', note: 'List live and dead invites for the current pact.' },
   { cmd: 'openpact invite --revoke <nonce>', note: 'Revoke an unspent invite.' },
   {
-    cmd: 'openpact add-writer <key> [--indexer]',
-    note: 'Manually promote a peer (usually unnecessary; invite tokens do this automatically).',
+    cmd: 'openpact add-member <key> [--indexer]',
+    note: 'Manually admit a peer (usually unnecessary; invite tokens do this automatically).',
   },
   {
-    cmd: 'openpact remove-writer <key>',
-    note: 'Demote a writer. Historical entries stay; future writes are rejected.',
+    cmd: 'openpact remove-member <key>',
+    note: 'Remove a member. Historical entries stay; future replication and writes are rejected.',
   },
 ]
 
@@ -80,10 +80,10 @@ export function Cli() {
 
       <h2>Invite tokens</h2>
       <p>
-        Every new writer admission goes through a one-time, time-limited, bearer token minted by
-        the creator. The token is a base64url blob carrying the <code>pactId</code>,{' '}
-        <code>nonce</code>, <code>expiresAt</code>, and optional pact name + issuer display. Sharing
-        the full URL is fine; a second <code>openpact join</code> against the same token fails with{' '}
+        Every new member admission goes through a one-time, time-limited, bearer token minted by the
+        creator. The token is a base64url blob carrying the <code>pactId</code>, <code>nonce</code>,{' '}
+        <code>expiresAt</code>, and optional pact name + issuer display. Sharing the full URL is
+        fine; a second <code>openpact join</code> against the same token fails with{' '}
         <code>INVITE_SPENT</code>.
       </p>
       <CodeBlock
@@ -99,7 +99,7 @@ openpact invite --ttl 1h
 # See what's outstanding
 openpact invite --list
 
-# Revoke an unspent one (does not touch already-redeemed writers)
+# Revoke an unspent one (does not touch already-redeemed members)
 openpact invite --revoke <nonce>`}
       />
       <CodeBlock
@@ -108,15 +108,15 @@ openpact invite --revoke <nonce>`}
 openpact join <token>`}
       />
       <p>
-        The joiner&rsquo;s daemon joins the swarm as a reader, forwards the token over the{' '}
-        <code>openpact/invites/v1</code> protomux channel to an indexer peer, and waits for the
-        resulting <code>admin.addWriter</code> to confirm. Typical latency is a few seconds once
+        The joiner&rsquo;s daemon joins the swarm without replication access, forwards the token
+        over the <code>openpact/invites/v1</code> protomux channel to an indexer peer, and waits for
+        the resulting <code>admin.addWriter</code> to confirm. Typical latency is a few seconds once
         the first peer is connected.
       </p>
       <p>
-        The creator can demote at any time with <code>openpact remove-writer &lt;key&gt;</code> —
-        entries already on the log stay (they&rsquo;re signed), but future writes from that key
-        are rejected by <code>apply()</code>.
+        The creator can remove a peer at any time with{' '}
+        <code>openpact remove-member &lt;key&gt;</code> — entries already on the log stay
+        (they&rsquo;re signed), but future writes and replication for that key are rejected.
       </p>
 
       <h2>Data directory</h2>

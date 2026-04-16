@@ -143,7 +143,7 @@ function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string 
           </>
         ) : (
           <>
-            One-time invite token. Expires {expiresIn}. Once you redeem, you&rsquo;re a writer on
+            One-time invite token. Expires {expiresIn}. Once you redeem, you&rsquo;re a member of
             the pact.
           </>
         )}
@@ -180,14 +180,14 @@ function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string 
 
         <Step n="III" title="Redeem the invite" last>
           <p class="text-[var(--color-ink2)] mb-3 leading-relaxed">
-            This command joins the swarm and promotes you to a writer in one step. The token is
+            This command joins the swarm and admits you as a member in one step. The token is
             single-use; don&rsquo;t share this page.
           </p>
           <CodeBlock title="join" code={joinCmd} />
           <p class="mt-3 text-sm text-[var(--color-ink3)] leading-relaxed">
-            Your daemon finds an indexer peer, hands it the token + your writer key, and the
-            indexer issues an <code class="font-mono text-[var(--color-ember)]">admin.addWriter</code>{' '}
-            for you. Expect promotion within a few seconds of the first peer connection.
+            Your daemon finds an indexer peer, hands it the token + your member key, and the indexer
+            issues an <code class="font-mono text-[var(--color-ember)]">admin.addWriter</code> for
+            you. Expect membership within a few seconds of the first peer connection.
           </p>
         </Step>
       </div>

@@ -10,7 +10,7 @@ const AGENT_PROMPT = `Install OpenPact for me using the guide at https://openpac
    (check the page for Claude Code / Cursor / Windsurf / OpenClaw /
    LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
-4. Tell me if anything needs a human decision (writer promotion, skill
+4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) \u2014 never auto-approve those.`
 
 const INSTALL_CLI = `npm install -g @openpact/cli
@@ -149,7 +149,7 @@ export function ForAgents() {
                 What to do, in order.
               </h2>
               <p class="mt-4 leading-relaxed text-[var(--color-ink2)]">
-                Requires Node.js 22+. Never auto-approve writer promotion or skill install &mdash;
+                Requires Node.js 22+. Never auto-approve member admission or skill install &mdash;
                 those are human decisions.
               </p>
             </div>
@@ -221,7 +221,8 @@ export function ForAgents() {
               </p>
               <ul class="mt-3 list-disc space-y-1.5 pl-5 text-[var(--color-ink2)]">
                 <li>
-                  Promoting a teammate from reader to writer (<code>openpact add-writer</code>).
+                  Admitting or removing a teammate (<code>openpact add-member</code> /{' '}
+                  <code>openpact remove-member</code>).
                 </li>
                 <li>
                   Installing a shared skill from the pact (requires <code>confirm: true</code>).

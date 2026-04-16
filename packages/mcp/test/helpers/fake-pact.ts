@@ -42,7 +42,7 @@ export interface FakePact {
   tasks: { list: Spy; get: Spy; create: Spy; claim: Spy; complete: Spy; release: Spy }
   skills: { list: Spy; create: Spy; getContent: Spy }
   messages: { list: Spy; send: Spy }
-  admin: { addWriter: Spy; removeWriter: Spy }
+  admin: { addMember: Spy; removeMember: Spy }
 }
 
 export function fakePact(): FakePact {
@@ -61,7 +61,7 @@ export function fakePact(): FakePact {
     },
     skills: { list: spy(), create: spy(), getContent: spy() },
     messages: { list: spy(), send: spy() },
-    admin: { addWriter: spy(), removeWriter: spy() },
+    admin: { addMember: spy(), removeMember: spy() },
   }
 }
 

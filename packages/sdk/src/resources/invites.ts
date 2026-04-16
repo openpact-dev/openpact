@@ -67,11 +67,11 @@ export function invitesResource(client: OpenPactClient) {
      * translated back to HTTP transparently.
      */
     redeem(token: string, writerKey: string): Promise<{ ok: true; nonce: string }> {
-      return client.json<{ ok: true; nonce: string }>(
-        client.pactPath('/invites/redeem'),
-        'POST',
-        { token, writer_key: writerKey, confirm: true },
-      )
+      return client.json<{ ok: true; nonce: string }>(client.pactPath('/invites/redeem'), 'POST', {
+        token,
+        writer_key: writerKey,
+        confirm: true,
+      })
     },
   }
 }

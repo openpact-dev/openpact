@@ -43,7 +43,11 @@ test('encode/decode round-trips a valid payload', (t) => {
   t.alike(decoded, payload)
 })
 
-function expectDecodeError(t: Parameters<Parameters<typeof test>[1]>[0], token: string, code: InviteDecodeError['code']): void {
+function expectDecodeError(
+  t: Parameters<Parameters<typeof test>[1]>[0],
+  token: string,
+  code: InviteDecodeError['code'],
+): void {
   try {
     decodeToken(token)
     t.fail('expected decodeToken to throw')

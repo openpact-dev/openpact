@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Shipped:
 
-- **Phase 1.1–1.5** — daemon (Corestore + Autobase + Hyperswarm), REST on `:7666`, CLI (`init / start / log / add-writer / ...`), full pair-and-replicate flow.
+- **Phase 1.1–1.5** — daemon (Corestore + Autobase + Hyperswarm), REST on `:7666`, CLI (`init / start / log / add-member / ...`), full pair-and-replicate flow.
 - **§2.1 `@openpact/skill`** — portable `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain Python, custom runtimes.
 - **§2.2 `@openpact/sdk`** — typed TypeScript client with dual CJS + ESM build, full error-class hierarchy, integration test against a real daemon.
 - **§2.3 examples** — Claude Code curl recipe, full OpenClaw workspace (drift-guarded), LangChain Python loader (with pytest), and shell scripts. Each smoke-tested against a real daemon.
@@ -25,7 +25,7 @@ Shipped:
 - **§3 slices A–F** — daemon entries/SSE/install/admin endpoints + reverse-ref index, dashboard scaffold (Vite + Preact + Tailwind v4), all six screens, install + admin write actions gated by ConfirmDialog, CI `dashboard` job with bundle budget gate (JS ≤ 100KB / CSS ≤ 20KB gzipped). Logos regenerated from the dashboard's WatchingEye mark.
 - **§4a identity** — `display_name` on every entry (advisory; `agent_id` stays canonical), pact name + purpose, interactive `openpact init` + `join` with themed word-list defaults. `@inquirer/prompts` respects `--no-interactive` for CI.
 - **§4b multi-pact** — one daemon holds many pacts. Data layout is `~/.openpact/{daemon.json, pacts/<alias>/{config.json, data/}}`. REST moved under `/v1/pacts/:pactId/*`; host-level surface adds `/v1/pacts` (list/create/join/switch) and `/v1/pacts/:pactId` (rename/remove). SDK takes an optional `pactId`. CLI adds `openpact list / switch / rename / remove` and a `--pact <alias>` flag on every per-pact verb. Dashboard gets a sidebar PactSwitcher and a `/pacts` management page.
-- **§4.0 marketing + docs site** — `@openpact/site` at `packages/site/`. Benefit-led landing, five curated docs pages (overview / getting-started / cli / rest-api / architecture with mermaid diagrams), `/join/?key=…` invite flow, `/for-agents/` setup playbook for AI coding agents, SEO assets (robots/sitemap/og-image) plus an `llms.txt`. Invite plumbing landed in the CLI and dashboard: both surface the full `openpact.dev/join?key=…` share URL next to the raw key. Project-wide Node minimum bumped to 22.
+- **§4.0 marketing + docs site** — `@openpact/site` at `packages/site/`. Benefit-led landing, five curated docs pages (overview / getting-started / cli / rest-api / architecture with mermaid diagrams), `/join/?invite=…` token flow, `/for-agents/` setup playbook for AI coding agents, SEO assets (robots/sitemap/og-image) plus an `llms.txt`. Invite plumbing landed in the CLI and dashboard: both surface the full `openpact.dev/join?invite=…` share URL next to the raw token. Project-wide Node minimum bumped to 22.
 
 Up next:
 
@@ -82,10 +82,10 @@ Load-bearing. Don't violate without explicit user sign-off:
 
 1. **No central server in the data path.** DHT bootstrap nodes and optional seed nodes for availability are fine; nothing else routes user data.
 2. **REST on `localhost:7666` is the universal integration point.** Bind to `127.0.0.1` only — never `0.0.0.0`. SDK, MCP server, and the generic skill are conveniences that wrap it, not the only way in.
-3. **Autobase `apply` is the single ordering authority.** All entry validation, writer-permission changes (`addWriter`/`removeWriter` via `admin` entries), and view shape decisions happen there.
+3. **Autobase `apply` is the single ordering authority.** All entry validation, membership changes (`addWriter`/`removeWriter` via `admin` entries internally), and view shape decisions happen there.
 4. **Entry schema is fixed at six types**: `knowledge`, `task`, `skill`, `message`, `admin`, `invite-redeemed`. The first four are user-facing; `admin` and `invite-redeemed` are infrastructure entries written only by indexers. Each entry: `{type, timestamp, agent_id, display_name?, payload, refs, ttl}`. `agent_id` is the canonical, verified peer handle; `display_name` is a nullable advisory label with no authority. Adding a new top-level *type* requires a design-doc update first. Adding an optional field to the existing types is a lighter bar but must still land alongside a design-doc update (see §5.2).
-5. **Peer roles**: Creator, Indexer, Writer, Reader. A majority of indexers must be online to advance the confirmed frontier.
-6. **Invite tokens are the only path to writer admission.** New peers get writer access by redeeming a one-time, time-limited, bearer token minted by the creator. The token carries `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}` base64url-encoded. Single-use is enforced by the `_invites/<nonce>` view key written in apply(); expired tokens are rejected at redemption. The creator can also `openpact remove-writer <key>` to demote a bad actor after promotion. The raw discovery key is still durable read access — guard invite URLs like any bearer credential.
+5. **Peer roles**: Creator, Indexer, Member. A majority of indexers must be online to advance the confirmed frontier.
+6. **Invite tokens are the only path to member admission.** New peers get member access by redeeming a one-time, time-limited, bearer token minted by the creator. The token carries `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}` base64url-encoded. Single-use is enforced by the `_invites/<nonce>` view key written in apply(); expired tokens are rejected at redemption. The creator can also `openpact remove-member <key>` to remove a bad actor after admission. Invite redemption no longer grants durable read access by key alone; future replication is gated on active membership.
 7. **Sustainable Use License, source-available.** No proprietary modules in the daemon path. The licence permits free use for internal/personal purposes but restricts commercial resale. See LICENSE.
 
 ## Site conventions
@@ -108,12 +108,10 @@ Pages:
   Mermaid diagrams via a dynamic `import('mermaid')` so the heavy chunks
   only load on that one route. If doc volume grows, swap in a markdown
   pipeline later.
-- `/join/?key=<64-hex>&pact=<name>&from=<display_name>` — URL-parameter
-  invite flow that renders copy-pasteable install + `openpact join`
-  commands. The client-side key regex mirrors `packages/cli/src/commands/join.ts:19`
-  (`^[0-9a-f]{64}$`). Safe in a URL because the join key grants Reader
-  only (`packages/daemon/src/pact.ts:78`); creator must still run
-  `add-writer` to promote.
+- `/join/?invite=<token>` — URL-parameter invite flow that renders copy-pasteable
+  install + `openpact join` commands. The page client-side decodes the
+  token payload so it can show pact name, issuer display name, nonce, and
+  relative expiry without talking to the daemon first.
 - `/for-agents/` — agent-oriented setup playbook. A user pastes the
   prompt at the top into Claude Code / Cursor / Windsurf / OpenClaw /
   LangChain / an MCP client / a shell agent, and the agent reads the
@@ -129,10 +127,9 @@ the first publish.
 
 Invite plumbing: `openpact invite` on the CLI and the dashboard's
 `InviteDialog` both emit the full share URL
-`https://openpact.dev/join?key=…&pact=…&from=…` (populated from the
-creator's current display name) alongside the raw key. The CLI writes
-the key to stdout (`KEY=$(openpact invite)` unchanged) and the share
-URL + hint to stderr on TTY only.
+`https://openpact.dev/join?invite=…` alongside the raw token. The CLI
+writes the token to stdout (`TOKEN=$(openpact invite)` unchanged) and
+the share URL + hint to stderr on TTY only.
 
 Same gotchas as the dashboard: **do not install `@preact/preset-vite`**
 (zimmerframe breaks Vite's loader). JSX goes through esbuild's automatic
@@ -277,7 +274,7 @@ re-prepend `/v1` in the proxy or the path gets doubled.
 
 ```
 openpact init                    # create pact (interactive prompts for name / purpose / display-name)
-openpact join <token>            # redeem a one-time invite token; joins swarm + auto-promotes to writer
+openpact join <token>            # redeem a one-time invite token; joins swarm + becomes a member
 openpact invite [flags]          # mint a one-time token and print openpact.dev/join?invite=<token>
                                  #   --ttl <duration>   default 7d
                                  #   --list             show live + dead invites
@@ -299,7 +296,7 @@ openpact log    [--pact <alias>] [--type <type>]   # tail recent entries
 openpact dashboard               # open the dashboard URL in the default browser
 ```
 
-Per-pact verbs (`status / peers / log / invite / add-writer / remove-writer`)
+Per-pact verbs (`status / peers / log / invite / add-member / remove-member`)
 default to `currentAlias` from `daemon.json`. Override with `--pact <alias>`
 or `OPENPACT_PACT=<alias>`. If the env var and the flag disagree, the flag
 wins. If neither is set and `currentAlias` is missing, commands fall back

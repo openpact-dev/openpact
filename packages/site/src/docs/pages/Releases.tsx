@@ -90,9 +90,7 @@ function ReleaseEntry({ release }: { release: Release }) {
             </span>
           ) : null}
         </div>
-        {summary ? (
-          <p class="mt-2 leading-relaxed text-[var(--color-ink2)]">{summary}</p>
-        ) : null}
+        {summary ? <p class="mt-2 leading-relaxed text-[var(--color-ink2)]">{summary}</p> : null}
       </header>
 
       <div class="space-y-5">

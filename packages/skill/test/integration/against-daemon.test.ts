@@ -123,7 +123,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
   // appropriate seeded id. Skip the destructive admin tools — they
   // require an indexer cap that a fresh creator daemon doesn't have a
   // peer key for.
-  const skip = new Set(['grant_writer', 'revoke_writer', 'release_task'])
+  const skip = new Set(['grant_member', 'revoke_member', 'release_task'])
 
   for (const tool of TOOLS.tools) {
     if (skip.has(tool.name)) continue

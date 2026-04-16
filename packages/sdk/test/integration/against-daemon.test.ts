@@ -33,7 +33,7 @@ test('SDK end-to-end: ping + status + peers against real daemon', async (t) => {
   t.alike(await pact.ping(), { ok: true })
   const status = await pact.status()
   t.is(status.role, 'creator')
-  t.is(status.is_writer, true)
+  t.is(status.is_member, true)
   t.alike(await pact.peers(), [])
 })
 

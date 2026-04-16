@@ -22,6 +22,8 @@ const joinSchema = {
     key: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     alias: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 48 },
     display_name: { type: ['string', 'null'], maxLength: DISPLAY_NAME_MAX },
+    pact_name: { type: ['string', 'null'], maxLength: PACT_NAME_MAX },
+    pact_purpose: { type: ['string', 'null'], maxLength: PACT_PURPOSE_MAX },
     confirm: { type: 'boolean' },
   },
   required: ['key', 'confirm'],
@@ -142,6 +144,8 @@ export default async function pactsRoute(
       key: string
       alias?: string
       display_name?: string | null
+      pact_name?: string | null
+      pact_purpose?: string | null
       confirm: boolean
     }
   }>('/v1/pacts/join', { schema: { body: joinSchema } }, async (req) => {
@@ -156,11 +160,15 @@ export default async function pactsRoute(
       alias: req.body.alias,
       joinKey: req.body.key,
       displayName: req.body.display_name ?? null,
+      pactName: req.body.pact_name ?? null,
+      pactPurpose: req.body.pact_purpose ?? null,
     })
     return {
       ok: true,
       alias,
       pact_id: pact.pactKey,
+      pact_name: pact.pactName,
+      pact_purpose: pact.pactPurpose,
       role: pact.role,
     }
   })

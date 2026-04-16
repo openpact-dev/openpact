@@ -2,11 +2,10 @@ import test from 'brittle'
 import { pair } from '../helpers/pair'
 import type { Daemon } from '../../src/daemon'
 
-test('two writers append concurrently; both views converge to same content', async (t) => {
+test('two members append concurrently; both views converge to same content', async (t) => {
   const { a, b } = await pair(t)
 
-  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: true })
-  await b.daemon.waitForWritable({ timeout: 30000 })
+  await admitMember(a.daemon, b.daemon)
 
   const aTs = '2026-04-14T10:00:00.000Z'
   const bTs = '2026-04-14T10:00:01.000Z'
@@ -42,6 +41,15 @@ test('two writers append concurrently; both views converge to same content', asy
   t.alike(aOrder, bOrder, 'same content order on both daemons')
   t.alike(aOrder, ['from-a', 'from-b'])
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}
 
 async function waitForCount(
   daemon: Daemon,

@@ -101,7 +101,7 @@ export interface StatusPayload {
   public_key: string | null
   peers: number
   entries: number
-  is_writer: boolean
+  is_member: boolean
   is_indexer: boolean
   synced: boolean
 }
@@ -110,6 +110,8 @@ export interface PeerPayload {
   id: string
   remote_key: string
   online: boolean
+  role?: 'indexer' | 'member'
+  display_name?: string | null
 }
 
 export interface AppendResult {

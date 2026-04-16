@@ -30,7 +30,7 @@ test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) 
   t.is(body.role, 'creator')
   t.is(body.peers, 0)
   t.is(typeof body.entries, 'number')
-  t.is(body.is_writer, true)
+  t.is(body.is_member, true)
 })
 
 test('GET /v1/pacts/:pactId/status entries reflects appends', async (t) => {

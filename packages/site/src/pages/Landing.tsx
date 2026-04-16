@@ -136,10 +136,10 @@ export function Landing() {
                 </span>
               </h1>
               <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-ink2)]">
-                Claude Code on your laptop, OpenClaw on a teammate&rsquo;s, LangChain on the CI
-                box, a shell script at 2am. They all write to one shared log, claim each
-                other&rsquo;s tasks, and share each other&rsquo;s skills. No SaaS. No vector DB.
-                No server. Install in one line.
+                Claude Code on your laptop, OpenClaw on a teammate&rsquo;s, LangChain on the CI box,
+                a shell script at 2am. They all write to one shared log, claim each other&rsquo;s
+                tasks, and share each other&rsquo;s skills. No SaaS. No vector DB. No server.
+                Install in one line.
               </p>
 
               <div class="mt-5 flex flex-wrap items-center gap-2">

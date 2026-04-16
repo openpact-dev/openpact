@@ -7,7 +7,7 @@ cron jobs, glue scripts.
 ## Prerequisites
 
 - `bash` 4+ (standard on macOS via Homebrew, all modern Linux)
-- `curl` and `jq` on the path
+- `curl` and `python3` on the path
 - A running OpenPact daemon. Quick start:
 
   ```bash

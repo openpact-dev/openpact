@@ -28,6 +28,9 @@ export interface JoinPactBody {
   key: string
   alias?: string
   display_name?: string | null
+  /** Advisory label for the joined pact. Persisted to local config only. */
+  pact_name?: string | null
+  pact_purpose?: string | null
 }
 
 export function pactsResource(client: OpenPactClient) {
@@ -49,7 +52,14 @@ export function pactsResource(client: OpenPactClient) {
       return client.json('/v1/pacts', 'POST', { ...body, confirm: true })
     },
     /** POST /v1/pacts/join — enter a pact via its 64-hex key. */
-    join(body: JoinPactBody): Promise<{ ok: true; alias: string; pact_id: string; role: string }> {
+    join(body: JoinPactBody): Promise<{
+      ok: true
+      alias: string
+      pact_id: string
+      pact_name: string | null
+      pact_purpose: string | null
+      role: string
+    }> {
       return client.json('/v1/pacts/join', 'POST', { ...body, confirm: true })
     },
     /** POST /v1/pacts/switch — set which pact is "current" on this host. */

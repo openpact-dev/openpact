@@ -3,26 +3,26 @@ import { resolveCurrentPact } from '../lib/pact-select'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 
-export interface AddWriterOpts {
+export interface AddMemberOpts {
   indexer?: boolean
   port?: string | number
   pact?: string
 }
 
-export async function addWriterCmd(
+export async function addMemberCmd(
   key: string,
-  opts: AddWriterOpts,
+  opts: AddMemberOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(key)) {
-    throw new Error(`writer key must be 64 hex chars (got ${key.length})`)
+    throw new Error(`member key must be 64 hex chars (got ${key.length})`)
   }
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pactId = await resolveCurrentPact(dir, opts.pact)
   const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
   try {
-    await api.addWriter(key, !!opts.indexer)
-    const role = opts.indexer ? 'indexer' : 'writer'
+    await api.addMember(key, !!opts.indexer)
+    const role = opts.indexer ? 'indexer' : 'member'
     console.log(
       `${emoji.bind} ${c.brandBold('A new pact-bearer is bound.')}  ${c.ash(`(${role})`)}`,
     )

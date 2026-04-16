@@ -161,6 +161,7 @@ export function Dashboard() {
 function PeerRow({ peer }: { peer: any }) {
   const handle = peer.id || peer.remote_key || '?'
   const short = shortHandle(handle)
+  const name = (typeof peer.display_name === 'string' && peer.display_name) || short
   return (
     <div class="flex items-center gap-3 px-5 py-2.5">
       <span
@@ -174,9 +175,9 @@ function PeerRow({ peer }: { peer: any }) {
         {peer.online ? <span class="absolute inset-0 animate-ember-pulse rounded-full" /> : null}
       </span>
       <div class="min-w-0 flex-1">
-        <div class="truncate font-mono text-[12px] text-[var(--color-ember)]">{short}</div>
+        <div class="truncate text-[13px] text-[var(--color-ink)]">{name}</div>
         <div class="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">
-          {peer.remote_key ? `${peer.remote_key.slice(0, 14)}…` : 'Local'}
+          {short}
         </div>
       </div>
       <span

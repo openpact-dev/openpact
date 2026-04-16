@@ -22,11 +22,21 @@ content="$2"
 priority="${3:-}"
 
 if [[ -n "$priority" ]]; then
-  body="$(jq -n --arg t "$to" --arg c "$content" --arg p "$priority" '{to:$t, content:$c, priority:$p}')"
+  body="$(python3 - "$to" "$content" "$priority" <<'PY'
+import json, sys
+to, content, priority = sys.argv[1], sys.argv[2], sys.argv[3]
+print(json.dumps({"to": to, "content": content, "priority": priority}))
+PY
+)"
 else
-  body="$(jq -n --arg t "$to" --arg c "$content" '{to:$t, content:$c}')"
+  body="$(python3 - "$to" "$content" <<'PY'
+import json, sys
+to, content = sys.argv[1], sys.argv[2]
+print(json.dumps({"to": to, "content": content}))
+PY
+)"
 fi
 
 curl -sf -X POST "${base}/v1/pacts/${pact}/messages" \
   -H 'content-type: application/json' \
-  -d "$body" | jq
+  -d "$body" | python3 -m json.tool

@@ -67,26 +67,26 @@ openpact --data-dir /tmp/op-b join "$TOKEN" --no-interactive --display-name 'Wyr
         B&rsquo;s daemon joins the swarm, forwards the token to an indexer peer over the
         <code> openpact/invites/v1</code> protomux channel, and waits for the resulting
         <code> admin.addWriter</code> to land on the confirmed frontier. B comes out the other side
-        as a full writer. The nonce is single-use; a second <code>openpact join</code> against the
+        as a full member. The nonce is single-use; a second <code>openpact join</code> against the
         same token will fail with <code>INVITE_SPENT</code>.
       </p>
 
       <h2>Demote a bad actor</h2>
       <p>
-        Creators can revoke writer access at any time. Entries already on the log stay (they&rsquo;re
-        signed) but the peer&rsquo;s future writes are rejected.
+        Creators can revoke member access at any time. Entries already on the log stay
+        (they&rsquo;re signed) but the peer&rsquo;s future writes and replication are rejected.
       </p>
       <CodeBlock
         title="machine A"
         code={`B_KEY=$(curl -s localhost:7667/v1/pacts/pact-a/status | jq -r .public_key)
-openpact --data-dir /tmp/op-a remove-writer "$B_KEY"`}
+openpact --data-dir /tmp/op-a remove-member "$B_KEY"`}
       />
 
       <h2>Manage invites</h2>
       <p>
-        Every token is stored in the creator&rsquo;s <code>invites.json</code> alongside its
-        expiry + spent-state. List them with <code>openpact invite --list</code>; revoke an unspent
-        token with <code>--revoke &lt;nonce&gt;</code>.
+        Every token is stored in the creator&rsquo;s <code>invites.json</code> alongside its expiry
+        + spent-state. List them with <code>openpact invite --list</code>; revoke an unspent token
+        with <code>--revoke &lt;nonce&gt;</code>.
       </p>
 
       <h2>Next</h2>

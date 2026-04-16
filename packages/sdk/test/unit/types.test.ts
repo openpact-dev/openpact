@@ -57,7 +57,7 @@ async function _badCalls(pact: OpenPact) {
   // @ts-expect-error format enum is constrained
   await pact.skills.list({ format: 'autogen' })
   // @ts-expect-error key is required
-  await pact.admin.addWriter()
+  await pact.admin.addMember()
 }
 
 // Error class hierarchy: TaskNotOpenError extends OpenPactError extends Error.

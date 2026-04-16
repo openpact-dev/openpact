@@ -17,7 +17,7 @@ The server exposes 18 tools the agent can call:
 | Tasks     | `list_tasks`, `get_task`, `create_task`, `claim_task`, `complete_task`, `release_task` |
 | Skills    | `list_skills`, `share_skill`, `get_skill_content`                                      |
 | Messages  | `read_messages`, `send_message`                                                        |
-| Admin     | `grant_writer`, `revoke_writer`                                                        |
+| Admin     | `grant_member`, `revoke_member`                                                        |
 
 Errors come back as MCP `isError: true` content prefixed with the
 daemon's code (`TASK_NOT_OPEN: lost claim race ...`), so the agent can

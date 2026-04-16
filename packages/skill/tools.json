@@ -253,10 +253,10 @@
       }
     },
     {
-      "name": "grant_writer",
-      "description": "Bind a peer (by 64-hex public key) as a writer or indexer of this pact. Indexer-only.",
+      "name": "grant_member",
+      "description": "Bind a peer (by 64-hex public key) as a member or indexer of this pact. Indexer-only.",
       "method": "POST",
-      "path": "/v1/pacts/:pactId/admin/writers",
+      "path": "/v1/pacts/:pactId/admin/members",
       "params": { "pactId": { "type": "string" } },
       "body": {
         "key": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
@@ -264,10 +264,10 @@
       }
     },
     {
-      "name": "revoke_writer",
-      "description": "Remove a writer from this pact by 64-hex public key. Indexer-only.",
+      "name": "revoke_member",
+      "description": "Remove a member from this pact by 64-hex public key. Indexer-only.",
       "method": "DELETE",
-      "path": "/v1/pacts/:pactId/admin/writers/:key",
+      "path": "/v1/pacts/:pactId/admin/members/:key",
       "params": {
         "pactId": { "type": "string" },
         "key": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
@@ -318,8 +318,8 @@
       { "status": 409, "code": "NOT_CLAIMED", "meaning": "cannot release an unclaimed task" },
       {
         "status": 409,
-        "code": "NOT_A_WRITER",
-        "meaning": "caller is not bound as a writer of this pact"
+        "code": "NOT_A_MEMBER",
+        "meaning": "caller is not bound as a member of this pact"
       },
       {
         "status": 409,

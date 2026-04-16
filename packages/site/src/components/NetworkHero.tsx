@@ -171,9 +171,7 @@ export function NetworkHero() {
             const cls = `nh__link${isOutbound ? ' is-outbound' : ''}${
               isInbound ? ' is-inbound' : ''
             }`
-            return (
-              <line key={`link-${id}`} class={cls} x1={a.x} y1={a.y} x2={CX} y2={CY} />
-            )
+            return <line key={`link-${id}`} class={cls} x1={a.x} y1={a.y} x2={CX} y2={CY} />
           })}
 
           {/* central daemon */}
@@ -267,9 +265,7 @@ export function NetworkHero() {
       </div>
 
       <figcaption class="nh__footer">
-        <span class="nh__footer-hint">
-          One signed log. Every peer. No server in between.
-        </span>
+        <span class="nh__footer-hint">One signed log. Every peer. No server in between.</span>
         <span class="nh__footer-live">Live</span>
       </figcaption>
     </figure>
@@ -340,21 +336,16 @@ function SvgPulse({
       return () => clearTimeout(t)
     })
     return () => cancelAnimationFrame(raf)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const trailFrom = from
   const trailTo = to
   const [trailPos, setTrailPos] = useState(trailFrom)
   useLayoutEffect(() => {
-    const t = setTimeout(
-      () => {
-        requestAnimationFrame(() => setTrailPos(trailTo))
-      },
-      delay + trailDelay
-    )
+    const t = setTimeout(() => {
+      requestAnimationFrame(() => setTrailPos(trailTo))
+    }, delay + trailDelay)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const transition = `cx ${duration}ms cubic-bezier(0.4, 0, 0.6, 1), cy ${duration}ms cubic-bezier(0.4, 0, 0.6, 1)`

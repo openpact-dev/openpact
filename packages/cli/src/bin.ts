@@ -9,8 +9,8 @@ import { stopCmd } from './commands/stop'
 import { statusCmd } from './commands/status'
 import { peersCmd } from './commands/peers'
 import { logCmd } from './commands/log'
-import { addWriterCmd } from './commands/add-writer'
-import { removeWriterCmd } from './commands/remove-writer'
+import { addMemberCmd } from './commands/add-writer'
+import { removeMemberCmd } from './commands/remove-writer'
 import { dashboardCmd } from './commands/dashboard'
 import { listCmd } from './commands/list'
 import { switchCmd } from './commands/switch'
@@ -49,7 +49,7 @@ export function buildProgram(): Command {
 
   program
     .command('join <token>')
-    .description('redeem a one-time invite token; joins the swarm and gets promoted to writer')
+    .description('redeem a one-time invite token; joins the swarm and becomes a pact member')
     .option('--alias <str>', 'short local alias (default: slug of the pact name)')
     .option('--display-name <str>', 'agent display name (advisory; peer handle stays canonical)')
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
@@ -59,7 +59,7 @@ export function buildProgram(): Command {
 
   program
     .command('invite')
-    .description('mint a one-time invite token (share to add a new writer)')
+    .description('mint a one-time invite token (share to add a new member)')
     .option('--pact <alias>', 'pact to invite into (default: current pact)')
     .option('--port <n>', 'REST port of the running daemon', '7666')
     .option('--ttl <duration>', 'invite TTL (e.g. 1h, 24h, 7d)', '7d')
@@ -116,19 +116,19 @@ export function buildProgram(): Command {
     .action(peersCmd)
 
   program
-    .command('add-writer <key>')
-    .description('bind a peer (by hex public key) as a writer or indexer')
+    .command('add-member <key>')
+    .description('bind a peer (by hex public key) as a member or indexer')
     .option('--indexer', 'bind as indexer (participates in consensus)')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')
-    .action(addWriterCmd)
+    .action(addMemberCmd)
 
   program
-    .command('remove-writer <key>')
-    .description('sever a peer from the writer set')
+    .command('remove-member <key>')
+    .description('sever a peer from the member set')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')
-    .action(removeWriterCmd)
+    .action(removeMemberCmd)
 
   program
     .command('log')

@@ -47,7 +47,7 @@ test('savePactConfig + loadPactConfig round-trip', async (t) => {
 test('savePactConfig: creates pactDir if missing', async (t) => {
   const dir = await tmpDir(t)
   const nested = path.join(dir, 'nested', 'deep')
-  await config.savePactConfig(nested, p({ role: 'reader' }))
+  await config.savePactConfig(nested, p({ role: 'member' }))
   const stat = await fs.stat(pactConfigPath(nested))
   t.ok(stat.isFile())
 })

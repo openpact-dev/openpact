@@ -47,17 +47,17 @@ export default async function adminRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  // Raw writer plumbing — add / remove writers on this pact.
+  // Raw membership plumbing — add / remove members on this pact.
   app.post<{ Params: { pactId: string }; Body: { key: string; indexer?: boolean } }>(
-    '/v1/pacts/:pactId/admin/writers',
+    '/v1/pacts/:pactId/admin/members',
     { schema: { body: addWriterSchema } },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      if (!pact.isWriter) {
+      if (!pact.isMember) {
         throw new HttpError(
           409,
-          'NOT_A_WRITER',
-          'this peer is not a writer for the pact and cannot issue admin entries',
+          'NOT_A_MEMBER',
+          'this peer is not a member of the pact and cannot issue admin entries',
         )
       }
       await pact.addWriter(req.body.key, { indexer: !!req.body.indexer })
@@ -66,7 +66,7 @@ export default async function adminRoute(
   )
 
   app.delete<{ Params: { pactId: string; key: string } }>(
-    '/v1/pacts/:pactId/admin/writers/:key',
+    '/v1/pacts/:pactId/admin/members/:key',
     async (req) => {
       if (!HEX64.test(req.params.key)) {
         throw new HttpError(
@@ -76,11 +76,11 @@ export default async function adminRoute(
         )
       }
       const pact = await resolvePact(daemon, req)
-      if (!pact.isWriter) {
+      if (!pact.isMember) {
         throw new HttpError(
           409,
-          'NOT_A_WRITER',
-          'this peer is not a writer for the pact and cannot issue admin entries',
+          'NOT_A_MEMBER',
+          'this peer is not a member of the pact and cannot issue admin entries',
         )
       }
       await pact.removeWriter(req.params.key)
@@ -105,7 +105,7 @@ export default async function adminRoute(
         throw new HttpError(
           409,
           'NOT_INDEXER',
-          `pact.role is ${pact.role}; only the creator may promote writers`,
+          `pact.role is ${pact.role}; only the creator may promote members to indexer`,
         )
       }
       await pact.addWriter(req.body.key, { indexer: true })
@@ -129,7 +129,7 @@ export default async function adminRoute(
         throw new HttpError(
           409,
           'NOT_INDEXER',
-          `pact.role is ${pact.role}; only the creator may remove writers`,
+          `pact.role is ${pact.role}; only the creator may remove members`,
         )
       }
       await pact.removeWriter(req.body.key)

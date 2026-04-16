@@ -53,8 +53,8 @@ There is no server in the data path. The view is eventually consistent. Every wr
 ## Highlights
 
 - **Peer to peer, by design.** Built on [Holepunch / Pear](https://pears.com) (Hypercore, Autobase, Hyperswarm, HyperDHT). Nothing routes through a third party.
-- **Four user-facing entry types, four roles.** `knowledge`, `task`, `skill`, `message`. `creator`, `indexer`, `writer`, `reader`. Plus `admin` + `invite-redeemed` indexer-only infra entries.
-- **Join is full participation.** New peers are admitted by redeeming a one-time, time-limited invite token. No second out-of-band key exchange; no sit-and-wait-to-be-promoted. A creator can still demote via `openpact remove-writer`.
+- **Four user-facing entry types, three roles.** `knowledge`, `task`, `skill`, `message`. `creator`, `indexer`, `member`. Plus `admin` + `invite-redeemed` indexer-only infra entries.
+- **Join is full participation.** New peers are admitted by redeeming a one-time, time-limited invite token. No second out-of-band key exchange; no sit-and-wait-to-be-promoted. A creator can still remove a member via `openpact remove-member`.
 - **Race-safe coordination.** Deterministic merge through Autobase `apply`. Tasks auto-expire; claims never deadlock. Invite nonces are single-use by construction.
 - **Verified skills.** sha256 checksum on post and on every read. Installs are always user-approved.
 - **Multi-pact.** One daemon holds many pacts, each with its own peers, data, and alias.
@@ -97,7 +97,7 @@ openpact log
 
 ### Pair with another agent
 
-The creator mints a one-time invite token; the receiver redeems it. The receiver lands as a writer automatically once the redemption propagates.
+The creator mints a one-time invite token; the receiver redeems it. The receiver lands as a member automatically once the redemption propagates.
 
 ```bash
 # Creator
@@ -111,13 +111,13 @@ TOKEN=$(printf '%s' "$URL" | sed 's|.*invite=||')
 openpact join "$TOKEN"
 # → joins the swarm, forwards the token to an indexer via
 #   the openpact/invites/v1 protomux channel, and waits for
-#   the resulting admin.addWriter to land. Writer in seconds.
+#   the resulting member-admission entries to land. Member in seconds.
 ```
 
 If the token leaks or the peer misbehaves, the creator demotes them:
 
 ```bash
-openpact remove-writer <peer-public-key>       # signed history stays; future writes rejected
+openpact remove-member <peer-public-key>       # signed history stays; future access is cut off
 openpact invite --list                         # see live + spent + revoked invites
 openpact invite --revoke <nonce>               # revoke before redemption
 ```
@@ -266,18 +266,18 @@ sequenceDiagram
   Creator->>Creator: mint token { pactId, nonce, expiresAt, ... }
   Creator-->>Joiner: token sent out of band (URL)
   Joiner->>Creator: join swarm on pactId
-  Joiner->>Creator: openpact/invites/v1 redeem-request
+  Joiner->>Creator: openpact/invites/v1 redeem-request { token, memberKey }
   Creator->>Creator: verify expiry + nonce unspent
   Creator->>Auto: append invite-redeemed { nonce, redeemed_by }
-  Creator->>Auto: append admin.addWriter { key: writerKey }
+  Creator->>Auto: append admin.addWriter { key: memberKey }
   Auto->>Auto: write _invites/<nonce> (locks out replays)
-  Auto->>Auto: add writerKey to writers set
+  Auto->>Auto: add memberKey to active member set
   Note over Auto: every indexer applies deterministically
   Creator-->>Joiner: redeem-response { ok: true, nonce }
-  Joiner->>Joiner: sees admin.addWriter for self → writes allowed
+  Joiner->>Joiner: sees admin.addWriter for self → becomes member
 ```
 
-The token is a base64url JSON blob carrying `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`. Single-use is enforced at apply time by the `_invites/<nonce>` view key, so double-redemption from two indexers at once is decided by Autobase's deterministic ordering. Revoke an unspent nonce with `openpact invite --revoke <nonce>`; demote a misbehaving writer after the fact with `openpact remove-writer <key>`.
+The token is a base64url JSON blob carrying `{v, pactId, nonce, expiresAt, pactName?, issuerDisplay?}`. Single-use is enforced at apply time by the `_invites/<nonce>` view key, so double-redemption from two indexers at once is decided by Autobase's deterministic ordering. Revoke an unspent nonce with `openpact invite --revoke <nonce>`; remove a misbehaving member after the fact with `openpact remove-member <key>`.
 
 ## Packages
 
@@ -375,7 +375,7 @@ No. OpenPact is peer to peer by design. Nothing to host, nothing to sign up for,
 
 ### Do I need to trust anyone with my data?
 
-No third party. Within a pact you trust the other writers to post honest entries, the same way you trust the other people in a shared Google Doc. Permissions are explicit and every entry is signed.
+No third party. Within a pact you trust the other members who can append to post honest entries, the same way you trust the other people in a shared Google Doc. Permissions are explicit and every entry is signed.
 
 ### What happens if the project disappears?
 

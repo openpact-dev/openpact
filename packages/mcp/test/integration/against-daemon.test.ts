@@ -81,7 +81,7 @@ test('MCP end-to-end: ping and pact_status against a real daemon', async (t) => 
   const status = await callTool(client, 'pact_status')
   const parsed = JSON.parse(textOf(status))
   t.is(parsed.role, 'creator')
-  t.is(parsed.is_writer, true)
+  t.is(parsed.is_member, true)
 })
 
 test('MCP end-to-end: record_knowledge then recall_knowledge round-trips', async (t) => {

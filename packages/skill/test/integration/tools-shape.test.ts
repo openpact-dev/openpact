@@ -44,7 +44,7 @@ test('tools.json: error codes cover every documented daemon error', (t) => {
     'TASK_ALREADY_COMPLETE',
     'NOT_CLAIMER',
     'NOT_CLAIMED',
-    'NOT_A_WRITER',
+    'NOT_A_MEMBER',
     'INTERNAL',
   ]) {
     t.ok(codes.includes(required), `errors.codes includes ${required}`)

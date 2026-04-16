@@ -7,7 +7,21 @@
     <meta name="theme-color" content="#f3eee2" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e0a09" media="(prefers-color-scheme: dark)" />
     <!-- Apply persisted theme synchronously, before paint, to avoid FOUC. -->
-    <script>(function(){try{var p=localStorage.getItem("openpact:theme");var r=p==="dark"||p==="light"?p:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.classList.add(r);document.documentElement.style.colorScheme=r;}catch(e){}})();</script>
+    <script>
+      ;(function () {
+        try {
+          var p = localStorage.getItem('openpact:theme')
+          var r =
+            p === 'dark' || p === 'light'
+              ? p
+              : matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.classList.add(r)
+          document.documentElement.style.colorScheme = r
+        } catch (e) {}
+      })()
+    </script>
 
     <title>Getting started — OpenPact</title>
     <meta

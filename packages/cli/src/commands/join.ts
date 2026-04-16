@@ -99,7 +99,8 @@ export async function joinCmd(
     max: 64,
   })
 
-  const chosenAlias = opts.alias ?? slugify(decoded.pactName ?? '') ?? `joined-${decoded.pactId.slice(0, 8)}`
+  const chosenAlias =
+    opts.alias ?? slugify(decoded.pactName ?? '') ?? `joined-${decoded.pactId.slice(0, 8)}`
 
   const hostApi = new ApiClient({ port: apiPort })
   try {
@@ -120,6 +121,7 @@ export async function joinCmd(
     const res = await hostApi.joinPact(decoded.pactId, {
       alias: chosenAlias,
       display_name: displayName,
+      pact_name: decoded.pactName,
     })
     joined = { alias: res.alias, pact_id: res.pact_id }
   } catch (err) {
@@ -131,9 +133,7 @@ export async function joinCmd(
 
   if (process.stdout.isTTY) {
     process.stderr.write('\n')
-    process.stderr.write(
-      `  ${emoji.brand} ${c.brandBold('Swarm joined. Asking an indexer to promote…')}\n`,
-    )
+    process.stderr.write(`  ${emoji.brand} ${c.brandBold('Swarm joined. Redeeming invite…')}\n`)
     if (decoded.pactName) {
       process.stderr.write(c.ash(`  Pact    ${decoded.pactName}\n`))
     }
@@ -145,18 +145,18 @@ export async function joinCmd(
 
   const pactApi = new ApiClient({ port: apiPort, pactId: joined.alias })
 
-  // 2. Find our own writer key.
+  // 2. Find our own member key.
   const status = await pactApi.status()
-  const writerKey = status.public_key as string
+  const memberKey = status.public_key as string
 
   // 3. Wait for at least one peer, then redeem.
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown = null
   while (Date.now() < deadline) {
-    const peers = await pactApi.peers().catch(() => [])
-    if (peers.length > 0) {
+    const status = await pactApi.status().catch(() => null)
+    if ((status?.peers ?? 0) > 0) {
       try {
-        await pactApi.redeemInvite(tokenArg, writerKey)
+        await pactApi.redeemInvite(tokenArg, memberKey)
         lastErr = null
         break
       } catch (err) {
@@ -177,39 +177,37 @@ export async function joinCmd(
     )
   }
 
-  // 4. Wait for the admin.addWriter to confirm on our frontier.
-  const writerDeadline = Date.now() + timeoutMs
-  while (Date.now() < writerDeadline) {
+  // 4. Wait for the membership grant to confirm on our frontier.
+  const memberDeadline = Date.now() + timeoutMs
+  while (Date.now() < memberDeadline) {
     const s = await pactApi.status()
-    if (s.is_writer === true) break
+    if (s.is_member === true) break
     await new Promise((r) => setTimeout(r, 250))
   }
   const finalStatus = await pactApi.status()
 
   if (process.stdout.isTTY) {
     process.stderr.write('\n')
-    if (finalStatus.is_writer) {
+    if (finalStatus.is_member) {
       process.stderr.write(
-        `  ${emoji.brand} ${c.brandBold('Promoted to writer. Welcome to the pact.')}\n`,
+        `  ${emoji.brand} ${c.brandBold('You are now a pact member. Welcome to the pact.')}\n`,
       )
     } else {
       process.stderr.write(
-        `  ${emoji.cross} ${c.brand('redeem succeeded but writer promotion has not landed yet.')}\n`,
+        `  ${emoji.cross} ${c.brand('redeem succeeded but membership has not landed yet.')}\n`,
       )
       process.stderr.write(
         c.ash('  Give Autobase a moment to converge, then check with `openpact status`.\n'),
       )
     }
-    process.stderr.write(
-      c.ash(`  Agent   ${displayName} (${finalStatus.peer_handle})\n`),
-    )
+    process.stderr.write(c.ash(`  Agent   ${displayName} (${finalStatus.peer_handle})\n`))
   } else {
     // Piped / scripted: one JSON line on stdout.
     console.log(
       JSON.stringify({
         alias: joined.alias,
         pact_id: joined.pact_id,
-        writer: finalStatus.is_writer,
+        member: finalStatus.is_member,
         peer_handle: finalStatus.peer_handle,
       }),
     )

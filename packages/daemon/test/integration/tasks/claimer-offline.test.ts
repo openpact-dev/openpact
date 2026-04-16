@@ -7,6 +7,7 @@
 import test from 'brittle'
 import { pair } from '../../helpers/pair'
 import { getTaskState } from '../../../src/api/tasks-state'
+import type { Daemon } from '../../../src/daemon'
 
 const TTL = 60_000
 
@@ -20,8 +21,7 @@ test('claimer goes offline; B sees expiry and reclaims after TTL', async (t) => 
     a: { claimTtlMs: TTL, clockMs },
     b: { claimTtlMs: TTL, clockMs },
   })
-  await a.daemon.addWriter(b.daemon.publicKey!, { indexer: false })
-  await b.daemon.waitForWritable({ timeout: 15000 })
+  await admitMember(a.daemon, b.daemon)
 
   // A creates and claims the task.
   const create = await a.daemon.append({
@@ -85,3 +85,12 @@ test('claimer goes offline; B sees expiry and reclaims after TTL', async (t) => 
   t.is(final!.claimed_by, b.daemon.peerHandle)
   t.is(final!.history.length, 3, 'history retains: original + A claim + B claim')
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}

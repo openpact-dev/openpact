@@ -129,7 +129,7 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
   // Skip destructive admin tools (need an indexer cap that a fresh
   // creator daemon doesn't have a peer key for) and release_task
   // (only legal mid-lifecycle).
-  const skip = new Set(['grant_writer', 'revoke_writer', 'release_task'])
+  const skip = new Set(['grant_member', 'revoke_member', 'release_task'])
 
   for (const tool of tools) {
     if (skip.has(tool.name)) continue

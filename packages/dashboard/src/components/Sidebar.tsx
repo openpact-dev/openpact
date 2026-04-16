@@ -128,14 +128,15 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
             <div class="font-display text-[19px] leading-none tracking-tight text-[var(--color-ink)]">
               OpenPact
             </div>
-            {pactName ? (
-              <div
-                class="mt-1 truncate font-display italic text-[12px] leading-none text-[var(--color-ink2)]"
-                title={pactName}
-              >
-                {pactName}
-              </div>
-            ) : null}
+            {/* Subtitle always renders — pactless slot keeps the brand
+                block at a fixed height so the hairline under it aligns
+                with the one in PactSwitcher's border. */}
+            <div
+              class="mt-1 truncate font-display italic text-[12px] leading-none text-[var(--color-ink2)]"
+              title={pactName ?? 'No pact selected'}
+            >
+              {pactName ?? <span class="text-[var(--color-ink3)]">Pactless</span>}
+            </div>
           </div>
         </div>
       </div>

@@ -3,24 +3,24 @@ import { resolveCurrentPact } from '../lib/pact-select'
 import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 
-export interface RemoveWriterOpts {
+export interface RemoveMemberOpts {
   port?: string | number
   pact?: string
 }
 
-export async function removeWriterCmd(
+export async function removeMemberCmd(
   key: string,
-  opts: RemoveWriterOpts,
+  opts: RemoveMemberOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(key)) {
-    throw new Error(`writer key must be 64 hex chars (got ${key.length})`)
+    throw new Error(`member key must be 64 hex chars (got ${key.length})`)
   }
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pactId = await resolveCurrentPact(dir, opts.pact)
   const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
   try {
-    await api.removeWriter(key)
+    await api.removeMember(key)
     console.log(
       `${emoji.sever} ${c.brandBold('The bond has been severed.')}  ${c.ash(`(${key.slice(0, 12)}… on ${pactId})`)}`,
     )

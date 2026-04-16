@@ -59,34 +59,30 @@ export default async function invitesRoute(
   app.post<{
     Params: { pactId: string }
     Body: { ttl_ms?: number; confirm: boolean }
-  }>(
-    '/v1/pacts/:pactId/invites',
-    { schema: { body: createSchema } },
-    async (req) => {
-      if (req.body.confirm !== true) {
-        throw new HttpError(
-          400,
-          'NOT_CONFIRMED',
-          'POST /invites requires explicit { "confirm": true }',
-        )
-      }
-      const pact = await resolvePact(daemon, req)
-      if (pact.role !== 'creator') {
-        throw new HttpError(
-          409,
-          'NOT_CREATOR',
-          `pact.role is ${pact.role}; only the creator may mint invite tokens`,
-        )
-      }
-      const { token, invite } = await pact.createInvite({ ttlMs: req.body.ttl_ms })
-      return {
-        token,
-        share_url: buildShareUrl(token),
-        nonce: invite.nonce,
-        expires_at: invite.expiresAt,
-      }
-    },
-  )
+  }>('/v1/pacts/:pactId/invites', { schema: { body: createSchema } }, async (req) => {
+    if (req.body.confirm !== true) {
+      throw new HttpError(
+        400,
+        'NOT_CONFIRMED',
+        'POST /invites requires explicit { "confirm": true }',
+      )
+    }
+    const pact = await resolvePact(daemon, req)
+    if (pact.role !== 'creator') {
+      throw new HttpError(
+        409,
+        'NOT_CREATOR',
+        `pact.role is ${pact.role}; only the creator may mint invite tokens`,
+      )
+    }
+    const { token, invite } = await pact.createInvite({ ttlMs: req.body.ttl_ms })
+    return {
+      token,
+      share_url: buildShareUrl(token),
+      nonce: invite.nonce,
+      expires_at: invite.expiresAt,
+    }
+  })
 
   // List live + dead invites for a pact. Readable by anyone who can
   // resolve the pact; the nonce is already a secret in transit only
@@ -101,36 +97,32 @@ export default async function invitesRoute(
   app.delete<{
     Params: { pactId: string; nonce: string }
     Body: { confirm: string }
-  }>(
-    '/v1/pacts/:pactId/invites/:nonce',
-    { schema: { body: revokeSchema } },
-    async (req) => {
-      if (!NONCE_RE.test(req.params.nonce)) {
-        throw new HttpError(400, 'BAD_REQUEST', 'nonce must be 48-hex')
-      }
-      if (req.body.confirm !== req.params.nonce) {
-        throw new HttpError(
-          400,
-          'NOT_CONFIRMED',
-          'revoke requires { "confirm": "<nonce>" } matching the URL',
-        )
-      }
-      const pact = await resolvePact(daemon, req)
-      if (pact.role !== 'creator') {
-        throw new HttpError(
-          409,
-          'NOT_CREATOR',
-          `pact.role is ${pact.role}; only the creator may revoke invite tokens`,
-        )
-      }
-      try {
-        await pact.revokeInvite(req.params.nonce)
-      } catch (e) {
-        throw new HttpError(404, 'UNKNOWN_INVITE', (e as Error).message)
-      }
-      return { ok: true, nonce: req.params.nonce }
-    },
-  )
+  }>('/v1/pacts/:pactId/invites/:nonce', { schema: { body: revokeSchema } }, async (req) => {
+    if (!NONCE_RE.test(req.params.nonce)) {
+      throw new HttpError(400, 'BAD_REQUEST', 'nonce must be 48-hex')
+    }
+    if (req.body.confirm !== req.params.nonce) {
+      throw new HttpError(
+        400,
+        'NOT_CONFIRMED',
+        'revoke requires { "confirm": "<nonce>" } matching the URL',
+      )
+    }
+    const pact = await resolvePact(daemon, req)
+    if (pact.role !== 'creator') {
+      throw new HttpError(
+        409,
+        'NOT_CREATOR',
+        `pact.role is ${pact.role}; only the creator may revoke invite tokens`,
+      )
+    }
+    try {
+      await pact.revokeInvite(req.params.nonce)
+    } catch (e) {
+      throw new HttpError(404, 'UNKNOWN_INVITE', (e as Error).message)
+    }
+    return { ok: true, nonce: req.params.nonce }
+  })
 
   // Redeem a token on behalf of a new writer. If this daemon is an
   // indexer for the pact, we redeem locally (appending the
@@ -141,48 +133,44 @@ export default async function invitesRoute(
   app.post<{
     Params: { pactId: string }
     Body: { token: string; writer_key: string; confirm: boolean }
-  }>(
-    '/v1/pacts/:pactId/invites/redeem',
-    { schema: { body: redeemSchema } },
-    async (req) => {
-      if (req.body.confirm !== true) {
-        throw new HttpError(
-          400,
-          'NOT_CONFIRMED',
-          'redeem requires explicit { "confirm": true } in the request body',
-        )
-      }
-      const pact = await resolvePact(daemon, req)
-
-      // Local path: this daemon is the indexer for the pact.
-      if (pact.isIndexer) {
-        try {
-          const result = await pact.redeemInvite(req.body.token, req.body.writer_key)
-          return { ok: true, nonce: result.nonce }
-        } catch (e) {
-          if (e instanceof RedeemError) {
-            throw new HttpError(e.status, e.code, e.message)
-          }
-          throw e
-        }
-      }
-
-      // Forward path: ask every connected peer, first indexer wins.
-      if (!pact.pactKey) {
-        throw new HttpError(409, 'PACT_NOT_READY', 'pact has no key yet')
-      }
-      const result = await daemon.redeemThroughPeers(
-        pact.pactKey,
-        req.body.token,
-        req.body.writer_key,
+  }>('/v1/pacts/:pactId/invites/redeem', { schema: { body: redeemSchema } }, async (req) => {
+    if (req.body.confirm !== true) {
+      throw new HttpError(
+        400,
+        'NOT_CONFIRMED',
+        'redeem requires explicit { "confirm": true } in the request body',
       )
-      if (result.ok) {
+    }
+    const pact = await resolvePact(daemon, req)
+
+    // Local path: this daemon is the indexer for the pact.
+    if (pact.isIndexer) {
+      try {
+        const result = await pact.redeemInvite(req.body.token, req.body.writer_key)
         return { ok: true, nonce: result.nonce }
+      } catch (e) {
+        if (e instanceof RedeemError) {
+          throw new HttpError(e.status, e.code, e.message)
+        }
+        throw e
       }
-      const status = errorStatus(result.code)
-      throw new HttpError(status, result.code || 'REDEEM_FAILED', result.message || 'redeem failed')
-    },
-  )
+    }
+
+    // Forward path: ask every connected peer, first indexer wins.
+    if (!pact.pactKey) {
+      throw new HttpError(409, 'PACT_NOT_READY', 'pact has no key yet')
+    }
+    const result = await daemon.redeemThroughPeers(
+      pact.pactKey,
+      req.body.token,
+      req.body.writer_key,
+    )
+    if (result.ok) {
+      return { ok: true, nonce: result.nonce }
+    }
+    const status = errorStatus(result.code)
+    throw new HttpError(status, result.code || 'REDEEM_FAILED', result.message || 'redeem failed')
+  })
 }
 
 function errorStatus(code: string | undefined): number {

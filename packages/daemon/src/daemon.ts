@@ -23,12 +23,28 @@ import {
   type RedeemRequest,
   type RedeemResponse,
 } from './invite-wire'
+import {
+  PROTOCOL as MEMBER_AUTH_PROTOCOL,
+  memberAuthRequestEnc,
+  memberAuthResponseEnc,
+  type MemberAuthRequest,
+  type MemberAuthResponse,
+} from './member-auth-wire'
 
 interface PeerLink {
   conn: unknown
   channel: unknown
+  authChannel: unknown
   sendRequest: (req: RedeemRequest) => boolean
+  sendAuthRequest: (req: MemberAuthRequest) => boolean
   pending: Map<string, (res: RedeemResponse) => void>
+  pendingAuth: Map<
+    string,
+    { pactId: string; challenge: Buffer; resolve: (res: MemberAuthResponse) => void }
+  >
+  claimedMembers: Map<string, string>
+  authenticatedMembers: Map<string, string>
+  revocationTimers: Map<string, ReturnType<typeof setTimeout>>
 }
 
 export interface DaemonOpts {
@@ -65,6 +81,9 @@ export interface JoinPactOpts {
   alias?: string
   joinKey: string
   displayName?: string | null
+  /** Advisory label persisted to local config. Typically seeded from the invite token. */
+  pactName?: string | null
+  pactPurpose?: string | null
   setCurrent?: boolean
 }
 
@@ -183,7 +202,13 @@ export class Daemon extends EventEmitter {
       this.emit(event, { ...payload, pactId: pact.pactKey, alias })
     pact.on('entry-applied', envelope('entry-applied'))
     pact.on('invalid-entry', envelope('invalid-entry'))
-    pact.autobase?.on('update', () => this.emit('update', { pactId: pact.pactKey, alias }))
+    pact.autobase?.on('update', () => {
+      this.emit('update', { pactId: pact.pactKey, alias })
+      void this._reconcilePactLinks(pact)
+    })
+    pact.autobase?.on('writable', () => {
+      void this._reconcilePactLinks(pact)
+    })
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -234,6 +259,8 @@ export class Daemon extends EventEmitter {
       dataDir: pactDir,
       joinKey: opts.joinKey,
       displayName: opts.displayName ?? null,
+      pactName: opts.pactName ?? null,
+      pactPurpose: opts.pactPurpose ?? null,
     })
     cfg.pacts.push({
       alias,
@@ -258,6 +285,52 @@ export class Daemon extends EventEmitter {
     const entry = cfg.pacts[idx]
     const pact = this._pacts.get(alias)
     if (pact) {
+      // Members get two parting entries: a human-readable farewell
+      // message so peers can surface "X left the pact", followed by a
+      // self-targeted admin.removeWriter so the ledger drops them from
+      // the active writer set. Both are best-effort — a reader can't
+      // append either and we still need to proceed with teardown.
+      // Self-revocation may also fail for a sole-indexer (autobase
+      // refuses to remove the last indexer); we log-and-continue in that
+      // case since the local cleanup still has to happen.
+      if (pact.isMember && pact.peerHandle) {
+        try {
+          await pact.append({
+            type: 'message',
+            timestamp: new Date().toISOString(),
+            agent_id: pact.peerHandle,
+            display_name: pact.displayName,
+            payload: {
+              to: '*',
+              content: `${pact.displayName ?? pact.peerHandle} has left the pact.`,
+              kind: 'leave',
+            },
+          })
+        } catch {
+          // non-fatal
+        }
+        try {
+          await pact.leaveAsWriter()
+        } catch {
+          // non-fatal — likely the last-indexer case.
+        }
+        // Give autobase a window to flush both entries to any currently
+        // connected peer before we tear down the pact locally.
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+      // Stop announcing the topic so the swarm won't re-attach to this
+      // pact on reconnect. The existing conn may persist if shared with
+      // other pacts — that's fine.
+      const discoveryKey = pact.discoveryKey
+      if (this._swarm && discoveryKey) {
+        const topicHex = b4a.toString(discoveryKey, 'hex') as string
+        try {
+          await this._swarm.leave(discoveryKey)
+        } catch {
+          // non-fatal
+        }
+        this._joinedTopics.delete(topicHex)
+      }
       await pact.close()
       this._pacts.delete(alias)
     }
@@ -309,14 +382,15 @@ export class Daemon extends EventEmitter {
       // same mux that replicate() grabs via Protomux.from().
       const mux: any = Protomux.from(conn)
       const link = this._openInviteChannel(conn, mux)
+      this._openMemberAuthChannel(link, mux)
       this._peerLinks.add(link)
 
-      for (const pact of this._pacts.values()) {
-        pact.store.replicate(conn)
-      }
+      this._scheduleMemberAuth(link)
       this.emit('peer-add', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
       conn.on('close', () => {
         this._peerLinks.delete(link)
+        for (const timer of link.revocationTimers.values()) clearTimeout(timer)
+        link.revocationTimers.clear()
         this.emit('peer-remove', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
       })
     })
@@ -333,7 +407,23 @@ export class Daemon extends EventEmitter {
    */
   private _openInviteChannel(conn: any, mux: any): PeerLink {
     const pending = new Map<string, (res: RedeemResponse) => void>()
+    const pendingAuth = new Map<
+      string,
+      { pactId: string; challenge: Buffer; resolve: (res: MemberAuthResponse) => void }
+    >()
     let sendMsg: any = null
+    const link: PeerLink = {
+      conn,
+      channel: null,
+      authChannel: null,
+      sendRequest: () => false,
+      sendAuthRequest: () => false,
+      pending,
+      pendingAuth,
+      claimedMembers: new Map(),
+      authenticatedMembers: new Map(),
+      revocationTimers: new Map(),
+    }
 
     const channel = mux.createChannel({
       protocol: INVITE_PROTOCOL,
@@ -347,31 +437,41 @@ export class Daemon extends EventEmitter {
           })
         }
         pending.clear()
+        for (const { resolve } of pendingAuth.values()) {
+          resolve({
+            corr: Buffer.alloc(0),
+            ok: false,
+            code: 'PEER_DISCONNECTED',
+            message: 'peer disconnected before responding',
+          })
+        }
+        pendingAuth.clear()
       },
     })
     if (!channel) {
       // peer didn't advertise our protocol — construct a dead link
-      return {
-        conn,
-        channel: null,
-        sendRequest: () => false,
-        pending,
-      }
+      return link
     }
 
     const requestMsg = channel.addMessage({
       encoding: redeemRequestEnc,
       onmessage: (req: RedeemRequest) => {
         this._handleRedeemRequest(req)
-          .then((res) => sendMsg && sendMsg.send({ ...res, corr: req.corr }))
-          .catch((err) =>
-            sendMsg &&
-            sendMsg.send({
-              corr: req.corr,
-              ok: false,
-              code: 'INTERNAL',
-              message: (err as Error).message,
-            }),
+          .then(async (res) => {
+            if (res.ok) {
+              await this._bootstrapReplicationForAdmission(link, req.pactId, req.writerKey)
+            }
+            if (sendMsg) sendMsg.send({ ...res, corr: req.corr })
+          })
+          .catch(
+            (err) =>
+              sendMsg &&
+              sendMsg.send({
+                corr: req.corr,
+                ok: false,
+                code: 'INTERNAL',
+                message: (err as Error).message,
+              }),
           )
       },
     })
@@ -388,13 +488,223 @@ export class Daemon extends EventEmitter {
     })
     sendMsg = responseMsg
     channel.open()
+    link.channel = channel
+    link.sendRequest = (req) => requestMsg.send(req)
+    return link
+  }
 
-    return {
-      conn,
-      channel,
-      sendRequest: (req) => requestMsg.send(req),
-      pending,
+  private _openMemberAuthChannel(link: PeerLink, mux: any): void {
+    let sendMsg: any = null
+    const channel = mux.createChannel({
+      protocol: MEMBER_AUTH_PROTOCOL,
+      onclose: () => {
+        for (const { resolve } of link.pendingAuth.values()) {
+          resolve({
+            corr: Buffer.alloc(0),
+            ok: false,
+            code: 'PEER_DISCONNECTED',
+            message: 'peer disconnected before responding',
+          })
+        }
+        link.pendingAuth.clear()
+      },
+    })
+    if (!channel) {
+      link.authChannel = null
+      link.sendAuthRequest = () => false
+      return
     }
+
+    const requestMsg = channel.addMessage({
+      encoding: memberAuthRequestEnc,
+      onmessage: (req: MemberAuthRequest) => {
+        this._handleMemberAuthRequest(req)
+          .then((res) => sendMsg && sendMsg.send({ ...res, corr: req.corr }))
+          .catch(
+            (err) =>
+              sendMsg &&
+              sendMsg.send({
+                corr: req.corr,
+                ok: false,
+                code: 'INTERNAL',
+                message: (err as Error).message,
+              }),
+          )
+      },
+    })
+    const responseMsg = channel.addMessage({
+      encoding: memberAuthResponseEnc,
+      onmessage: (res: MemberAuthResponse) => {
+        const key = corrKey(res.corr)
+        const pending = link.pendingAuth.get(key)
+        if (!pending) return
+        link.pendingAuth.delete(key)
+        pending.resolve(res)
+      },
+    })
+    sendMsg = responseMsg
+    channel.open()
+    link.authChannel = channel
+    link.sendAuthRequest = (req) => requestMsg.send(req)
+  }
+
+  private async _handleMemberAuthRequest(req: MemberAuthRequest): Promise<MemberAuthResponse> {
+    const pact = await this._findPactByPactId(req.pactId)
+    if (!pact) {
+      return { corr: req.corr, ok: false, code: 'UNKNOWN_PACT', message: 'pact not found' }
+    }
+    const proof = pact.signMembershipChallenge(req.challenge, req.pactId)
+    return {
+      corr: req.corr,
+      ok: true,
+      memberKey: proof.memberKey,
+      signerKey: proof.signerKey,
+      signerNamespace: proof.signerNamespace,
+      compat: proof.compat,
+      signature: proof.signature,
+    }
+  }
+
+  private async _requestMemberAuth(link: PeerLink, pact: Pact): Promise<void> {
+    if (!pact.isMember || !link.authChannel) return
+    const pactId = pact.pactKey?.toLowerCase()
+    if (!pactId) return
+    if (link.authenticatedMembers.has(pactId)) return
+    for (const pending of link.pendingAuth.values()) {
+      if (pending.pactId === pactId) return
+    }
+
+    const corr = crypto.randomBytes(8)
+    const key = corrKey(corr)
+    const challenge = crypto.randomBytes(32)
+    const req: MemberAuthRequest = { pactId, challenge, corr }
+    const response = new Promise<MemberAuthResponse>((resolve) => {
+      link.pendingAuth.set(key, { pactId, challenge, resolve })
+    })
+    const sent = link.sendAuthRequest(req)
+    if (!sent) {
+      link.pendingAuth.delete(key)
+      return
+    }
+    const res = await response
+    if (!res.ok || !res.memberKey || !res.signerKey || !res.signature) return
+    if (
+      !pact.verifyMembershipChallenge(
+        challenge,
+        pactId,
+        res.signature,
+        res.memberKey,
+        res.signerKey,
+        res.signerNamespace,
+        res.compat,
+      )
+    ) {
+      return
+    }
+    const memberKey = res.memberKey.toLowerCase()
+    link.claimedMembers.set(pactId, memberKey)
+    if (!(await pact.hasActiveMemberKey(memberKey))) return
+    this._clearRevocationTimer(link, pactId)
+    link.authenticatedMembers.set(pactId, memberKey)
+    this._attachPactToLink(pact, link)
+  }
+
+  private async _bootstrapReplicationForAdmission(
+    link: PeerLink,
+    pactId: string,
+    memberKey: string,
+  ): Promise<void> {
+    const pact = await this._findPactByPactId(pactId)
+    if (!pact) return
+    const pactKey = pactId.toLowerCase()
+    const claimedKey = memberKey.toLowerCase()
+    link.claimedMembers.set(pactKey, claimedKey)
+    this._clearRevocationTimer(link, pactKey)
+    link.authenticatedMembers.set(pactKey, claimedKey)
+    this._attachPactToLink(pact, link)
+  }
+
+  private _attachPactToLink(pact: Pact, link: PeerLink): void {
+    pact.store.replicate(link.conn)
+    const muxer = Protomux.from(link.conn as any)
+    const tracker = pact.store?.cores
+    if (!tracker || typeof tracker[Symbol.iterator] !== 'function') return
+    for (const core of tracker as Iterable<any>) {
+      if (!core?.opened || !core?.replicator?.attached || !core?.replicator?.attachTo) continue
+      if (!core.replicator.attached(muxer)) {
+        core.replicator.attachTo(muxer)
+      }
+    }
+  }
+
+  private async _reconcilePactLinks(pact: Pact): Promise<void> {
+    const pactId = pact.pactKey?.toLowerCase()
+    if (!pactId) return
+    for (const link of this._peerLinks) {
+      const remoteMemberKey = link.authenticatedMembers.get(pactId)
+      if (remoteMemberKey) {
+        if (!pact.isMember) {
+          this._destroyPeerLink(link)
+          continue
+        }
+        if (!(await pact.hasActiveMemberKey(remoteMemberKey))) {
+          this._scheduleRevocationDisconnect(link, pact, pactId, remoteMemberKey)
+          continue
+        }
+        this._clearRevocationTimer(link, pactId)
+      } else if (pact.isMember) {
+        const claimedMemberKey = link.claimedMembers.get(pactId)
+        if (claimedMemberKey && (await pact.hasActiveMemberKey(claimedMemberKey))) {
+          this._clearRevocationTimer(link, pactId)
+          link.authenticatedMembers.set(pactId, claimedMemberKey)
+          this._attachPactToLink(pact, link)
+          continue
+        }
+        await this._requestMemberAuth(link, pact)
+      }
+    }
+  }
+
+  private _destroyPeerLink(link: PeerLink): void {
+    try {
+      ;(link.conn as { destroy?: () => void }).destroy?.()
+    } catch {
+      // best effort
+    }
+  }
+
+  private _scheduleMemberAuth(link: PeerLink): void {
+    for (const delayMs of [0, 250, 1000]) {
+      setTimeout(() => {
+        if (!this._peerLinks.has(link)) return
+        for (const pact of this._pacts.values()) void this._requestMemberAuth(link, pact)
+      }, delayMs)
+    }
+  }
+
+  private _scheduleRevocationDisconnect(
+    link: PeerLink,
+    pact: Pact,
+    pactId: string,
+    remoteMemberKey: string,
+  ): void {
+    if (link.revocationTimers.has(pactId)) return
+    const timer = setTimeout(() => {
+      link.revocationTimers.delete(pactId)
+      void (async () => {
+        if (!this._peerLinks.has(link)) return
+        if (link.authenticatedMembers.get(pactId) !== remoteMemberKey) return
+        if (!(await pact.hasActiveMemberKey(remoteMemberKey))) this._destroyPeerLink(link)
+      })()
+    }, 500)
+    link.revocationTimers.set(pactId, timer)
+  }
+
+  private _clearRevocationTimer(link: PeerLink, pactId: string): void {
+    const timer = link.revocationTimers.get(pactId)
+    if (!timer) return
+    clearTimeout(timer)
+    link.revocationTimers.delete(pactId)
   }
 
   /** Handle an inbound redeem-request: map to local Pact.redeemInvite and reply. */
@@ -487,7 +797,10 @@ export class Daemon extends EventEmitter {
           // First success wins; otherwise wait for all replies then
           // resolve with the "best" (non-NOT_INDEXER, non-UNKNOWN_PACT)
           // failure if any, else NOT_INDEXER.
-          if (res.ok) return done(res)
+          if (res.ok) {
+            void this._bootstrapReplicationForAdmission(link, pactId, writerKey)
+            return done(res)
+          }
           outstanding--
           if (outstanding === 0) {
             const terminal = responses.find(
@@ -532,6 +845,7 @@ export class Daemon extends EventEmitter {
     }
     this._pacts.clear()
     this._joinedTopics.clear()
+    this._peerLinks.clear()
     this.emit('stop')
   }
 
@@ -572,6 +886,9 @@ export class Daemon extends EventEmitter {
   }
   get isWriter(): boolean {
     return this.current?.isWriter ?? false
+  }
+  get isMember(): boolean {
+    return this.current?.isMember ?? false
   }
   get isIndexer(): boolean {
     return this.current?.isIndexer ?? false

@@ -24,6 +24,7 @@ test('B goes offline; A appends; B comes back and catches up', async (t) => {
     a.waitForConnections(1, { timeout: 10000 }),
     b.waitForConnections(1, { timeout: 10000 }),
   ])
+  await admitMember(a, b)
 
   await a.append({
     type: 'knowledge',
@@ -54,6 +55,15 @@ test('B goes offline; A appends; B comes back and catches up', async (t) => {
   const contents = entries.map((e) => e.payload.content).sort()
   t.alike(contents, ['X', 'Y'], 'B has caught up with both entries')
 })
+
+async function admitMember(a: Daemon, b: Daemon): Promise<void> {
+  const invite = await a.current!.createInvite()
+  const redeemed = await b.redeemThroughPeers(a.pactKey!, invite.token, b.publicKey!, {
+    timeoutMs: 15000,
+  })
+  if (!redeemed.ok) throw new Error(`failed to redeem invite: ${JSON.stringify(redeemed)}`)
+  await b.waitForWritable({ timeout: 15000 })
+}
 
 async function waitForKnowledgeContent(
   daemon: Daemon,

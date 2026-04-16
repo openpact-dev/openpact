@@ -14,7 +14,7 @@ You have access to an OpenPact daemon on localhost:7666. Use it to:
 - Discover capabilities shared by peers:  GET  /v1/pacts/default/skills
 
 Never install a skill without confirming with the user.
-Never promote a writer without confirming with the user.`
+Never change pact membership without confirming with the user.`
 
 const TOOLS_JSON = `{
   "tools": [
@@ -99,8 +99,8 @@ export function Skill() {
           user-approved act.
         </li>
         <li>
-          Never promote a reader to writer without user confirmation. Promotion is a creator
-          decision the human owns.
+          Never change pact membership without user confirmation. Admission and removal are creator
+          decisions the human owns.
         </li>
         <li>
           Use the verified <code>agent_id</code> for identity, not the advisory{' '}

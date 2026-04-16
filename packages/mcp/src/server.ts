@@ -52,8 +52,8 @@ export const TOOL_NAMES = [
   'get_skill_content',
   'read_messages',
   'send_message',
-  'grant_writer',
-  'revoke_writer',
+  'grant_member',
+  'revoke_member',
 ] as const
 
 export type ToolName = (typeof TOOL_NAMES)[number]

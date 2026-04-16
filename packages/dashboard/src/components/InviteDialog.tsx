@@ -211,7 +211,9 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             <div class="mb-5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
-              <span>Nonce {minted.nonce.slice(0, 8)}…{minted.nonce.slice(-4)}</span>
+              <span>
+                Nonce {minted.nonce.slice(0, 8)}…{minted.nonce.slice(-4)}
+              </span>
               <span>Expires in {formatUntil(minted.expires_at)}</span>
             </div>
 
