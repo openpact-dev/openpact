@@ -3,6 +3,7 @@ import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 import { askText } from '../lib/prompt'
 import { suggestDisplayName } from '../lib/themes'
+import { startCmd } from './start'
 
 /**
  * Lightweight token decoder — mirrors the daemon's invites.ts. Kept
@@ -65,6 +66,10 @@ export interface JoinOpts {
   port?: string | number
   /** How long to wait for a peer connection before giving up on the redeem. */
   timeout?: string | number
+  /** Commander maps `--no-dashboard` to `dashboard: false`; forwarded to auto-start. */
+  dashboard?: boolean
+  /** Dashboard port override forwarded to auto-start (accepts 0 for OS-chosen). */
+  dashboardPort?: string | number
 }
 
 export async function joinCmd(
@@ -84,11 +89,26 @@ export async function joinCmd(
     )
   }
 
-  // optsWithGlobals is required for parity with other commands; data
-  // dir isn't needed here because the daemon is the source of truth.
-  void cmd.optsWithGlobals()
   const apiPort = Number(opts.port ?? 7666)
   const timeoutMs = Number(opts.timeout ?? 30) * 1000
+
+  // Ping before prompting so we auto-start without the user first
+  // typing an agent name into a dead daemon.
+  const hostApi = new ApiClient({ port: apiPort })
+  try {
+    await hostApi.ping()
+  } catch (err) {
+    if (err instanceof DaemonNotRunningError) {
+      process.stderr.write(c.ash('  daemon not running, summoning one…\n'))
+      await startCmd(
+        { port: opts.port, dashboard: opts.dashboard, dashboardPort: opts.dashboardPort },
+        cmd,
+      )
+      await hostApi.ping() // startCmd already waited for ready; this just surfaces a clean error if something went sideways
+    } else {
+      throw err
+    }
+  }
 
   const nonInteractive = opts.interactive === false
   const displayName = await askText({
@@ -101,19 +121,6 @@ export async function joinCmd(
 
   const chosenAlias =
     opts.alias ?? slugify(decoded.pactName ?? '') ?? `joined-${decoded.pactId.slice(0, 8)}`
-
-  const hostApi = new ApiClient({ port: apiPort })
-  try {
-    await hostApi.ping()
-  } catch (err) {
-    if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
-      console.error(c.ash(`  start it with:  openpact start`))
-      console.error(c.ash(`  then re-run:    openpact join <token>`))
-      process.exit(1)
-    }
-    throw err
-  }
 
   // 1. Join the swarm using the pactId extracted from the token.
   let joined: { alias: string; pact_id: string }

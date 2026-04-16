@@ -63,7 +63,13 @@ export async function startForegroundCmd(
   if (dashboard) {
     console.log(`  ${c.brandBold('Dashboard')}  ${c.bone(dashboard.url)}`)
   }
-  console.log(`  ${c.ash(`pact ${daemon.pactKey?.slice(0, 12)}…   agent ${daemon.peerHandle}`)}`)
+  if (daemon.pactKey) {
+    console.log(`  ${c.ash(`pact ${daemon.pactKey.slice(0, 12)}…   agent ${daemon.peerHandle}`)}`)
+  } else {
+    console.log(
+      `  ${c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.')}`,
+    )
+  }
   console.log()
 
   let shuttingDown = false

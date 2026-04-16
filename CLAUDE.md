@@ -275,6 +275,9 @@ re-prepend `/v1` in the proxy or the path gets doubled.
 ```
 openpact init                    # create pact (interactive prompts for name / purpose / display-name)
 openpact join <token>            # redeem a one-time invite token; joins swarm + becomes a member
+                                 #   auto-starts the daemon if it isn't already running, so a brand-new
+                                 #   user can go straight from `op join <token>` to a working pact.
+                                 #   --no-dashboard / --dashboard-port <n> forwarded to auto-start
 openpact invite [flags]          # mint a one-time token and print openpact.dev/join?invite=<token>
                                  #   --ttl <duration>   default 7d
                                  #   --list             show live + dead invites
@@ -283,6 +286,8 @@ openpact invite [flags]          # mint a one-time token and print openpact.dev/
 openpact start [--foreground]    # detached by default; --foreground to block
                                  #   also boots the dashboard on :7667 unless --no-dashboard
                                  #   --dashboard-port <n> overrides 7667
+                                 #   runs fine with zero pacts (prints "No pacts yet" banner);
+                                 #   the host is just waiting for createPact/joinPact calls.
 openpact stop                    # stop background daemon
 
 openpact list                    # all pacts this daemon holds (current marked *)
@@ -409,6 +414,10 @@ dual-condition `"exports"` map (`import` → ESM, `require` → CJS,
 CI verifies both conditions resolve. The dashboard imports the SDK
 directly (`import { OpenPact } from '@openpact/sdk'`), so shipping
 proper ESM avoids relying on Vite's CJS pre-bundle for every build.
+
+## No "pre-existing" issues
+
+There are **no** pre-existing issues in this repo that are acceptable to leave alone. If `typecheck`, `lint`, or a test fails — even in a package you weren't touching, even if it was failing on `main` before your change — you fix it as part of the current change. Same for stale docs, dead code, wrong paths, and flaky tests. Do not defer, do not mark "out of scope", do not explain it away as not-your-fault. If the fix would genuinely balloon scope, stop and raise it with the user before finishing.
 
 ## Keep this file current
 

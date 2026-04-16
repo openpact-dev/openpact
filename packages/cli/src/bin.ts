@@ -55,6 +55,8 @@ export function buildProgram(): Command {
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
     .option('--port <n>', 'REST port of the running daemon', '7666')
     .option('--timeout <s>', 'how long to wait for an indexer peer (seconds)', '30')
+    .option('--no-dashboard', "don't start the dashboard if the daemon needs to be auto-started")
+    .option('--dashboard-port <n>', 'dashboard port forwarded to auto-start', '7667')
     .action(joinCmd)
 
   program

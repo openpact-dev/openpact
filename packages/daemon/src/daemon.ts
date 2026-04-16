@@ -948,21 +948,20 @@ export class Daemon extends EventEmitter {
     return d
   }
 
-  /** Open every pact from the registry. currentAlias (or first pact) becomes current. */
+  /**
+   * Open every pact from the registry. currentAlias (or first pact)
+   * becomes current. An empty registry is fine — the host binds its
+   * port and waits for `createPact` / `joinPact` calls to add one.
+   */
   static async load(opts: DaemonOpts = {}): Promise<Daemon> {
     const d = new Daemon(opts)
     const cfg = await loadDaemonConfig(d.hostDir)
-    if (cfg.pacts.length === 0) {
-      throw new Error(
-        `no pacts found at ${d.hostDir} — run \`openpact init\` or Daemon.create() first`,
-      )
-    }
     for (const entry of cfg.pacts) {
       const pact = await Pact.load({ dataDir: entry.dataDir })
       d._pacts.set(entry.alias, pact)
       d._wireEvents(entry.alias, pact)
     }
-    d._currentAlias = cfg.currentAlias ?? cfg.pacts[0].alias
+    d._currentAlias = cfg.currentAlias ?? cfg.pacts[0]?.alias ?? null
     return d
   }
 
