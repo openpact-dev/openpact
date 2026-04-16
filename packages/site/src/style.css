@@ -407,15 +407,15 @@ button {
 
 /* === HERO NETWORK (agent coordination diagram) === */
 
-@keyframes nh-sender-halo {
+@keyframes nh-sender-seal {
   0%,
   100% {
-    opacity: 0.4;
-    transform: scale(1);
+    stroke-width: 1.2;
+    filter: drop-shadow(0 0 3px var(--color-ember-glow));
   }
   50% {
-    opacity: 0.85;
-    transform: scale(1.08);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 8px var(--color-ember-glow));
   }
 }
 
@@ -447,14 +447,17 @@ button {
 @keyframes nh-receiving-flash {
   0% {
     stroke: var(--color-line);
+    stroke-width: 1;
     filter: none;
   }
   25% {
     stroke: var(--color-ember);
-    filter: drop-shadow(0 0 6px var(--color-ember-glow));
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 8px var(--color-ember-glow));
   }
   100% {
     stroke: var(--color-line);
+    stroke-width: 1;
     filter: none;
   }
 }
@@ -650,12 +653,6 @@ button {
     stroke 0.3s ease,
     fill 0.3s ease;
 }
-.nh__node-halo {
-  fill: var(--color-ember);
-  opacity: 0;
-  transform-origin: center;
-  transform-box: fill-box;
-}
 .nh__node-corner {
   fill: none;
   stroke: var(--color-ink3);
@@ -685,10 +682,7 @@ button {
 /* Sender highlighting */
 .nh__node.is-sender .nh__node-seal {
   stroke: var(--color-ember);
-  stroke-width: 1.4;
-}
-.nh__node.is-sender .nh__node-halo {
-  animation: nh-sender-halo 1.4s ease-in-out infinite;
+  animation: nh-sender-seal 1.4s ease-in-out infinite;
 }
 .nh__node.is-sender .nh__node-corner {
   stroke: var(--color-ember);
@@ -701,10 +695,6 @@ button {
 /* Receiving highlighting */
 .nh__node.is-receiving .nh__node-seal {
   animation: nh-receiving-flash 1s ease-out both;
-}
-.nh__node.is-receiving .nh__node-halo {
-  opacity: 0.3;
-  animation: nh-sender-halo 0.9s ease-out both;
 }
 
 /* Pulses */
@@ -764,9 +754,8 @@ button {
   .nh__link,
   .nh__core-halo,
   .nh__core.is-sealing .nh__core-burst,
-  .nh__node.is-sender .nh__node-halo,
+  .nh__node.is-sender .nh__node-seal,
   .nh__node.is-receiving .nh__node-seal,
-  .nh__node.is-receiving .nh__node-halo,
   .nh__core-count.is-ticking,
   .nh__narrator,
   .nh__footer-live::before {

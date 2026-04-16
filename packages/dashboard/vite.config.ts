@@ -19,6 +19,15 @@ export default defineConfig({
     jsx: 'automatic',
     jsxImportSource: 'preact',
   },
+  // Sonner is a React lib — alias react / react-dom to preact/compat
+  // so it works under our Preact runtime without bundling React.
+  resolve: {
+    alias: {
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+      'react/jsx-runtime': 'preact/jsx-runtime',
+    },
+  },
   build: {
     outDir: '../dist/browser',
     emptyOutDir: true,

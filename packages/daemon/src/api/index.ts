@@ -22,7 +22,13 @@ export interface ApiOpts {
 }
 
 export function createApi(daemon: Daemon, opts: ApiOpts = {}): FastifyInstance {
-  const app = fastify({ logger: opts.logger ?? false })
+  const app = fastify({
+    logger: opts.logger ?? false,
+    // /v1/events is SSE; those sockets never drain on their own. Without
+    // forceCloseConnections, app.close() hangs during shutdown until the
+    // CLI's SIGKILL fallback fires.
+    forceCloseConnections: true,
+  })
   app.setErrorHandler(errorHandler)
   app.setNotFoundHandler((req, reply) => {
     reply.status(404).send(envelope(404, 'NOT_FOUND', `route ${req.method} ${req.url} not found`))

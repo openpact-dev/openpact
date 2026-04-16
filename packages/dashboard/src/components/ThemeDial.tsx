@@ -1,87 +1,50 @@
-import { useTheme, type ThemePreference } from '../hooks/useTheme'
+import { useTheme } from '../hooks/useTheme'
 
 /**
- * Three-position dial — System / Light / Dark.
+ * Single-button theme toggle.
  *
- * Visually: a small brass-engraved control. The active position
- * carries an ember dot; the others are hairline-only. Click any to
- * set it. Default = System (defers to OS).
+ * Flips between light and dark. First click from `system` picks the
+ * opposite of whatever the OS resolved to, so the visible state always
+ * changes. Icon shows the theme you'd switch to.
  */
-const POSITIONS: ThemePreference[] = ['light', 'system', 'dark']
+const SUN = (
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <circle cx="7" cy="7" r="2.8" stroke="currentColor" stroke-width="1" />
+    <path
+      d="M7 1.2v1.6M7 11.2v1.6M12.8 7h-1.6M2.8 7H1.2M11.1 2.9l-1.1 1.1M4 10l-1.1 1.1M11.1 11.1L10 10M4 4 2.9 2.9"
+      stroke="currentColor"
+      stroke-width="1"
+      stroke-linecap="round"
+    />
+  </svg>
+)
 
-const LABEL: Record<ThemePreference, string> = {
-  light: 'Light',
-  system: 'System',
-  dark: 'Dark',
-}
-
-const ICON: Record<ThemePreference, preact.JSX.Element> = {
-  light: (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="0.9" />
-      <path
-        d="M6 1v1.5M6 9.5V11M11 6H9.5M2.5 6H1M9.5 2.5L8.5 3.5M3.5 8.5L2.5 9.5M9.5 9.5L8.5 8.5M3.5 3.5L2.5 2.5"
-        stroke="currentColor"
-        stroke-width="0.9"
-        stroke-linecap="round"
-      />
-    </svg>
-  ),
-  system: (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <rect x="1.5" y="2.5" width="9" height="6" rx="1" stroke="currentColor" stroke-width="0.9" />
-      <path d="M4.5 10.5h3" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" />
-    </svg>
-  ),
-  dark: (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <path
-        d="M9.5 6.8a4 4 0 1 1-4.6-4.7 3.2 3.2 0 0 0 4.6 4.7z"
-        stroke="currentColor"
-        stroke-width="0.9"
-        stroke-linejoin="round"
-      />
-    </svg>
-  ),
-}
+const MOON = (
+  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path
+      d="M11 7.9a4.7 4.7 0 1 1-5.4-5.5 3.8 3.8 0 0 0 5.4 5.5z"
+      stroke="currentColor"
+      stroke-width="1"
+      stroke-linejoin="round"
+    />
+  </svg>
+)
 
 export function ThemeDial() {
-  const { preference, setPreference } = useTheme()
+  const { resolved, setPreference } = useTheme()
+  const isDark = resolved === 'dark'
+  const nextLabel = isDark ? 'Switch to light theme' : 'Switch to dark theme'
 
   return (
-    <div
-      class="relative flex items-stretch overflow-hidden rounded-[3px] border border-[var(--color-line)] bg-[var(--color-canvas)]"
-      role="radiogroup"
-      aria-label="Theme dial"
+    <button
+      type="button"
+      onClick={() => setPreference(isDark ? 'light' : 'dark')}
+      aria-label={nextLabel}
+      title={nextLabel}
+      data-testid="theme-toggle"
+      class="flex h-7 w-7 items-center justify-center rounded-[3px] border border-[var(--color-line)] bg-[var(--color-canvas)] text-[var(--color-ink2)] transition-colors hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
     >
-      {POSITIONS.map((p, i) => {
-        const active = preference === p
-        return (
-          <button
-            key={p}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={LABEL[p]}
-            title={LABEL[p]}
-            onClick={() => setPreference(p)}
-            class={`relative flex h-7 w-9 items-center justify-center transition-colors ${
-              active
-                ? 'bg-[var(--color-paper)] text-[var(--color-ember)]'
-                : 'text-[var(--color-ink3)] hover:text-[var(--color-ink)]'
-            } ${i > 0 ? 'border-l border-[var(--color-line)]' : ''}`}
-            data-testid={`theme-${p}`}
-          >
-            {ICON[p]}
-            {active ? (
-              <span
-                aria-hidden="true"
-                class="absolute -bottom-px left-1/2 h-px w-3 -translate-x-1/2 bg-[var(--color-ember)]"
-              />
-            ) : null}
-          </button>
-        )
-      })}
-    </div>
+      {isDark ? SUN : MOON}
+    </button>
   )
 }

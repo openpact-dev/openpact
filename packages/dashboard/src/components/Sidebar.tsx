@@ -13,6 +13,9 @@ import { useTheme } from '../hooks/useTheme'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 
+const DOCS_URL = 'https://openpact.dev/docs/overview/'
+const GITHUB_URL = 'https://github.com/openpact-dev/openpact'
+
 interface PactSnapshot {
   alias: string
   pact_id: string
@@ -101,6 +104,12 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
   const peerCount = status.data?.peers ?? 0
+  // Reflect the active pact name in the browser tab so multiple
+  // dashboards open against different pacts are distinguishable.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.title = pactName ? `${pactName} — OpenPact` : 'OpenPact'
+  }, [pactName])
 
   return (
     <nav class="relative z-10 flex h-full w-[228px] shrink-0 flex-col bg-[var(--color-paper)]/70 backdrop-blur-sm">
@@ -177,7 +186,29 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
             </span>
           </div>
         </div>
-        <div class="mt-4 flex justify-end">
+
+        <div class="hairline mt-4 opacity-60" />
+        <div class="mt-3 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="sidebar-docs-link"
+              class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)] hover:text-[var(--color-ember)]"
+            >
+              Docs ↗
+            </a>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="sidebar-github-link"
+              class="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)] hover:text-[var(--color-ember)]"
+            >
+              GitHub ↗
+            </a>
+          </div>
           <ThemeDial />
         </div>
       </div>

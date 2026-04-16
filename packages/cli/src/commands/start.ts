@@ -5,7 +5,7 @@ import { config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { pidFileLooksAlive, writePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
-import { c } from '../lib/theme'
+import { c, banner } from '../lib/theme'
 import { spinner } from '../lib/spinner'
 
 export interface StartOpts {
@@ -22,6 +22,13 @@ export async function startCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
+
+  // Detached path hides the daemon's own banner (it prints to the log
+  // file, not stdout), so print it here before anything else happens.
+  // Foreground path prints its own banner from startForegroundCmd.
+  if (!opts.foreground) {
+    process.stdout.write(banner())
+  }
 
   if (await pidFileLooksAlive(dir)) {
     throw new Error(

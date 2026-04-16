@@ -1,4 +1,4 @@
-import { useMemo } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSse } from '../hooks/useSse'
@@ -6,6 +6,7 @@ import { MetricCard } from '../components/MetricCard'
 import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
 import { Sigil } from '../components/Sigil'
+import { InviteDialog } from '../components/InviteDialog'
 import { shortHandle } from '../lib/format'
 import type { Entry } from '../components/EntryCard'
 
@@ -61,6 +62,9 @@ export function Dashboard() {
   const taskCount = taskEntries.length
   const openTasks = taskEntries.filter((t: any) => t.status === 'open')
   const entryCount = status.data?.entries ?? 0
+  const isCreator = status.data?.role === 'creator'
+
+  const [showInvite, setShowInvite] = useState(false)
 
   return (
     <section data-testid="page-dashboard" class="mx-auto max-w-[1180px]">
@@ -68,9 +72,21 @@ export function Dashboard() {
         <h1 class="font-display text-[28px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
           Dashboard
         </h1>
-        <span class="font-mono text-[12px] text-[var(--color-ink3)]">
-          {entryCount} entr{entryCount === 1 ? 'y' : 'ies'}
-        </span>
+        <div class="flex items-center gap-4">
+          <span class="font-mono text-[12px] text-[var(--color-ink3)]">
+            {entryCount} entr{entryCount === 1 ? 'y' : 'ies'}
+          </span>
+          {isCreator ? (
+            <button
+              type="button"
+              onClick={() => setShowInvite(true)}
+              data-testid="dashboard-invite"
+              class="border-[0.5px] border-[var(--color-ember)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)]/10"
+            >
+              Share invite
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {/* Four equal metrics in one strip — peers carries the ember tone
@@ -136,6 +152,8 @@ export function Dashboard() {
           </div>
         )}
       </Panel>
+
+      {showInvite ? <InviteDialog onClose={() => setShowInvite(false)} /> : null}
     </section>
   )
 }

@@ -9,16 +9,19 @@
     <!-- Apply persisted theme synchronously, before paint, to avoid FOUC. -->
     <script>(function(){try{var p=localStorage.getItem("openpact:theme");var r=p==="dark"||p==="light"?p:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.classList.add(r);document.documentElement.style.colorScheme=r;}catch(e){}})();</script>
 
-    <title>Getting started — OpenPact</title>
+    <title>Release notes — OpenPact</title>
     <meta
       name="description"
-      content="From zero to a running OpenPact daemon with two agents sharing a single log. About five minutes."
+      content="An append-only log of what shipped in OpenPact, when. Newest first."
     />
-    <link rel="canonical" href="https://openpact.dev/docs/getting-started/" />
+    <link rel="canonical" href="https://openpact.dev/docs/releases/" />
 
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="Getting started — OpenPact" />
-    <meta property="og:description" content="Install, seal a pact, pair two daemons." />
+    <meta property="og:title" content="Release notes — OpenPact" />
+    <meta
+      property="og:description"
+      content="An append-only log of what shipped in OpenPact, when. Newest first."
+    />
     <meta property="og:image" content="https://openpact.dev/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
 
@@ -30,6 +33,6 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="../../entries/docs-getting-started.tsx"></script>
+    <script type="module" src="../../entries/docs-releases.tsx"></script>
   </body>
 </html>

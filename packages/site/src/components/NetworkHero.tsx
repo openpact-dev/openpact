@@ -178,7 +178,7 @@ export function NetworkHero() {
 
           {/* central daemon */}
           <g class={`nh__core${phase === 'seal' ? ' is-sealing' : ''}`}>
-            <circle class="nh__core-halo" cx={CX} cy={CY} r="58" />
+            <circle class="nh__core-halo" cx={CX} cy={CY} r="44" />
             <circle class="nh__core-burst" cx={CX} cy={CY} r="34" />
             <circle class="nh__core-shell" cx={CX} cy={CY} r="34" />
             <circle class="nh__core-shell-inner" cx={CX} cy={CY} r="28" />
@@ -188,13 +188,13 @@ export function NetworkHero() {
               <circle class="nh__core-pupil" cx="0" cy="0" r="5" />
               <circle class="nh__core-glint" cx="-2" cy="-2.5" r="1.3" />
             </g>
-            <text class="nh__core-label" x={CX} y={CY + 55}>
+            <text class="nh__core-label" x={CX} y={CY + 62}>
               OPENPACT
             </text>
             <text
               class={`nh__core-count${phase === 'inbound' || phase === 'rest' ? ' is-ticking' : ''}`}
               x={CX}
-              y={CY + 70}
+              y={CY + 76}
               key={`count-${step}`}
             >
               {count.toLocaleString()} entries
@@ -211,8 +211,6 @@ export function NetworkHero() {
             }`
             return (
               <g class={cls} transform={`translate(${a.x} ${a.y})`} key={`node-${id}`}>
-                {/* halo behind seal */}
-                <circle class="nh__node-halo" cx="0" cy="0" r="30" />
                 {/* seal + corner ticks */}
                 <rect class="nh__node-seal" x="-28" y="-22" width="56" height="44" rx="1" />
                 {cornerTicks()}

@@ -63,7 +63,12 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
     throw new Error(`dashboard host must be 127.0.0.1, ::1, or localhost; got ${host}`)
   }
 
-  const app = Fastify({ logger: opts.silent === false ? true : false })
+  const app = Fastify({
+    logger: opts.silent === false ? true : false,
+    // SSE streams from the SPA keep sockets open indefinitely. Without
+    // forceCloseConnections, `app.close()` blocks forever on shutdown.
+    forceCloseConnections: true,
+  })
 
   // Proxy /api/* straight through to the daemon. The SDK's resource
   // paths already include the `/v1/` prefix, so the client's request

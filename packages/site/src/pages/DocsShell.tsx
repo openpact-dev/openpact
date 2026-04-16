@@ -50,6 +50,11 @@ export const DOC_NAV: DocMeta[] = [
     title: 'Examples',
     description: 'Worked integrations for every major agent framework.',
   },
+  {
+    slug: '/docs/releases/',
+    title: 'Release notes',
+    description: 'An append-only log of what shipped, when. Newest first.',
+  },
 ]
 
 interface Props {

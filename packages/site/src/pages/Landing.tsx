@@ -113,9 +113,6 @@ export function Landing() {
         <section class="relative overflow-hidden">
           <div class="mx-auto grid max-w-[1200px] items-center gap-12 px-6 pt-14 pb-16 md:grid-cols-[1.15fr_1fr] md:pt-20 md:pb-24 md:gap-16">
             <div class="animate-etch">
-              <div class="eyebrow mb-4">
-                Stop wiring memory and queues for every agent you run
-              </div>
               <h1 class="font-display text-[clamp(2.25rem,4.5vw,3.75rem)] font-medium leading-[1.05] tracking-[-0.01em] text-[var(--color-ink)]">
                 Give your agents shared{' '}
                 <span class="relative whitespace-nowrap">
@@ -145,7 +142,24 @@ export function Landing() {
                 No server. Install in one line.
               </p>
 
-              <div class="mt-7 flex flex-wrap items-center gap-3">
+              <div class="mt-5 flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 border border-[var(--color-line)] bg-[var(--color-paper)]/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)]">
+                  <span
+                    aria-hidden="true"
+                    class="h-1.5 w-1.5 rounded-full bg-[var(--color-ember)]"
+                  />
+                  Peer-to-peer
+                </span>
+                <span class="inline-flex items-center gap-1.5 border border-[var(--color-line)] bg-[var(--color-paper)]/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)]">
+                  <span
+                    aria-hidden="true"
+                    class="h-1.5 w-1.5 rounded-full bg-[var(--color-ember)]"
+                  />
+                  Open source
+                </span>
+              </div>
+
+              <div class="mt-5 flex flex-wrap items-center gap-3">
                 <a
                   href="/docs/getting-started/"
                   class="group relative inline-flex items-center gap-2 bg-[var(--color-ember)] px-5 py-2.5 text-sm font-medium tracking-wide text-[var(--color-paper)] transition-all hover:shadow-[0_4px_20px_-4px_var(--color-ember-glow)]"

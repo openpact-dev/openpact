@@ -1,4 +1,5 @@
 import { Router } from 'preact-router'
+import { Toaster } from 'sonner'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './pages/Dashboard'
 import { Knowledge } from './pages/Knowledge'
@@ -10,6 +11,8 @@ import { Trace } from './pages/Trace'
 import { Pacts } from './pages/Pacts'
 import { useCurrentPact } from './hooks/useCurrentPact'
 import { PactContext, pactClient, hostPact } from './hooks/usePact'
+import { useTheme } from './hooks/useTheme'
+import { useActivityToasts } from './hooks/useActivityToasts'
 
 function NotFound() {
   return (
@@ -59,6 +62,43 @@ export function App() {
           </Router>
         </main>
       </div>
+      <ActivityBridge />
+      <ThemedToaster />
     </PactContext.Provider>
+  )
+}
+
+/** Subscribes to SSE and fires toasts for non-self activity. */
+function ActivityBridge() {
+  useActivityToasts(true)
+  return null
+}
+
+/**
+ * Sonner Toaster mounted bottom-right, themed via `toastOptions.classNames`
+ * to match the codex aesthetic. Uses our resolved theme so the chrome
+ * flips between light and dark with the rest of the UI.
+ */
+function ThemedToaster() {
+  const { resolved } = useTheme()
+  return (
+    <Toaster
+      position="bottom-right"
+      theme={resolved}
+      offset={20}
+      gap={10}
+      toastOptions={{
+        unstyled: true,
+        classNames: {
+          toast:
+            'pointer-events-auto flex items-start gap-3 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3 shadow-lg w-[340px] backdrop-blur-sm',
+          title: 'font-display text-[14px] leading-tight text-[var(--color-ink)]',
+          description: 'mt-1 text-[12px] leading-[1.4] text-[var(--color-ink2)]',
+          icon: 'mt-0.5 text-[var(--color-ember)]',
+          closeButton:
+            'border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)] text-[var(--color-ink2)] hover:text-[var(--color-ember)]',
+        },
+      }}
+    />
   )
 }
