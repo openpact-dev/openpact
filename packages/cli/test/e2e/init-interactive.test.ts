@@ -185,3 +185,49 @@ test('init without TTY does not auto-start (CI-safe default)', async (t) => {
   }
   t.absent(stat, 'no pid file — no detached daemon')
 })
+
+test('init against a running daemon creates via REST (no double-start error)', async (t) => {
+  const home = await tmpHome(t)
+  const port = await getFreePort()
+
+  // Start an empty-registry daemon first. `op start` tolerates zero
+  // pacts by design — this is the real-world path users hit when they
+  // `op start` and then `op init`.
+  const startRes = await runWithDir(home, ['start', '--no-dashboard', '--port', String(port)])
+  t.is(startRes.exitCode, 0, 'daemon starts with no pacts')
+  const pid = await readPidFile(home)
+  t.teardown(() => ensureKilled(pid))
+  t.teardown(() => runWithDir(home, ['stop']).catch(() => {}))
+  await waitForPing(`http://127.0.0.1:${port}`)
+
+  const res = await runWithDir(home, [
+    'init',
+    '--no-interactive',
+    '--name',
+    'Running Pact',
+    '--purpose',
+    'seal against a live daemon',
+    '--display-name',
+    'Tester',
+    '--port',
+    String(port),
+  ])
+  t.is(res.exitCode, 0, res.stderr)
+  t.ok(res.stdout.includes('pact has been sealed'), 'sealed banner printed')
+  t.absent(res.stderr.includes('already appears to be bound'), 'no double-start error')
+  // Banner should appear exactly once — the old failure mode printed it twice.
+  const brandHits = res.stdout.match(/P2P shared memory for software agents/g) ?? []
+  t.is(brandHits.length, 1, 'banner printed exactly once')
+
+  // The running daemon should be the one that owns the new pact.
+  const listRes = await fetch(`http://127.0.0.1:${port}/v1/pacts`)
+  const body = (await listRes.json()) as { pacts: Array<{ pact_name: string | null }> }
+  t.ok(
+    body.pacts.some((p) => p.pact_name === 'Running Pact'),
+    'running daemon serves the newly-created pact',
+  )
+
+  const cfg = await currentPactConfig(home)
+  t.is(cfg.pactName, 'Running Pact', 'pact config persisted to disk')
+  t.is(cfg.displayName, 'Tester')
+})

@@ -134,6 +134,7 @@ export default async function pactsRoute(
       pact_name: pact.pactName,
       pact_purpose: pact.pactPurpose,
       display_name: pact.displayName,
+      peer_handle: pact.peerHandle,
       role: pact.role,
     }
   })

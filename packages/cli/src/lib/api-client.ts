@@ -161,4 +161,49 @@ export class ApiClient {
       body: JSON.stringify({ key, confirm: true, ...opts }),
     })
   }
+
+  async listPacts(): Promise<{
+    current: string | null
+    pacts: Array<{
+      alias: string
+      pact_id: string
+      is_current: boolean
+      pact_name: string | null
+      pact_purpose: string | null
+      display_name: string | null
+      role: string | null
+    }>
+  }> {
+    return this.req('/v1/pacts')
+  }
+
+  async createPact(opts: {
+    name: string
+    purpose?: string | null
+    display_name?: string | null
+    alias?: string
+  }): Promise<{
+    ok: true
+    alias: string
+    pact_id: string
+    pact_name: string | null
+    pact_purpose: string | null
+    display_name: string | null
+    peer_handle: string | null
+    role: string
+  }> {
+    return this.req('/v1/pacts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: true, ...opts }),
+    })
+  }
+
+  async deletePact(aliasOrId: string): Promise<{ ok: true }> {
+    return this.req(`/v1/pacts/${encodeURIComponent(aliasOrId)}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: true }),
+    })
+  }
 }
