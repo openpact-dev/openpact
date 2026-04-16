@@ -55,6 +55,35 @@ test('GET /peers returns the other member with their latest display_name', async
   t.ok(typeof p.online === 'boolean')
 })
 
+test('rename propagates: setDisplayName on A is visible on B without A posting content', async (t) => {
+  const { a, b } = await pair(t, {
+    a: { displayName: 'Alice' },
+    b: { displayName: 'Bob' },
+  })
+  const bApi = createApi(b.daemon)
+  t.teardown(() => bApi.close())
+
+  await admitMember(a.daemon, b.daemon)
+
+  // A renames without posting any knowledge/task/message content. The
+  // rename-message must replicate and populate B's _agents/ index so
+  // the new name is visible via /peers.
+  await a.daemon.current!.setDisplayName('Acolyte')
+
+  const deadline = Date.now() + 20_000
+  while (Date.now() < deadline) {
+    await b.daemon.update()
+    const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+    const list = JSON.parse(res.body) as Array<{ display_name: string | null }>
+    if (list[0]?.display_name === 'Acolyte') break
+    await new Promise((r) => setTimeout(r, 100))
+  }
+
+  const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+  const peers = JSON.parse(res.body) as Array<{ display_name: string | null }>
+  t.is(peers[0]?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
+})
+
 test('GET /peers is empty when the peer has not yet been admitted as member', async (t) => {
   const { a } = await pair(t)
   const aApi = createApi(a.daemon)

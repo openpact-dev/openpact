@@ -202,13 +202,24 @@ export class Daemon extends EventEmitter {
       this.emit(event, { ...payload, pactId: pact.pactKey, alias })
     pact.on('entry-applied', envelope('entry-applied'))
     pact.on('invalid-entry', envelope('invalid-entry'))
+    const announce = () => {
+      pact.announceDisplayNameIfStale().catch(() => {
+        // swallow — announce is best-effort; see Pact._announceDisplayName
+      })
+    }
     pact.autobase?.on('update', () => {
       this.emit('update', { pactId: pact.pactKey, alias })
       void this._reconcilePactLinks(pact)
+      announce()
     })
     pact.autobase?.on('writable', () => {
       void this._reconcilePactLinks(pact)
+      announce()
     })
+    // Fire once for pacts that are already writable (creators, or
+    // pre-admitted loaded pacts). The autobase 'writable' event only
+    // emits on transition, not on open.
+    if (pact.isWriter) announce()
   }
 
   // ──────────────────────────────────────────────────────────────────

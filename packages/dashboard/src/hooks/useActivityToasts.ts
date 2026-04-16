@@ -72,10 +72,22 @@ function describe(
     const author = entry?.agent_id ?? null
     if (selfHandle && author === selfHandle) return null // skip our own writes
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
-    // Farewell messages written on pact removal carry payload.kind === 'leave'.
-    // Surface those as a distinct status rather than a generic "added a message".
-    if (kind === 'message' && (entry?.payload as { kind?: string } | undefined)?.kind === 'leave') {
-      return { title: `${who} left the pact` }
+    // Status messages carry a payload.kind marker so the feed / toast
+    // can distinguish them from chatter. `leave` fires on pact-remove,
+    // `rename` fires whenever a peer updates their display_name.
+    if (kind === 'message') {
+      const payloadKind = (entry?.payload as { kind?: string } | undefined)?.kind
+      if (payloadKind === 'leave') {
+        return { title: `${who} left the pact` }
+      }
+      if (payloadKind === 'rename') {
+        const pl = entry?.payload as { prev?: string | null; next?: string | null } | undefined
+        const next = (typeof pl?.next === 'string' && pl.next) || who
+        const prev = typeof pl?.prev === 'string' && pl.prev ? pl.prev : null
+        return {
+          title: prev ? `${prev} is now known as ${next}` : `${next} has set their name`,
+        }
+      }
     }
     const summary = summarise(kind, entry?.payload)
     return {

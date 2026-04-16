@@ -8,7 +8,7 @@ import crypto from 'hypercore-crypto'
 
 import { pactStorePath } from './data-dir'
 import { loadPactConfig, savePactConfig, type Role, type PactConfig } from './config'
-import { makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
+import { AGENT_NAME_PREFIX, makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
 import * as peerHandle from './peer-handle'
 import * as entryId from './entry-id'
 import * as invites from './invites'
@@ -219,8 +219,74 @@ export class Pact extends EventEmitter {
   }
 
   async setDisplayName(name: string | null): Promise<void> {
-    this._displayName = name || null
+    const prev = this._displayName
+    const next = name || null
+    this._displayName = next
     await this._persistConfig()
+    // Only writers can append. A non-writing (reader) peer changing
+    // their local config is legitimate — they just can't announce it
+    // until they're admitted as a member.
+    if (next && this._base?.writable) {
+      await this._announceDisplayName(next, prev)
+    }
+  }
+
+  /** Guard: suppress re-entrant auto-heal while an append is in flight.
+   * Without this, an autobase `update` event fired mid-append would
+   * re-enter `announceDisplayNameIfStale`, re-read a still-stale view,
+   * and append a duplicate rename. */
+  private _announcing = false
+
+  /**
+   * If our advertised display_name isn't indexed at `_agents/<self>` (or
+   * the indexed name is stale), emit one rename message so peers learn
+   * the current value. Idempotent and cheap: a single view lookup plus
+   * an append only when something actually differs. Called from the
+   * daemon on 'writable' so joiners self-heal after admission, and on
+   * pact open so pre-upgrade pacts get their index populated the first
+   * time this code runs.
+   */
+  async announceDisplayNameIfStale(): Promise<void> {
+    if (this._announcing) return
+    if (!this._base?.writable) return
+    const current = this._displayName
+    if (!current) return
+    const handle = this.peerHandle
+    if (!handle) return
+    const existing = await this.view?.get?.(`${AGENT_NAME_PREFIX}${handle}`)
+    const existingName =
+      existing && typeof existing.value === 'object' && existing.value
+        ? ((existing.value as { name?: unknown }).name as string | undefined)
+        : undefined
+    if (existingName === current) return
+    this._announcing = true
+    try {
+      await this._announceDisplayName(current, existingName ?? null)
+    } catch {
+      // Best-effort auto-heal. Autobase/hypercore can reject the append
+      // when the pact is mid-close (init-in-process creates-then-stops)
+      // or before the view is fully ready. Future writes will republish
+      // on the next writable/update tick.
+    } finally {
+      this._announcing = false
+    }
+  }
+
+  private async _announceDisplayName(next: string, prev: string | null): Promise<void> {
+    const content = prev ? `${prev} is now known as ${next}.` : `${next} has set their name.`
+    await this.append({
+      type: 'message',
+      timestamp: new Date().toISOString(),
+      agent_id: this.peerHandle,
+      display_name: next,
+      payload: {
+        to: '*',
+        content,
+        kind: 'rename',
+        prev,
+        next,
+      },
+    })
   }
 
   async append(entry: Record<string, unknown>): Promise<{ id: string; timestamp: string }> {
