@@ -124,12 +124,37 @@ function describe(
           title: prev ? `${prev} is now known as ${next}` : `${next} joined the pact`,
         }
       }
+      // Regular chatter. Prefer the body over a terse "sent a message".
+      const body = pickPayloadText(entry?.payload, 'content', 'body', 'subject')
+      return {
+        title: `${who} sent a message`,
+        description: body ?? undefined,
+      }
     }
-    const summary = summarise(kind, entry?.payload)
-    return {
-      title: `${who} added a ${kind}`,
-      description: summary ?? undefined,
+    if (kind === 'task') {
+      const status = (entry?.payload as { status?: string } | undefined)?.status
+      const title = pickPayloadText(entry?.payload, 'title', 'summary') ?? undefined
+      const verb =
+        status === 'claimed'
+          ? 'claimed a task'
+          : status === 'complete'
+            ? 'completed a task'
+            : 'posted a task'
+      return { title: `${who} ${verb}`, description: title }
     }
+    if (kind === 'knowledge') {
+      const topic = pickPayloadText(entry?.payload, 'topic', 'title', 'summary', 'content')
+      return { title: `${who} shared knowledge`, description: topic ?? undefined }
+    }
+    if (kind === 'skill') {
+      const name = pickPayloadText(entry?.payload, 'name', 'title')
+      const version = pickPayloadText(entry?.payload, 'version')
+      const label = name && version ? `${name} v${version}` : (name ?? null)
+      return { title: `${who} shared a skill`, description: label ?? undefined }
+    }
+    // Unreachable given PUBLIC_KINDS check above, but be defensive.
+    const fallback = summarise(kind, entry?.payload)
+    return { title: `${who} added a ${kind}`, description: fallback ?? undefined }
   }
   // Raw swarm peer-add/peer-remove frames are intentionally silent:
   // they fire on any hyperswarm connection churn, including between
@@ -149,6 +174,20 @@ function describe(
     return {
       title: ev.event === 'member-online' ? `${label} came online` : `${label} went offline`,
     }
+  }
+  return null
+}
+
+/** Return the first non-empty string value from `payload` at any of the
+ *  given keys. Used to source toast descriptions. */
+function pickPayloadText(
+  payload: Record<string, unknown> | undefined,
+  ...keys: string[]
+): string | null {
+  if (!payload) return null
+  for (const k of keys) {
+    const v = payload[k]
+    if (typeof v === 'string' && v.trim()) return v.trim()
   }
   return null
 }
