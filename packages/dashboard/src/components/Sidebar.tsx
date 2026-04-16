@@ -118,8 +118,7 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   // Self is always online from our own vantage; add it when a pact is
   // loaded. For remotes we count only those the daemon is currently
   // authenticated to (onlineMembers-derived).
-  const onlineCount =
-    (status.data ? 1 : 0) + peerList.filter((p) => p.online === true).length
+  const onlineCount = (status.data ? 1 : 0) + peerList.filter((p) => p.online === true).length
   // Reflect the active pact name in the browser tab so multiple
   // dashboards open against different pacts are distinguishable.
   useEffect(() => {
