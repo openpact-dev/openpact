@@ -16,6 +16,12 @@ export interface StatusPayload {
   synced: boolean
 }
 
+export interface HostStatusPayload {
+  current: string | null
+  peers: number
+  pact_count: number
+}
+
 export interface StatusContext {
   alias: string
   totalPacts: number
@@ -23,6 +29,7 @@ export interface StatusContext {
   apiPort: number
   dashboardPort: number
   dataDir: string
+  pid?: number | null
 }
 
 export interface PeerPayload {
@@ -85,10 +92,36 @@ export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
     lines.push('')
     lines.push(row('REST', c.ash(`http://127.0.0.1:${ctx.apiPort}/v1/pacts/${ctx.alias}/*`)))
     lines.push(row('Dashboard', c.ash(`http://127.0.0.1:${ctx.dashboardPort}`)))
+    lines.push(row('PID', ctx.pid ? c.ash(String(ctx.pid)) : unknown))
     lines.push(row('Data dir', c.ash(ctx.dataDir)))
   }
 
   return lines.join('\n')
+}
+
+export function formatHostStatus(s: HostStatusPayload, ctx: Omit<StatusContext, 'alias'>): string {
+  const unknown = c.ash('—')
+  const LABEL_WIDTH = 10
+  const row = (label: string, value: string): string =>
+    `  ${c.brandBold(label)}${' '.repeat(Math.max(1, LABEL_WIDTH - label.length))}${value}`
+
+  const pactSummary =
+    s.pact_count === 0
+      ? `${s.pact_count}  ${c.ash('· no pacts yet')}`
+      : `${s.pact_count}  ${c.ash(`· current ${s.current ?? 'none'}`)}`
+
+  return [
+    `  ${mark()}`,
+    '',
+    row('Host', c.bone('Daemon is running')),
+    row('Pacts', pactSummary),
+    row('Peers', String(s.peers)),
+    '',
+    row('Daemon', c.ash(`http://127.0.0.1:${ctx.apiPort}/v1/*`)),
+    row('Dashboard', c.ash(`http://127.0.0.1:${ctx.dashboardPort}`)),
+    row('PID', ctx.pid ? c.ash(String(ctx.pid)) : unknown),
+    row('Data dir', c.ash(ctx.dataDir)),
+  ].join('\n')
 }
 
 export function formatPeers(peers: PeerPayload[]): string {

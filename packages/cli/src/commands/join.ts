@@ -124,7 +124,7 @@ export async function joinCmd(
   const chosenAlias =
     opts.alias ?? slugify(decoded.pactName ?? '') ?? `joined-${decoded.pactId.slice(0, 8)}`
 
-  // 1. Join the swarm using the pactId extracted from the token.
+  // 1. Join the pact using the pactId extracted from the token.
   let joined: { alias: string; pact_id: string }
   try {
     const res = await hostApi.joinPact(decoded.pactId, {
@@ -143,7 +143,7 @@ export async function joinCmd(
 
   if (process.stdout.isTTY) {
     process.stderr.write('\n')
-    process.stderr.write(`  ${emoji.brand} ${c.brandBold('Swarm joined. Redeeming invite…')}\n`)
+    process.stderr.write(`  ${emoji.brand} ${c.brandBold('Pact joined. Redeeming invite…')}\n`)
     if (decoded.pactName) {
       process.stderr.write(c.ash(`  Pact    ${decoded.pactName}\n`))
     }

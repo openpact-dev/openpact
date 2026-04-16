@@ -49,7 +49,7 @@ export function buildProgram(): Command {
 
   program
     .command('join <token>')
-    .description('redeem a one-time invite token; joins the swarm and becomes a pact member')
+    .description('redeem a one-time invite token; joins the pact and becomes a member')
     .option('--alias <str>', 'short local alias (default: slug of the pact name)')
     .option('--display-name <str>', 'agent display name (advisory; peer handle stays canonical)')
     .option('--no-interactive', 'skip prompts (use defaults or flags only; for CI / pipes)')
@@ -104,7 +104,7 @@ export function buildProgram(): Command {
 
   program
     .command('status')
-    .description('show status of the current pact')
+    .description('show status of the current pact, or the daemon when no pacts exist')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')
     .option('--dashboard-port <n>', 'dashboard port for the link line', '7667')

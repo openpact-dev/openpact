@@ -59,6 +59,14 @@ export class ApiClient {
     return this.req('/v1/ping')
   }
 
+  async hostStatus(): Promise<{
+    current: string | null
+    peers: number
+    pact_count: number
+  }> {
+    return this.req('/v1/status')
+  }
+
   async status(): Promise<any> {
     return this.req(this.pactPath('/status'))
   }

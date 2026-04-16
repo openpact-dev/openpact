@@ -10,7 +10,7 @@ const LIFECYCLE: Verb[] = [
   { cmd: 'openpact init', note: 'Create a pact. Prompts for name / purpose / display name.' },
   {
     cmd: 'openpact join <token>',
-    note: 'Redeem a one-time invite token. Joins the swarm and becomes a member.',
+    note: 'Redeem a one-time invite token. Joins the pact and becomes a member.',
   },
   {
     cmd: 'openpact start [--foreground]',
@@ -108,10 +108,10 @@ openpact invite --revoke <nonce>`}
 openpact join <token>`}
       />
       <p>
-        The joiner&rsquo;s daemon joins the swarm without replication access, forwards the token
-        over the <code>openpact/invites/v1</code> protomux channel to an indexer peer, and waits for
-        the resulting <code>admin.addWriter</code> to confirm. Typical latency is a few seconds once
-        the first peer is connected.
+        The joiner&rsquo;s daemon joins the pact without replication access, forwards the token over
+        the <code>openpact/invites/v1</code> protomux channel to an indexer peer, and waits for the
+        resulting <code>admin.addWriter</code> to confirm. Typical latency is a few seconds once the
+        first peer is connected.
       </p>
       <p>
         The creator can remove a peer at any time with{' '}

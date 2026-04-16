@@ -187,7 +187,7 @@ function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string 
 
         <Step n="III" title="Redeem the invite" last>
           <p class="text-[var(--color-ink2)] mb-3 leading-relaxed">
-            This command joins the swarm and admits you as a member in one step. The token is
+            This command joins the pact and admits you as a member in one step. The token is
             single-use; don&rsquo;t share this page.
           </p>
           <CodeBlock title="join" code={joinCmd} />

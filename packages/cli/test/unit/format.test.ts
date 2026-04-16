@@ -1,5 +1,11 @@
 import test from 'brittle'
-import { formatStatus, formatPeers, formatLogLine, formatError } from '../../src/lib/format'
+import {
+  formatHostStatus,
+  formatStatus,
+  formatPeers,
+  formatLogLine,
+  formatError,
+} from '../../src/lib/format'
 
 // Strip ANSI escapes so snapshot-style assertions don't depend on TTY state.
 function strip(s: string): string {
@@ -56,6 +62,7 @@ test('formatStatus: renders pact name, purpose, display name, and context', (t) 
         apiPort: 7666,
         dashboardPort: 7667,
         dataDir: '/tmp/op-solo',
+        pid: 4242,
       },
     ),
   )
@@ -68,7 +75,36 @@ test('formatStatus: renders pact name, purpose, display name, and context', (t) 
   t.ok(out.includes('3 pacts on this host'), 'total pact count')
   t.ok(out.includes('/v1/pacts/quiteright/*'), 'REST base path')
   t.ok(out.includes('http://127.0.0.1:7667'), 'dashboard url')
+  t.ok(out.includes('4242'), 'pid shown')
   t.ok(out.includes('/tmp/op-solo'), 'data dir')
+})
+
+test('formatHostStatus: renders daemon details when no pact exists', (t) => {
+  const out = strip(
+    formatHostStatus(
+      {
+        current: null,
+        peers: 0,
+        pact_count: 0,
+      },
+      {
+        totalPacts: 0,
+        currentAlias: null,
+        apiPort: 7666,
+        dashboardPort: 7667,
+        dataDir: '/tmp/op-empty',
+        pid: 31337,
+      },
+    ),
+  )
+
+  t.ok(out.includes('Daemon is running'))
+  t.ok(out.includes('0'))
+  t.ok(out.includes('no pacts yet'))
+  t.ok(out.includes('http://127.0.0.1:7666/v1/*'))
+  t.ok(out.includes('http://127.0.0.1:7667'))
+  t.ok(out.includes('31337'))
+  t.ok(out.includes('/tmp/op-empty'))
 })
 
 test('formatStatus: handles uninitialised state', (t) => {

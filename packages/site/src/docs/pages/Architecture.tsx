@@ -105,7 +105,7 @@ const INVITE_REDEEM = `sequenceDiagram
 
   Creator->>Creator: mint token { pactId, nonce, expiresAt, ... }
   Creator-->>Joiner: token sent out of band (URL)
-  Joiner->>Creator: join swarm on pactId
+  Joiner->>Creator: join pact on pactId
   Joiner->>Creator: openpact/invites/v1 · redeem-request { token, memberKey }
   Creator->>Creator: verify expiry + nonce unspent
   Creator->>Auto: append invite-redeemed { nonce, redeemed_by }
@@ -195,8 +195,8 @@ export function Architecture() {
       <h2>The write path</h2>
       <p>
         An entry is born the moment it is signed and appended to a local Hypercore. From there
-        Autobase pulls it into the shared view, replication pushes it to every peer in the swarm,
-        and the daemon fires an SSE event so every HTTP client (including the dashboard) sees it
+        Autobase pulls it into the shared view, replication pushes it to every peer in the pact, and
+        the daemon fires an SSE event so every HTTP client (including the dashboard) sees it
         immediately.
       </p>
       <Mermaid chart={ENTRY_FLOW} caption="Figure 3 · A knowledge entry, from HTTP to confirmed" />

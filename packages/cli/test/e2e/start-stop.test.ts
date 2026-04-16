@@ -4,6 +4,7 @@ import { tmpHome, runWithDir } from './helpers/run-cli'
 import { readPidFile, isAlive, pidPath } from '../../src/lib/pid'
 
 let nextPort = 17666
+let nextDashPort = 27666
 
 test('start writes PID; stop removes it', async (t) => {
   const home = await tmpHome(t)
@@ -53,8 +54,9 @@ test('stop without running daemon is a no-op', async (t) => {
 test('start binds on an empty data dir (no pacts yet)', async (t) => {
   const home = await tmpHome(t)
   const port = String(nextPort++)
+  const dashPort = String(nextDashPort++)
 
-  const start = await runWithDir(home, ['start', '--no-dashboard', '--port', port])
+  const start = await runWithDir(home, ['start', '--port', port, '--dashboard-port', dashPort])
   t.is(start.exitCode, 0)
   t.ok(start.stdout.includes('Listening') || start.stdout.includes('daemon stirs'))
 
@@ -77,6 +79,14 @@ test('start binds on an empty data dir (no pacts yet)', async (t) => {
   const body = (await res.json()) as { pacts: unknown[]; current: string | null }
   t.alike(body.pacts, [])
   t.is(body.current, null)
+
+  const status = await runWithDir(home, ['status', '--port', port, '--dashboard-port', dashPort])
+  t.is(status.exitCode, 0)
+  t.ok(status.stdout.includes('Daemon is running'))
+  t.ok(status.stdout.includes('no pacts yet'))
+  t.ok(status.stdout.includes(`http://127.0.0.1:${port}/v1/*`))
+  t.ok(status.stdout.includes(`http://127.0.0.1:${dashPort}`))
+  t.ok(status.stdout.includes(String(pid)))
 
   const stop = await runWithDir(home, ['stop'])
   t.is(stop.exitCode, 0)

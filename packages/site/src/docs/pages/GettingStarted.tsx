@@ -64,7 +64,7 @@ TOKEN=$(printf '%s' "$URL" | sed 's|.*invite=||')
 openpact --data-dir /tmp/op-b join "$TOKEN" --no-interactive --display-name 'Wyrm'`}
       />
       <p>
-        B&rsquo;s daemon joins the swarm, forwards the token to an indexer peer over the
+        B&rsquo;s daemon joins the pact, forwards the token to an indexer peer over the
         <code> openpact/invites/v1</code> protomux channel, and waits for the resulting
         <code> admin.addWriter</code> to land on the confirmed frontier. B comes out the other side
         as a full member. The nonce is single-use; a second <code>openpact join</code> against the
