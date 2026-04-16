@@ -3,14 +3,25 @@ import type { SseEvent } from '../hooks/useSse'
 type PactEventData = {
   pact_id?: string | null
   pactId?: string | null
+  alias?: string | null
 }
 
-function readPactId(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const event = data as PactEventData
-  if (typeof event.pact_id === 'string' && event.pact_id) return event.pact_id
-  if (typeof event.pactId === 'string' && event.pactId) return event.pactId
-  return null
+/**
+ * SDK clients address a pact by alias (what the user sees) OR by its
+ * 64-hex key. The daemon's SSE envelope carries BOTH `pact_id` (the
+ * 64-hex canonical key) and `alias` (the local label). Match the
+ * caller's identifier against either — otherwise a dashboard keyed on
+ * the alias never sees any event (whose `pact_id` is the hex key) and
+ * every trigger-driven refetch stops firing.
+ */
+function pactKeysFor(data: unknown): string[] {
+  if (!data || typeof data !== 'object') return []
+  const e = data as PactEventData
+  const out: string[] = []
+  if (typeof e.pact_id === 'string' && e.pact_id) out.push(e.pact_id.toLowerCase())
+  if (typeof e.pactId === 'string' && e.pactId) out.push(e.pactId.toLowerCase())
+  if (typeof e.alias === 'string' && e.alias) out.push(e.alias.toLowerCase())
+  return out
 }
 
 export function eventBelongsToPact(
@@ -20,7 +31,8 @@ export function eventBelongsToPact(
 ): boolean {
   if (!event || !pactId) return false
   if (allowedEvents && !allowedEvents.includes(event.event)) return false
-  return readPactId(event.data) === pactId
+  const needle = pactId.toLowerCase()
+  return pactKeysFor(event.data).includes(needle)
 }
 
 export function eventSeqForPact(
