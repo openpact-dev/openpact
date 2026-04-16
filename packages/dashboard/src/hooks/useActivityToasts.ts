@@ -35,8 +35,31 @@ export function useActivityToasts(enabled = true): void {
   const sse = useSse({ enabled })
   const status = useQuery(() => pact.status(), {
     key: `toast:status:${pact.pactId}`,
+    trigger: sse.last?.seq ?? 0,
+  })
+  // Peers refetch on every SSE event so member-online/offline toasts
+  // can resolve the just-authenticated agent's display_name and
+  // remote_key into a friendly name.
+  const peers = useQuery(() => pact.peers(), {
+    key: `toast:peers:${pact.pactId}`,
+    trigger: sse.last?.seq ?? 0,
   })
   const selfHandle = status.data?.peer_handle ?? null
+  const nameByKey = useRef<Map<string, string>>(new Map())
+  const peersList = peers.data as
+    | Array<{ remote_key?: string; display_name?: string | null; id?: string }>
+    | undefined
+  if (peersList) {
+    const next = new Map<string, string>()
+    for (const p of peersList) {
+      if (!p.remote_key) continue
+      const label =
+        (typeof p.display_name === 'string' && p.display_name.trim()) ||
+        (p.id ? shortHandle(p.id) : shortHandle(p.remote_key))
+      next.set(p.remote_key.toLowerCase(), label)
+    }
+    nameByKey.current = next
+  }
 
   // We watch sse.last by reference; remember which seq we already toasted
   // so a re-render doesn't replay it.
@@ -49,7 +72,7 @@ export function useActivityToasts(enabled = true): void {
     if (!ev || ev.seq <= lastSeq.current) return
     lastSeq.current = ev.seq
 
-    const built = describe(ev, selfHandle)
+    const built = describe(ev, selfHandle, nameByKey.current)
     if (!built) return
 
     chime(audioRef)
@@ -63,6 +86,7 @@ export function useActivityToasts(enabled = true): void {
 function describe(
   ev: SseEvent,
   selfHandle: string | null,
+  nameByKey: Map<string, string>,
 ): { title: string; description?: string } | null {
   if (ev.event === 'entry-applied') {
     const data = ev.data as EntryAppliedData
@@ -71,15 +95,11 @@ function describe(
     const author = entry?.agent_id ?? null
     if (selfHandle && author === selfHandle) return null // skip our own writes
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
-    // admin.addWriter entries surface a "new member admitted" toast —
-    // more useful than silence, and distinct from a raw swarm connect.
-    if (kind === 'admin') {
-      const action = (entry?.payload as { action?: string } | undefined)?.action
-      if (action === 'addWriter') {
-        return { title: `${who} admitted a new agent` }
-      }
-      return null
-    }
+    // admin.addWriter is an implementation detail: the rename message
+    // the joiner auto-heals with (prev=null) is the user-facing "joined"
+    // signal, labelled with the joiner's actual name. Leaving admin
+    // silent avoids two back-to-back toasts for the same admission.
+    if (kind === 'admin') return null
     if (!kind || !PUBLIC_KINDS.has(kind)) return null
     // Status messages carry a payload.kind marker so the feed / toast
     // can distinguish them from chatter. `leave` fires on pact-remove,
@@ -93,8 +113,12 @@ function describe(
         const pl = entry?.payload as { prev?: string | null; next?: string | null } | undefined
         const next = (typeof pl?.next === 'string' && pl.next) || who
         const prev = typeof pl?.prev === 'string' && pl.prev ? pl.prev : null
+        // prev=null means the auto-heal is firing for the first time
+        // for this agent on their current peer — effectively "just
+        // joined the pact" from every other agent's POV. A true rename
+        // (prev is set) reports the transition.
         return {
-          title: prev ? `${prev} is now known as ${next}` : `${next} has set their name`,
+          title: prev ? `${prev} is now known as ${next}` : `${next} joined the pact`,
         }
       }
     }
@@ -104,20 +128,24 @@ function describe(
       description: summary ?? undefined,
     }
   }
-  // Raw swarm peer-add/peer-remove events are intentionally silent:
+  // Raw swarm peer-add/peer-remove frames are intentionally silent:
   // they fire on any hyperswarm connection churn, including between
-  // unrelated pacts on the same host, and can't distinguish "came
-  // online" from "joined the pact". The member-online/offline events
-  // below are the accurate presence signal for the current pact.
-  if (ev.event === 'member-online') {
-    // Silent for now — Network page flips the online indicator. If we
-    // want a chime here later, shortHandle(member_key) is the label.
-    void (ev.data as MemberPresenceData)
-    return null
-  }
-  if (ev.event === 'member-offline') {
-    void (ev.data as MemberPresenceData)
-    return null
+  // unrelated pacts on the same host. member-online/offline below are
+  // the accurate presence signal for the current pact.
+  if (ev.event === 'member-online' || ev.event === 'member-offline') {
+    const data = ev.data as MemberPresenceData
+    const key = data.member_key?.toLowerCase()
+    if (!key) return null
+    const name = nameByKey.get(key)
+    // First-time admission: no display_name is indexed yet, so the
+    // rename auto-heal that fires moments later will surface "X joined
+    // the pact" with the actual name. Swallow the no-name online ping
+    // so we don't double-toast with a generic handle.
+    if (!name && ev.event === 'member-online') return null
+    const label = name ?? shortHandle(key)
+    return {
+      title: ev.event === 'member-online' ? `${label} came online` : `${label} went offline`,
+    }
   }
   return null
 }
