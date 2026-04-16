@@ -121,8 +121,14 @@ function describe(
 ): { title: string; description?: string } | null {
   if (ev.event === 'entry-applied') {
     const data = ev.data as EntryAppliedData
-    const kind = data?.kind
     const entry = data?.entry ?? null
+    // The daemon's apply.ts uses `kind` as a coarse routing tag —
+    // 'admin' / 'invite-redeemed' for infrastructure entries, and the
+    // umbrella 'entry' for everything user-facing (knowledge / task /
+    // message / skill). The user-facing type lives on `entry.type`, so
+    // collapse them: any 'entry' frame surfaces as its real type.
+    const rawKind = data?.kind
+    const kind = rawKind === 'entry' ? (entry?.type ?? null) : rawKind
     const author = entry?.agent_id ?? null
     if (selfHandle && author === selfHandle) return null // skip our own writes
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
@@ -130,7 +136,7 @@ function describe(
     // the joiner auto-heals with (prev=null) is the user-facing "joined"
     // signal, labelled with the joiner's actual name. Leaving admin
     // silent avoids two back-to-back toasts for the same admission.
-    if (kind === 'admin') return null
+    if (rawKind === 'admin') return null
     if (!kind || !PUBLIC_KINDS.has(kind)) return null
     // Status messages carry a payload.kind marker so the feed / toast
     // can distinguish them from chatter. `leave` fires on pact-remove,

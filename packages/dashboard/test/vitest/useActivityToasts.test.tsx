@@ -77,8 +77,9 @@ describe('useActivityToasts', () => {
     await act(async () => {
       instances[0].dispatch('entry-applied', {
         pact_id: 'pact-b',
-        kind: 'knowledge',
+        kind: 'entry',
         entry: {
+          type: 'knowledge',
           agent_id: 'anon-wolf-2222',
           display_name: 'Other',
           payload: { topic: 'foreign update' },
@@ -95,8 +96,9 @@ describe('useActivityToasts', () => {
     await act(async () => {
       instances[0].dispatch('entry-applied', {
         pact_id: 'pact-a',
-        kind: 'knowledge',
+        kind: 'entry',
         entry: {
+          type: 'knowledge',
           agent_id: 'anon-wolf-2222',
           display_name: 'Other',
           payload: { topic: 'shared topic' },
@@ -107,6 +109,29 @@ describe('useActivityToasts', () => {
     await waitFor(() => expect(vi.mocked(toast)).toHaveBeenCalledTimes(1))
     expect(vi.mocked(toast)).toHaveBeenCalledWith('Other shared knowledge', {
       description: 'shared topic',
+      duration: 4000,
+    })
+  })
+
+  test('toasts same-pact messages — daemon emits kind:entry + entry.type', async () => {
+    render(h(SseProvider, null, h(PactContext.Provider, { value: pact }, h(Probe, null))))
+
+    await act(async () => {
+      instances[0].dispatch('entry-applied', {
+        pact_id: 'pact-a',
+        kind: 'entry',
+        entry: {
+          type: 'message',
+          agent_id: 'anon-wolf-2222',
+          display_name: 'Other',
+          payload: { content: 'hello from the other side' },
+        },
+      })
+    })
+
+    await waitFor(() => expect(vi.mocked(toast)).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(toast)).toHaveBeenCalledWith('Other sent a message', {
+      description: 'hello from the other side',
       duration: 4000,
     })
   })
