@@ -64,9 +64,17 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
     let cancelled = false
 
     let entry = cache.get(cacheKey) as CacheEntry<T> | undefined
-    if (!entry) {
+    const settled = !!entry && (entry.value !== undefined || entry.error !== undefined)
+    if (!entry || settled) {
+      // Miss, or cache hit with an already-resolved value — either way,
+      // kick a fresh fetch. Stale-while-revalidate: we still paint the
+      // previous value immediately so the UI isn't blank, but a new
+      // mount cannot silently serve data from a previous navigation.
+      // An in-flight entry (settled===false) short-circuits here so two
+      // components asking for the same key dedupe on the same promise.
+      const previousValue = entry?.value
       const promise = (async () => fnRef.current())()
-      entry = { promise, value: undefined, error: undefined }
+      entry = { promise, value: previousValue, error: undefined }
       cache.set(cacheKey, entry as CacheEntry<unknown>)
       promise
         .then((v) => {
@@ -77,9 +85,10 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
         })
     }
 
-    setState({ data: entry.value, error: entry.error, loading: !entry.value && !entry.error })
+    setState({ data: entry.value, error: entry.error, loading: entry.value === undefined })
 
-    entry.promise
+    const pendingEntry = entry
+    pendingEntry.promise
       .then((v) => {
         if (cancelled) return
         setState({ data: v, error: undefined, loading: false })
@@ -87,7 +96,7 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
       .catch((e: unknown) => {
         if (cancelled) return
         setState({
-          data: undefined,
+          data: pendingEntry.value,
           error: e instanceof Error ? e : new Error(String(e)),
           loading: false,
         })
