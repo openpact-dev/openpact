@@ -133,35 +133,34 @@ export async function joinCmd(
   const status = await pactClient.status()
   const memberKey = status.public_key as string
 
-  // 3. Wait for at least one online peer in this pact, then redeem.
-  // `status.peers` is pact-scoped: authenticated remote members only,
-  // not the daemon's host-wide connection count.
+  // 3. Drive the redeem in a retry loop. The daemon's redeemThroughPeers
+  // already returns NO_PEERS instantly when no swarm links exist and
+  // NO_INDEXER_REACHABLE when peers are present but no indexer answered;
+  // both are classified as transient below. Earlier this code gated on
+  // `status.peers > 0`, but `peers` is now pact-scoped to authenticated
+  // remote members, and a fresh joiner can't authenticate until after
+  // admission — so the gate stayed false forever and the loop never
+  // attempted the redeem.
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown = null
+  let redeemed = false
   while (Date.now() < deadline) {
-    const status = await pactClient.status().catch(() => null)
-    if ((status?.peers ?? 0) > 0) {
-      try {
-        await pactClient.invites.redeem(tokenArg, memberKey)
-        lastErr = null
-        break
-      } catch (err) {
-        lastErr = err
-        const code = (err as { code?: string }).code
-        if (code && terminalRedeemCodes.has(code)) {
-          throw err
-        }
-        if (code && !transientRedeemCodes.has(code)) {
-          throw err
-        }
-      }
+    try {
+      await pactClient.invites.redeem(tokenArg, memberKey)
+      redeemed = true
+      break
+    } catch (err) {
+      lastErr = err
+      const code = (err as { code?: string }).code
+      if (code && terminalRedeemCodes.has(code)) throw err
+      if (code && !transientRedeemCodes.has(code)) throw err
     }
     await new Promise((r) => setTimeout(r, 500))
   }
-  if (lastErr) throw lastErr
-  if (Date.now() >= deadline) {
+  if (!redeemed) {
+    if (lastErr) throw lastErr
     throw new Error(
-      `could not find an indexer peer within ${timeoutMs / 1000}s — is the creator online?`,
+      `could not reach an indexer within ${timeoutMs / 1000}s — is the creator online?`,
     )
   }
 

@@ -99,8 +99,9 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
     // what it is.
     replyOptions: {
       rewriteRequestHeaders: (_req, headers) => {
-        const { origin: _o, referer: _r, ...rest } = headers
-        const out: Record<string, unknown> = { ...rest }
+        const out: Record<string, unknown> = { ...headers }
+        delete out.origin
+        delete out.referer
         if (daemonToken) out.authorization = `Bearer ${daemonToken}`
         return out as typeof headers
       },
