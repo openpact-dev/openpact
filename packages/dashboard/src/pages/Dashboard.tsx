@@ -69,8 +69,8 @@ function DashboardPage() {
   const onlinePeers = (peers.data ?? []).filter((p: any) => p.online).length
   const knowledgeCount = knowledgeEntries.length
   const taskCount = taskEntries.length
+  const messageCount = messageEntries.length
   const openTasks = taskEntries.filter((t: any) => t.status === 'open')
-  const entryCount = status.data?.entries ?? 0
   const isCreator = status.data?.role === 'creator'
 
   const [showInvite, setShowInvite] = useState(false)
@@ -82,9 +82,6 @@ function DashboardPage() {
           Dashboard
         </h1>
         <div class="flex items-center gap-4">
-          <span class="font-mono text-[12px] text-[var(--color-ink3)]">
-            {entryCount} entr{entryCount === 1 ? 'y' : 'ies'}
-          </span>
           {isCreator ? (
             <button
               type="button"
@@ -122,9 +119,9 @@ function DashboardPage() {
         </div>
         <div class="px-5 py-4">
           <MetricCard
-            label="Total entries"
-            value={entryCount}
-            hint="In the ledger"
+            label="Messages"
+            value={messageCount}
+            hint={messageCount === 0 ? 'None yet' : 'Dispatched'}
             tone="message"
           />
         </div>

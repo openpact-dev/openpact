@@ -276,7 +276,11 @@ export class Pact extends EventEmitter {
   }
 
   private async _announceDisplayName(next: string, prev: string | null): Promise<void> {
-    const content = prev ? `${prev} is now known as ${next}.` : `${next} has set their name.`
+    // prev === null covers the first self-heal for this writer — i.e.
+    // the peer's _agents/<self> wasn't indexed before, which from every
+    // other agent's POV reads as "they just joined". An actual rename
+    // (prev is set) narrates the transition.
+    const content = prev ? `${prev} is now known as ${next}.` : `${next} joined the pact.`
     await this.append({
       type: 'message',
       timestamp: new Date().toISOString(),
