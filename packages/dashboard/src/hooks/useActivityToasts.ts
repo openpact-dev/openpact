@@ -68,12 +68,32 @@ export function useActivityToasts(enabled = true): void {
   // so a re-render doesn't replay it.
   const lastSeq = useRef<number>(0)
   const audioRef = useRef<AudioContext | null>(null)
+  // SSE opens after the dashboard (re)mounts or the daemon (re)starts.
+  // The first batch of frames usually backfills existing state —
+  // member-online for every agent the daemon is already authenticated
+  // to. Toasting those reads like "Thorn came online" whenever you
+  // bounce your own daemon, which isn't what happened. Keep a grace
+  // window on mount and swallow presence frames inside it.
+  const mountedAt = useRef<number>(0)
+  useEffect(() => {
+    mountedAt.current = Date.now()
+  }, [])
+  const PRESENCE_GRACE_MS = 3500
 
   useEffect(() => {
     if (!enabled) return
     const ev = sse.last
     if (!ev || ev.seq <= lastSeq.current) return
     lastSeq.current = ev.seq
+
+    // Suppress member-online/offline during startup catch-up. Real
+    // state changes after that still toast normally.
+    if (
+      (ev.event === 'member-online' || ev.event === 'member-offline') &&
+      Date.now() - mountedAt.current < PRESENCE_GRACE_MS
+    ) {
+      return
+    }
 
     const built = describe(ev, selfHandle, nameByKey.current)
     if (!built) return

@@ -314,7 +314,13 @@ select:focus-visible {
 .op-toast::before {
   content: '';
   position: absolute;
-  inset: -5px;
+  /* Sit inside the toast's border-box. Negative insets render nicer
+     but Sonner's dismiss animation uses transforms on the li whose
+     bounding box the pseudo follows; combined with the toaster's
+     viewport-edge positioning, extending past the edge made the
+     brackets appear to drift out of sync as the toast translated off
+     screen. Staying inside keeps the composite tight. */
+  inset: 2px;
   pointer-events: none;
   background-color: var(--color-ember);
   opacity: 0.85;
