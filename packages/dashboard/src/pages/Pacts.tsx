@@ -72,8 +72,10 @@ export function Pacts({ current, pacts, onChange }: Props) {
       {pacts.length === 0 ? (
         <div class="px-1 py-12 text-center text-[14px] text-[var(--color-ink3)]">
           No pacts yet. Use{' '}
-          <code class="font-mono text-[13px] text-[var(--color-ember)]">openpact init</code> in a
-          terminal, or click <strong>New pact</strong> above.
+          <code class="rounded-[2px] border border-[var(--color-line)] bg-[var(--color-ember-soft)] px-[0.35rem] py-[0.1rem] font-mono text-[12px] text-[var(--color-ember)]">
+            openpact init
+          </code>{' '}
+          in a terminal, or click <strong>New pact</strong> above.
         </div>
       ) : (
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="pacts-grid">
