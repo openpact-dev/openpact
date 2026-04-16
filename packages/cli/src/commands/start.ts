@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
-import { pidFileLooksAlive, writePidFile, pidPath, isAlive } from '../lib/pid'
+import { pidFileLooksAlive, writePidFile, removePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
 import { c, banner } from '../lib/theme'
 import { spinner } from '../lib/spinner'
@@ -79,36 +79,46 @@ export async function startCmd(
   const port = Number(opts.port ?? 7666)
   const sp = spinner(`summoning the daemon on :${port}…`).start()
   const ready = await waitForReady(child.pid, port)
-  if (!ready) {
-    sp.fail(c.brand(`the daemon failed to bind. see logs at ${logPath}`))
+  const bail = async (msg: string): Promise<never> => {
+    sp.fail(c.brand(msg))
+    if (child.pid && isAlive(child.pid)) {
+      try {
+        process.kill(child.pid, 'SIGTERM')
+      } catch {
+        /* already gone */
+      }
+    }
+    await removePidFile(dir).catch(() => {})
     process.exit(1)
+  }
+  if (!ready) {
+    await bail(`the daemon failed to bind. see logs at ${logPath}`)
   }
 
   // Match-verify: a prior daemon from a *different* dataDir may already
   // own :port. Our detached child would have failed with EADDRINUSE and
-  // died, but waitForReady happily pinged the stranger. Compare the
-  // responding daemon's current pact_id with the registry we just wrote;
-  // if they differ, the strange daemon is not ours.
+  // died, but waitForReady happily pinged the stranger. Query the
+  // responding daemon's pact list and confirm at least one of our
+  // registry's pact IDs is present; if none are, it's a stranger.
   const registry = await daemonConfig.loadDaemonConfig(dir).catch(() => null)
-  const expectedPactId =
-    registry?.pacts.find((p) => p.alias === registry.currentAlias)?.pactId ?? null
-  if (expectedPactId) {
+  const ourPactIds = new Set((registry?.pacts ?? []).map((p) => p.pactId))
+  if (ourPactIds.size > 0) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/v1/status`)
-      const status = (await res.json()) as { pact_id?: string | null }
-      if (status.pact_id && status.pact_id !== expectedPactId) {
-        sp.fail(
-          c.brand(
-            `port :${port} is already held by a different pact (${status.pact_id.slice(
-              0,
-              12,
-            )}…). run \`openpact stop\` in that dataDir first, or pass \`--port <n>\` to use a different port.`,
-          ),
+      const res = await fetch(`http://127.0.0.1:${port}/v1/pacts`)
+      const body = (await res.json()) as { pacts?: Array<{ pact_id?: string }> }
+      const theirs = (body.pacts ?? []).map((p) => p.pact_id).filter(Boolean) as string[]
+      const overlap = theirs.some((id) => ourPactIds.has(id))
+      if (!overlap) {
+        const summary =
+          theirs.length === 0
+            ? 'no pacts'
+            : `${theirs.length} pact(s), none matching this host`
+        await bail(
+          `port :${port} is already held by a different daemon (${summary}). run \`openpact stop\` in that dataDir first, or pass \`--port <n>\` to use a different port.`,
         )
-        process.exit(1)
       }
     } catch {
-      // Non-fatal — if the status probe fails, keep the happy path.
+      // Non-fatal — if the probe fails, keep the happy path.
     }
   }
   sp.succeed(c.brandBold('The daemon stirs.'))
