@@ -36,7 +36,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
       description:
         'Fetch a single task by id. Returns its full reduced state including claim and completion history.',
       inputSchema: {
-        id: z.string().describe('Task id in the form <core>-<seq>, e.g. "a7f2-412".'),
+        id: z.string().describe('Task id in the form <core>-<seq>, e.g. "a7f2bcde-412".'),
       },
     },
     async ({ id }) => safeHandler(async () => jsonContent(await pact.tasks.get(id))),

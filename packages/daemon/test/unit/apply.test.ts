@@ -12,8 +12,8 @@ import {
   type InvalidInfo,
   type AppliedInfo,
 } from '../../src/apply'
+import { derive as deriveHandle } from '../../src/peer-handle'
 
-const VALID_HANDLE = 'anon-krait-7f2d'
 const TS = '2026-04-14T10:30:00.000Z'
 
 interface FakeView extends ApplyView {
@@ -85,7 +85,10 @@ function entry(
   return {
     type,
     timestamp: opts.ts || TS,
-    agent_id: opts.handle || VALID_HANDLE,
+    // Default handle is the canonical one for KEY_A. Callers that
+    // deliberately want a mismatch (spoofing tests) pass { handle }
+    // explicitly to override.
+    agent_id: opts.handle || HANDLE_A,
     payload,
   }
 }
@@ -93,6 +96,10 @@ function entry(
 const KEY_A = 'aa'.repeat(32)
 const KEY_B = 'bb'.repeat(32)
 const KEY_C = 'cc'.repeat(32)
+
+const HANDLE_A = deriveHandle(b4a.from(KEY_A, 'hex') as Buffer)
+const HANDLE_B = deriveHandle(b4a.from(KEY_B, 'hex') as Buffer)
+const HANDLE_C = deriveHandle(b4a.from(KEY_C, 'hex') as Buffer)
 
 test('valid knowledge entry is appended to view', async (t) => {
   const view = fakeView()
@@ -151,7 +158,7 @@ test('unknown entry type dropped', async (t) => {
     [
       node({
         writerKey: KEY_A,
-        value: { type: 'bogus', timestamp: TS, agent_id: VALID_HANDLE, payload: {} },
+        value: { type: 'bogus', timestamp: TS, agent_id: HANDLE_A, payload: {} },
       }),
     ],
     view,
@@ -208,7 +215,11 @@ test('admin from non-indexer is ignored', async (t) => {
     [
       node({
         writerKey: KEY_C,
-        value: entry('admin', { action: 'addWriter', key: KEY_B, indexer: true }),
+        value: entry(
+          'admin',
+          { action: 'addWriter', key: KEY_B, indexer: true },
+          { handle: HANDLE_C },
+        ),
       }),
     ],
     view,
@@ -326,7 +337,7 @@ test('view key uses type/timestamp/id format', async (t) => {
     fakeHost(),
   )
   const knowledgeKey = view._keys().find((k) => k.startsWith('knowledge/'))
-  t.is(knowledgeKey, `knowledge/${TS}/aaaa-42`)
+  t.is(knowledgeKey, `knowledge/${TS}/aaaaaaaa-42`)
 })
 
 test('stored entry includes derived id field', async (t) => {
@@ -345,7 +356,7 @@ test('stored entry includes derived id field', async (t) => {
   )
   const knowledgeKey = view._keys().find((k) => k.startsWith('knowledge/'))!
   const stored = (await view.get(knowledgeKey))!.value as { id: string }
-  t.is(stored.id, 'aaaa-7')
+  t.is(stored.id, 'aaaaaaaa-7')
 })
 
 test('multiple nodes in one apply call processed in order', async (t) => {
@@ -521,7 +532,7 @@ test('display_name is indexed under _agents/<agent_id>', async (t) => {
         writerKey: KEY_A,
         length: 0,
         value: {
-          ...entry('knowledge', { topic: 'sales', content: 'hi' }, { handle: 'anon-lynx-1234' }),
+          ...entry('knowledge', { topic: 'sales', content: 'hi' }, { handle: HANDLE_A }),
           display_name: 'Asmodeus',
         },
       }),
@@ -529,7 +540,7 @@ test('display_name is indexed under _agents/<agent_id>', async (t) => {
     view,
     fakeHost(),
   )
-  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-lynx-1234`) as
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_A}`) as
     | {
         name?: string
         ts?: string
@@ -568,11 +579,7 @@ test('_agents/ index prefers newer timestamp over older', async (t) => {
         writerKey: KEY_A,
         length: 0,
         value: {
-          ...entry(
-            'knowledge',
-            { topic: 't', content: 'c' },
-            { handle: 'anon-newt-abcd', ts: newer },
-          ),
+          ...entry('knowledge', { topic: 't', content: 'c' }, { handle: HANDLE_A, ts: newer }),
           display_name: 'Recent Name',
         },
       }),
@@ -587,11 +594,7 @@ test('_agents/ index prefers newer timestamp over older', async (t) => {
         writerKey: KEY_A,
         length: 1,
         value: {
-          ...entry(
-            'knowledge',
-            { topic: 't2', content: 'c2' },
-            { handle: 'anon-newt-abcd', ts: older },
-          ),
+          ...entry('knowledge', { topic: 't2', content: 'c2' }, { handle: HANDLE_A, ts: older }),
           display_name: 'Old Name',
         },
       }),
@@ -599,7 +602,7 @@ test('_agents/ index prefers newer timestamp over older', async (t) => {
     view,
     fakeHost(),
   )
-  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-newt-abcd`) as { name?: string }
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_A}`) as { name?: string }
   t.is(stored?.name, 'Recent Name', 'older entry did not clobber newer')
 })
 
@@ -614,7 +617,7 @@ test('_agents/ index is populated by admin entries too', async (t) => {
         writerKey: KEY_A,
         length: 0,
         value: {
-          ...entry('knowledge', { topic: 'seed', content: 'seed' }, { handle: 'anon-raven-0001' }),
+          ...entry('knowledge', { topic: 'seed', content: 'seed' }, { handle: HANDLE_A }),
           display_name: 'Creator',
         },
       }),
@@ -633,7 +636,7 @@ test('_agents/ index is populated by admin entries too', async (t) => {
           ...entry(
             'admin',
             { action: 'addWriter', key: KEY_B, indexer: false },
-            { handle: 'anon-raven-0001', ts: '2026-04-16T00:00:00.000Z' },
+            { handle: HANDLE_A, ts: '2026-04-16T00:00:00.000Z' },
           ),
           display_name: 'Creator Updated',
         },
@@ -642,7 +645,7 @@ test('_agents/ index is populated by admin entries too', async (t) => {
     view,
     host,
   )
-  const stored = view._data.get(`${AGENT_NAME_PREFIX}anon-raven-0001`) as { name?: string }
+  const stored = view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_A}`) as { name?: string }
   t.is(stored?.name, 'Creator Updated')
 })
 
@@ -713,7 +716,11 @@ test('invite-redeemed from non-indexer is ignored', async (t) => {
     [
       node({
         writerKey: KEY_C,
-        value: entry('invite-redeemed', { nonce: NONCE_A, redeemed_by: KEY_B }),
+        value: entry(
+          'invite-redeemed',
+          { nonce: NONCE_A, redeemed_by: KEY_B },
+          { handle: HANDLE_C },
+        ),
       }),
     ],
     view,
@@ -782,4 +789,79 @@ test('invite-redeemed schema-validates nonce length', async (t) => {
     host,
   )
   t.ok(invalid.some((i) => i.reason === 'schema'))
+})
+
+// ─────── agent_id spoofing ──────────────────────────────────────────
+
+test('apply rejects entries whose agent_id does not match writer key', async (t) => {
+  const view = fakeView()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  // KEY_A writer claims KEY_B's handle.
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: entry('knowledge', { topic: 'x', content: 'y' }, { handle: HANDLE_B }),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  t.is(view._keys().length, 0, 'spoofed entry never reaches the view')
+  t.is(invalid.length, 1)
+  t.is(invalid[0].reason, 'agent-mismatch')
+})
+
+test('apply rejects entries with missing agent_id', async (t) => {
+  const view = fakeView()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        // Skip `entry()` helper so we can omit agent_id entirely.
+        value: {
+          type: 'knowledge',
+          timestamp: TS,
+          payload: { topic: 'x', content: 'y' },
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  // Schema will reject first (agent_id is required in BaseEntry).
+  t.is(view._keys().length, 0)
+  t.ok(
+    invalid.some((i) => i.reason === 'schema' || i.reason === 'agent-mismatch'),
+    'rejected by schema or agent-mismatch',
+  )
+})
+
+test('spoofed agent_id does not pollute _agents/ index', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'x', content: 'y' }, { handle: HANDLE_B }),
+          display_name: 'Impostor',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  t.absent(
+    view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_B}`),
+    'no _agents/ write for spoofed handle',
+  )
+  t.absent(view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_A}`))
 })

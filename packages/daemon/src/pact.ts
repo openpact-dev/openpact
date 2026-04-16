@@ -8,11 +8,35 @@ import crypto from 'hypercore-crypto'
 
 import { pactStorePath } from './data-dir'
 import { loadPactConfig, savePactConfig, type Role, type PactConfig } from './config'
-import { AGENT_NAME_PREFIX, makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
+import { AGENT_NAME_PREFIX, INDEXER_PREFIX, makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
 import * as peerHandle from './peer-handle'
 import * as entryId from './entry-id'
 import * as invites from './invites'
+import { validate as validateEntry, MAX_PAYLOAD_BYTES } from './schemas'
 import { DEFAULT_TTL_MS, InviteDecodeError, type Invite, type InviteSummary } from './invites'
+
+/**
+ * Thrown by {@link Pact.append} when an entry fails schema / size
+ * validation *before* anything reaches the Hypercore log. Routes can
+ * map this to a 400 with a specific error code rather than letting it
+ * bubble as a generic 500.
+ */
+export class EntryValidationError extends Error {
+  reason: 'not-an-object' | 'unknown-type' | 'schema' | 'payload-too-large'
+  details: unknown
+
+  constructor(
+    reason: 'not-an-object' | 'unknown-type' | 'schema' | 'payload-too-large',
+    details?: unknown,
+  ) {
+    super(`entry validation failed: ${reason}`)
+    this.name = 'EntryValidationError'
+    this.reason = reason
+    this.details = details ?? null
+  }
+}
+
+export { MAX_PAYLOAD_BYTES }
 
 export interface PactOpts {
   /** Directory holding the pact's config.json + data/ store. */
@@ -298,6 +322,14 @@ export class Pact extends EventEmitter {
 
   async append(entry: Record<string, unknown>): Promise<{ id: string; timestamp: string }> {
     if (!this._base.writable) throw new Error('this peer is not a member of the pact')
+    // Validate before we touch Autobase. An oversized or schema-invalid
+    // entry appended here would still be rejected by apply() later, but
+    // the local Hypercore would have already grown. Pre-validating
+    // means the caller gets a clear error and the log stays clean.
+    const result = validateEntry(entry)
+    if (!result.valid) {
+      throw new EntryValidationError(result.reason, result)
+    }
     await this._base.append(entry)
     const seq = this._base.local.length
     const id = entryId.encode({ writerKey: this._base.local.key, seq })
@@ -433,7 +465,7 @@ export class Pact extends EventEmitter {
       const file = await invites.loadInvites(this.dataDir)
       const entry = file.invites.find((inv) => inv.nonce === payload.nonce)
       if (!entry) {
-        throw new invites.RedeemError('INVITE_UNKNOWN', 'unknown invite', 404)
+        throw new invites.RedeemError('UNKNOWN_INVITE', 'unknown invite', 404)
       }
       if (entry.revoked) {
         throw new invites.RedeemError('INVITE_REVOKED', 'invite has been revoked', 409)
@@ -512,11 +544,19 @@ export class Pact extends EventEmitter {
    * its writer rights on the pact. apply.ts has a carve-out allowing
    * self-revocation without indexer authority; used when a peer leaves
    * a pact locally so remote peers can drop it from their writer set.
+   *
+   * Short-circuits for the sole-indexer case: autobase refuses to remove
+   * the last indexer (apply-calls.js throws synchronously inside the
+   * reducer, which the caller's try/catch can't trap), and a self-
+   * revocation from a one-peer pact is meaningless anyway — there's
+   * nobody left to notice. Callers get `false` back so they can skip
+   * the "let peers catch up" grace window.
    */
-  async leaveAsWriter(): Promise<void> {
-    if (!this._base || !this._base.writable) return
+  async leaveAsWriter(): Promise<boolean> {
+    if (!this._base || !this._base.writable) return false
     const keyHex = this.publicKey
-    if (!keyHex) return
+    if (!keyHex) return false
+    if (await this._isSoleIndexer()) return false
     await this._base.append({
       type: 'admin',
       timestamp: new Date().toISOString(),
@@ -524,6 +564,30 @@ export class Pact extends EventEmitter {
       display_name: this.displayName,
       payload: { action: 'removeWriter', key: keyHex },
     })
+    return true
+  }
+
+  /**
+   * True when this peer is an indexer AND the only indexer on the
+   * pact's view. Used to avoid an autobase crash on the removeWriter
+   * path for solo pacts.
+   */
+  private async _isSoleIndexer(): Promise<boolean> {
+    const view = this.view
+    const ourKey = this.publicKey
+    if (!view || !ourKey) return false
+    const range = { gte: INDEXER_PREFIX, lt: INDEXER_PREFIX + '\uffff' }
+    const found: string[] = []
+    try {
+      const stream = view.createReadStream(range)
+      for await (const { key } of stream as AsyncIterable<{ key: string }>) {
+        found.push(key.slice(INDEXER_PREFIX.length))
+        if (found.length > 1) return false
+      }
+    } catch {
+      return false
+    }
+    return found.length === 1 && found[0] === ourKey
   }
 
   async hasActiveMemberKey(keyHex: string): Promise<boolean> {

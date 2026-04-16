@@ -10,6 +10,13 @@ export interface StartDashboardOpts {
   daemonPort?: number
   /** Daemon host. Default 127.0.0.1. */
   daemonHost?: string
+  /**
+   * Bearer token the daemon requires on its REST API. The dashboard
+   * injects `Authorization: Bearer <token>` into every proxied request
+   * so the browser never sees or handles the credential. Required in
+   * production; optional for tests that stub the upstream.
+   */
+  daemonToken?: string | null
   /** Port to bind the dashboard server on. Default 7667. Pass 0 for an OS-chosen free port. */
   port?: number
   /** Host to bind. Default 127.0.0.1. Whitelisted to localhost variants. */
@@ -76,12 +83,24 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
   // sending `/v1/knowledge` upstream. SSE works because replyOptions
   // streams the upstream response; proxyPayloads:false bypasses body
   // parsing so POST/PUT bodies stream too.
+  const daemonToken = opts.daemonToken ?? null
   await app.register(fastifyHttpProxy, {
     upstream: `http://${daemonHost}:${daemonPort}`,
     prefix: '/api',
     rewritePrefix: '',
     proxyPayloads: false,
     httpMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    // Inject the daemon's bearer token server-side so it never reaches
+    // the browser. The daemon's host/origin check is also satisfied
+    // because the proxy rewrites the Host header to the upstream.
+    replyOptions: daemonToken
+      ? {
+          rewriteRequestHeaders: (_req, headers) => ({
+            ...headers,
+            authorization: `Bearer ${daemonToken}`,
+          }),
+        }
+      : undefined,
   })
 
   // Static SPA. Only mount when the build output exists; otherwise the

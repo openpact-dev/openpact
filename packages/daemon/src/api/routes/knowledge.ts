@@ -46,7 +46,12 @@ export default async function knowledgeRoute(
           order,
           limit,
           cursor: cursor ?? null,
-          filter: topic ? (v) => v?.payload?.topic === topic : undefined,
+          filter: topic
+            ? (v: unknown) => {
+                const entry = v as { payload?: { topic?: unknown } } | null
+                return entry?.payload?.topic === topic
+              }
+            : undefined,
         })
       } catch (err) {
         if (err instanceof BadCursorError) {

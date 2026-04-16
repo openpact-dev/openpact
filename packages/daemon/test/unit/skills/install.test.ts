@@ -9,12 +9,12 @@
 import test from 'brittle'
 import fs from 'fs/promises'
 import path from 'path'
-import { createHash } from 'crypto'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
+import { skillChecksum } from '../../../src/skills'
 
 function sha(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 async function bootApi(t: any) {
@@ -76,16 +76,57 @@ test('install: missing { confirm: true } returns 400 NOT_CONFIRMED', async (t) =
   t.is(JSON.parse(res.body).error, 'NOT_CONFIRMED')
 })
 
-test('install: bad name (path traversal) is rejected with 400 BAD_SKILL_NAME', async (t) => {
+test('create: bad name (path traversal) is rejected with 400 BAD_SKILL_NAME', async (t) => {
   const { app } = await bootApi(t)
-  // The schema accepts long names; the install route enforces the
-  // lowercase-alnum-dot-dash regex.
-  const { id } = await postSkill(app, { name: '../../etc/passwd' })
-
+  // Phase 2e moved the SKILL_NAME_RE check to create time so a bad
+  // name never makes it onto the pact log in the first place.
+  const content = 'real content'
   const res = await app.inject({
     method: 'POST',
-    url: `/v1/pacts/default/skills/${id}/install`,
-    payload: { confirm: true },
+    url: '/v1/pacts/default/skills',
+    payload: {
+      name: '../../etc/passwd',
+      version: '1.0.0',
+      format: 'openclaw',
+      content,
+      checksum: sha(content),
+    },
+  })
+  t.is(res.statusCode, 400)
+  t.is(JSON.parse(res.body).error, 'BAD_SKILL_NAME')
+})
+
+test('create: double-dot in name is rejected (regression for `foo..bar`)', async (t) => {
+  const { app } = await bootApi(t)
+  const content = 'x'
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/skills',
+    payload: {
+      name: 'foo..bar',
+      version: '1.0.0',
+      format: 'generic',
+      content,
+      checksum: sha(content),
+    },
+  })
+  t.is(res.statusCode, 400)
+  t.is(JSON.parse(res.body).error, 'BAD_SKILL_NAME')
+})
+
+test('create: a single bare dot is rejected', async (t) => {
+  const { app } = await bootApi(t)
+  const content = 'x'
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/skills',
+    payload: {
+      name: '.',
+      version: '1.0.0',
+      format: 'generic',
+      content,
+      checksum: sha(content),
+    },
   })
   t.is(res.statusCode, 400)
   t.is(JSON.parse(res.body).error, 'BAD_SKILL_NAME')

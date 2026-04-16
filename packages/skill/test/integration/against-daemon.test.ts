@@ -99,9 +99,9 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
   t.is(taskCreate.status, 200)
   const taskId: string = taskCreate.body.id
 
-  const { createHash } = await import('crypto')
+  const { skillChecksum } = await import('@openpact/daemon')
   const skillContent = 'x'
-  const SHA = 'sha256:' + createHash('sha256').update(skillContent, 'utf8').digest('hex')
+  const SHA = skillChecksum(skillContent)
   const skillCreate = await call(base, 'POST', '/v1/pacts/default/skills', {
     name: 's',
     version: '1.0.0',
@@ -155,7 +155,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
           version: '1.0.0',
           format: 'generic',
           content: c,
-          checksum: 'sha256:' + createHash('sha256').update(c, 'utf8').digest('hex'),
+          checksum: skillChecksum(c),
         }
       }
     }

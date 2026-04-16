@@ -135,7 +135,7 @@ test('validatePactConfig: identity fields reject non-strings', (t) => {
 test('loadDaemonConfig: missing file returns defaults', async (t) => {
   const dir = await tmpDir(t)
   const cfg = await config.loadDaemonConfig(dir)
-  t.alike(cfg, { port: 7666, pacts: [], currentAlias: null })
+  t.alike(cfg, { port: 7666, pacts: [], currentAlias: null, apiToken: null })
 })
 
 test('saveDaemonConfig + loadDaemonConfig round-trip', async (t) => {

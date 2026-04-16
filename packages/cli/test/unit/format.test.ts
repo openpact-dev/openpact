@@ -17,7 +17,7 @@ test('formatStatus: includes all fields', (t) => {
   const out = strip(
     formatStatus({
       pact_id: 'deadbeefcafebabe',
-      peer_handle: 'anon-krait-7f2d',
+      peer_handle: 'anon-krait-7f2d9999',
       role: 'creator',
       public_key: 'abcdef',
       peers: 2,
@@ -29,7 +29,7 @@ test('formatStatus: includes all fields', (t) => {
   )
   t.ok(out.includes('Pact'))
   t.ok(out.includes('deadbeefcafe'))
-  t.ok(out.includes('anon-krait-7f2d'))
+  t.ok(out.includes('anon-krait-7f2d9999'))
   t.ok(out.includes('creator'))
   t.ok(out.includes('Peers'))
   t.ok(out.includes('2'))
@@ -45,7 +45,7 @@ test('formatStatus: renders pact name, purpose, display name, and context', (t) 
         pact_id: 'deadbeefcafebabe',
         pact_name: 'QuiteRight',
         pact_purpose: 'Co-ordinate QR Agent Outreach',
-        peer_handle: 'anon-krait-7f2d',
+        peer_handle: 'anon-krait-7f2d9999',
         display_name: 'Henry',
         role: 'creator',
         public_key: 'abcdef',
@@ -69,7 +69,7 @@ test('formatStatus: renders pact name, purpose, display name, and context', (t) 
   t.ok(out.includes('QuiteRight'), 'pact name shown')
   t.ok(out.includes('Co-ordinate QR Agent Outreach'), 'purpose shown')
   t.ok(out.includes('Henry'), 'display name shown')
-  t.ok(out.includes('anon-krait-7f2d'), 'handle shown alongside display name')
+  t.ok(out.includes('anon-krait-7f2d9999'), 'handle shown alongside display name')
   t.ok(out.includes('quiteright'), 'alias shown')
   t.ok(out.includes('(current)'), 'marks alias as current when it matches')
   t.ok(out.includes('3 pacts on this host'), 'total pact count')
@@ -131,12 +131,12 @@ test('formatPeers: empty list', (t) => {
 test('formatPeers: tabular rows', (t) => {
   const out = strip(
     formatPeers([
-      { id: 'anon-krait-7f2d', remote_key: 'abcdef0123456789', online: true },
-      { id: 'anon-cobra-3e91', remote_key: 'fedcba9876543210', online: false },
+      { id: 'anon-krait-7f2d9999', remote_key: 'abcdef0123456789', online: true },
+      { id: 'anon-cobra-3e910000', remote_key: 'fedcba9876543210', online: false },
     ]),
   )
   t.ok(out.includes('HANDLE'))
-  t.ok(out.includes('anon-krait-7f2d'))
+  t.ok(out.includes('anon-krait-7f2d9999'))
   t.ok(out.includes('online'))
   t.ok(out.includes('offline'))
 })
@@ -146,9 +146,9 @@ test('formatLogLine: knowledge', (t) => {
     formatLogLine({
       type: 'knowledge',
       timestamp: '2026-04-14T10:00:00.000Z',
-      agent_id: 'anon-krait-7f2d',
+      agent_id: 'anon-krait-7f2d9999',
       payload: { topic: 'sales', content: 'Tuesdays convert' },
-      id: 'aaaa-1',
+      id: 'aaaaaaaa-1',
     }),
   )
   t.ok(out.includes('knowledge'), 'type label present')
@@ -161,14 +161,14 @@ test('formatLogLine: task', (t) => {
     formatLogLine({
       type: 'task',
       timestamp: '2026-04-14T10:00:00.000Z',
-      agent_id: 'anon-krait-7f2d',
-      payload: { title: 'Build it', status: 'claimed', claimed_by: 'anon-cobra-3e91' },
-      id: 'aaaa-2',
+      agent_id: 'anon-krait-7f2d9999',
+      payload: { title: 'Build it', status: 'claimed', claimed_by: 'anon-cobra-3e910000' },
+      id: 'aaaaaaaa-2',
     }),
   )
   t.ok(out.includes('task'))
   t.ok(out.includes('Build it'))
-  t.ok(out.includes('claimed by anon-cobra-3e91'))
+  t.ok(out.includes('claimed by anon-cobra-3e910000'))
 })
 
 test('formatLogLine: skill', (t) => {
@@ -176,9 +176,9 @@ test('formatLogLine: skill', (t) => {
     formatLogLine({
       type: 'skill',
       timestamp: '2026-04-14T10:00:00.000Z',
-      agent_id: 'anon-krait-7f2d',
+      agent_id: 'anon-krait-7f2d9999',
       payload: { name: 'scraper', version: '1.0.0', format: 'openclaw' },
-      id: 'aaaa-3',
+      id: 'aaaaaaaa-3',
     }),
   )
   t.ok(out.includes('scraper@1.0.0'))
@@ -190,9 +190,9 @@ test('formatLogLine: message', (t) => {
     formatLogLine({
       type: 'message',
       timestamp: '2026-04-14T10:00:00.000Z',
-      agent_id: 'anon-krait-7f2d',
+      agent_id: 'anon-krait-7f2d9999',
       payload: { to: '*', content: 'hello' },
-      id: 'aaaa-4',
+      id: 'aaaaaaaa-4',
     }),
   )
   t.ok(out.includes('to *: hello'))
@@ -203,7 +203,7 @@ test('formatLogLine: long content truncated', (t) => {
     formatLogLine({
       type: 'knowledge',
       timestamp: '2026-04-14T10:00:00.000Z',
-      agent_id: 'anon-krait-7f2d',
+      agent_id: 'anon-krait-7f2d9999',
       payload: { topic: 'x', content: 'a'.repeat(200) },
     }),
   )

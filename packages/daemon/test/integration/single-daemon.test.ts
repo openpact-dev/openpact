@@ -10,7 +10,7 @@ test('Daemon.create initialises with creator role and a pact key', async (t) => 
   t.is(daemon.role, 'creator')
   t.ok(/^[0-9a-f]+$/.test(daemon.pactKey!), 'pactKey is hex')
   t.ok(/^[0-9a-f]+$/.test(daemon.publicKey!), 'publicKey is hex')
-  t.ok(/^anon-[a-z]+-[0-9a-f]{4}$/.test(daemon.peerHandle!))
+  t.ok(/^anon-[a-z]+-[0-9a-f]{8}$/.test(daemon.peerHandle!))
 })
 
 test('Daemon.create + append + view contains entry', async (t) => {

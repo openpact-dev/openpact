@@ -72,7 +72,10 @@ export default async function tasksRoute(
           order,
           limit,
           cursor: cursor ?? null,
-          filter: (v) => !v?.refs?.length,
+          filter: (v: unknown) => {
+            const entry = v as { refs?: unknown[] } | null
+            return !entry?.refs || entry.refs.length === 0
+          },
         })
       } catch (err) {
         if (err instanceof BadCursorError) {
@@ -220,6 +223,18 @@ export default async function tasksRoute(
   })
 }
 
+const VIEW_WAIT_MS = 2000
+
+/**
+ * Block until the caller's just-appended entry lands on the local
+ * Autobase view. Under healthy conditions this resolves in a few ms
+ * — the entry was written to our own core, so the next update tick
+ * indexes it. Under pathological conditions (autobase stalled, view
+ * reducer throwing, disk pressure) the entry never arrives; rather
+ * than silently returning a stale state, surface a 504 VIEW_TIMEOUT
+ * so SDK clients can map it to a dedicated `ViewTimeoutError` and
+ * retry or back off.
+ */
 async function waitForView(
   pact: Pact,
   daemon: Daemon,
@@ -227,7 +242,7 @@ async function waitForView(
   expectedId: string,
 ): Promise<TaskState> {
   const opts = ttlOpts(daemon)
-  const deadline = Date.now() + 2000
+  const deadline = Date.now() + VIEW_WAIT_MS
   while (Date.now() < deadline) {
     const entries = (await findRefs(pact.view, 'task', taskId)) as any[]
     if (entries.some((e) => e.id === expectedId)) {
@@ -236,7 +251,9 @@ async function waitForView(
     }
     await new Promise((r) => setTimeout(r, 25))
   }
-  const state = await getTaskState(pact.view, taskId, opts)
-  if (!state) throw new HttpError(500, 'INTERNAL', 'task vanished from view after append')
-  return state
+  throw new HttpError(
+    504,
+    'VIEW_TIMEOUT',
+    `entry ${expectedId} for task ${taskId} did not land on the local view within ${VIEW_WAIT_MS}ms`,
+  )
 }

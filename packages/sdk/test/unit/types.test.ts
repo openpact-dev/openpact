@@ -39,7 +39,7 @@ async function _shape(pact: OpenPact) {
   void kEntries[0]?.payload.topic
   void (k.has_more as boolean)
   void (k.cursor as string | null)
-  const t: TaskState = await pact.tasks.get('aaaa-1')
+  const t: TaskState = await pact.tasks.get('aaaaaaaa-1')
   void t.status
   // TTL fields exist on TaskState (added in §2.4).
   const _expiredAt: string | null = t.expired_at

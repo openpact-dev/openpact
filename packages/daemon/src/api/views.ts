@@ -10,6 +10,35 @@ import type { EntryType } from '../schemas/common'
  * so every route gets the same ordering + pagination contract.
  */
 
+/**
+ * Structural type for the subset of Hyperbee API we actually use.
+ * Keeping it minimal means we can swap the underlying store (or mock
+ * one in tests) without chasing opaque `any`-typed parameters around.
+ * Hyperbee's own .d.ts isn't consumable from TypeScript directly.
+ */
+export interface ViewEntry {
+  key: string | Buffer
+  value: unknown
+}
+export interface ViewReadStream extends AsyncIterable<ViewEntry> {
+  destroy?(): void
+}
+export interface ViewRange {
+  gte?: string
+  gt?: string
+  lte?: string
+  lt?: string
+  limit?: number
+}
+export interface ViewReadStreamOpts {
+  reverse?: boolean
+  limit?: number
+}
+export interface View {
+  createReadStream(range: ViewRange, opts?: ViewReadStreamOpts): ViewReadStream
+  peek?(range: ViewRange, opts?: ViewReadStreamOpts): Promise<ViewEntry | null>
+}
+
 // '/' is 0x2F, '0' is 0x30 — '<type>0' is the upper exclusive bound for
 // the '<type>/' prefix scan.
 function rangeFor(type: string): { gte: string; lt: string } {
@@ -25,8 +54,12 @@ export interface ListPageOpts {
   limit?: number
   /** Opaque continuation — the `cursor` from the previous page. */
   cursor?: string | null
-  /** Post-stream predicate; values failing the predicate are skipped. */
-  filter?: (value: any) => boolean
+  /**
+   * Post-stream predicate; values failing the predicate are skipped.
+   * Receives the raw stored entry as {@link unknown} — callers that
+   * want type-narrowed predicates should cast inside the closure.
+   */
+  filter?: (value: unknown) => boolean
 }
 
 export interface ListPage<T> {
@@ -62,8 +95,8 @@ export class BadCursorError extends Error {
  * to expose — keys are already opaque-ish identifiers and they only
  * make sense within this view.
  */
-export async function listByType<T = any>(
-  view: any,
+export async function listByType<T = unknown>(
+  view: View,
   type: EntryType,
   opts: ListPageOpts = {},
 ): Promise<ListPage<T>> {
@@ -73,7 +106,7 @@ export async function listByType<T = any>(
   const filter = opts.filter
   const range = rangeFor(type)
 
-  const streamRange: Record<string, string> =
+  const streamRange: ViewRange =
     order === 'desc'
       ? { gte: range.gte, lt: cursor ?? range.lt }
       : cursor
@@ -111,13 +144,13 @@ export async function listByType<T = any>(
  * page didn't fill (implying the stream already hit the range end).
  */
 async function peekHasMore(
-  view: any,
+  view: View,
   range: { gte: string; lt: string },
   order: Order,
   lastKey: string | null,
 ): Promise<boolean> {
   if (lastKey === null) return false
-  const peekRange =
+  const peekRange: ViewRange =
     order === 'desc' ? { gte: range.gte, lt: lastKey } : { gt: lastKey, lt: range.lt }
   if (typeof view.peek === 'function') {
     const hit = await view.peek(peekRange, { reverse: order === 'desc' })
@@ -155,13 +188,34 @@ function parseCursor(cursor: string | null, type: EntryType): string | null {
 }
 
 /**
+ * Minimal shape every stored entry has — enough for the scan helpers
+ * below to do their job without pretending to know the full schema.
+ * Callers downcast to a concrete `KnowledgeEntry`/`TaskEntry`/etc.
+ */
+export interface StoredEntry {
+  id?: unknown
+  refs?: unknown
+  [key: string]: unknown
+}
+
+function asStoredEntry(value: unknown): StoredEntry | null {
+  if (value == null || typeof value !== 'object') return null
+  return value as StoredEntry
+}
+
+/**
  * Look up a single entry by its logical entry ID within a type prefix.
  * Scan-and-filter — fine for v0.1 view sizes.
  */
-export async function getById(view: any, type: EntryType, id: string): Promise<any | null> {
+export async function getById(
+  view: View,
+  type: EntryType,
+  id: string,
+): Promise<StoredEntry | null> {
   const range = rangeFor(type)
   for await (const { value } of view.createReadStream(range)) {
-    if (value && value.id === id) return value
+    const entry = asStoredEntry(value)
+    if (entry && entry.id === id) return entry
   }
   return null
 }
@@ -170,13 +224,14 @@ export async function getById(view: any, type: EntryType, id: string): Promise<a
  * List all entries of a type whose `refs` array contains the given id.
  * Used by the task state reducer to gather a task's history.
  */
-export async function findRefs(view: any, type: EntryType, refId: string): Promise<any[]> {
+export async function findRefs(view: View, type: EntryType, refId: string): Promise<StoredEntry[]> {
   const range = rangeFor(type)
-  const out: any[] = []
+  const out: StoredEntry[] = []
   for await (const { value } of view.createReadStream(range)) {
-    if (!value) continue
-    if (value.id === refId) out.push(value)
-    else if (Array.isArray(value.refs) && value.refs.includes(refId)) out.push(value)
+    const entry = asStoredEntry(value)
+    if (!entry) continue
+    if (entry.id === refId) out.push(entry)
+    else if (Array.isArray(entry.refs) && entry.refs.includes(refId)) out.push(entry)
   }
   return out
 }
@@ -185,7 +240,7 @@ export async function findRefs(view: any, type: EntryType, refId: string): Promi
  * Look up an entry by ID across every entry type. Single full-prefix
  * scan; fine for v0.1 view sizes.
  */
-export async function getEntryById(view: any, id: string): Promise<any | null> {
+export async function getEntryById(view: View, id: string): Promise<StoredEntry | null> {
   for (const type of ENTRY_TYPES) {
     const found = await getById(view, type, id)
     if (found) return found
@@ -197,14 +252,15 @@ export async function getEntryById(view: any, id: string): Promise<any | null> {
  * List all entries that reference the given target id, via the
  * reverse-ref index written by apply.ts (`ref/<target>/<source>` keys).
  */
-export async function findReferencedBy(view: any, targetId: string): Promise<any[]> {
-  const out: any[] = []
+export async function findReferencedBy(view: View, targetId: string): Promise<StoredEntry[]> {
+  const out: StoredEntry[] = []
   const stream = view.createReadStream({
     gte: `ref/${targetId}/`,
     lt: `ref/${targetId}0`,
   })
   for await (const { value } of stream) {
-    if (value) out.push(value)
+    const entry = asStoredEntry(value)
+    if (entry) out.push(entry)
   }
   return out
 }

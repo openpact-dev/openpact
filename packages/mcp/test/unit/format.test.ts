@@ -15,10 +15,10 @@ test('summaryAndJson: prepends a one-line summary', (t) => {
 })
 
 test('errorContent: SDK errors render with code prefix and isError', (t) => {
-  const err = new TaskNotOpenError('lost claim race; current claimer anon-foo-1234')
+  const err = new TaskNotOpenError('lost claim race; current claimer anon-foo-12345678')
   const r = errorContent(err)
   t.is(r.isError, true)
-  t.is(r.content[0].text, 'TASK_NOT_OPEN: lost claim race; current claimer anon-foo-1234')
+  t.is(r.content[0].text, 'TASK_NOT_OPEN: lost claim race; current claimer anon-foo-12345678')
 })
 
 test('errorContent: non-SDK errors surface the message verbatim', (t) => {

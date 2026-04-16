@@ -3,7 +3,7 @@ import { randomInt } from 'crypto'
 /**
  * Themed defaults for interactive init/join. These back the
  * `openpact init` prompts so hitting enter gives something that
- * fits the brand voice instead of `anon-krait-7f2d`-style filler.
+ * fits the brand voice instead of `anon-krait-7f2d9999`-style filler.
  *
  * They are NOT deterministic — the deterministic peer handle in
  * `@openpact/daemon/peer-handle.ts` remains the canonical ID. These

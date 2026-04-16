@@ -5,7 +5,7 @@ import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
 import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
-const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{4}$'
+const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{8}$'
 
 const messagePayloadSchema = {
   type: 'object',
@@ -51,9 +51,11 @@ export default async function messagesRoute(
           order,
           limit,
           cursor: cursor ?? null,
-          filter: (v) => {
-            if (since && v?.timestamp <= since) return false
-            if (to && v?.payload?.to !== to) return false
+          filter: (v: unknown) => {
+            const entry = v as { timestamp?: string; payload?: { to?: unknown } } | null
+            if (since && typeof entry?.timestamp === 'string' && entry.timestamp <= since)
+              return false
+            if (to && entry?.payload?.to !== to) return false
             return true
           },
         })

@@ -1,7 +1,7 @@
 import test from 'brittle'
 import { validate, MAX_PAYLOAD_BYTES } from '../../src/schemas'
 
-const validHandle = 'anon-krait-7f2d'
+const validHandle = 'anon-krait-7f2d9999'
 const ts = '2026-04-14T10:30:00.000Z'
 
 function base(type: string, payload: unknown): Record<string, unknown> {
@@ -84,7 +84,7 @@ test('message: broadcast passes', (t) => {
 })
 
 test('message: direct passes', (t) => {
-  const r = validate(base('message', { to: 'anon-cobra-3e91', content: 'hi' }))
+  const r = validate(base('message', { to: 'anon-cobra-3e910000', content: 'hi' }))
   t.is(r.valid, true)
 })
 

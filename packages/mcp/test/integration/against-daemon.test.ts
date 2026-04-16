@@ -91,7 +91,7 @@ test('MCP end-to-end: record_knowledge then recall_knowledge round-trips', async
     content: 'use the resolver factory',
   })
   const summary = textOf(created)
-  t.ok(/^Recorded knowledge entry [0-9a-f]{4}-\d+/.test(summary))
+  t.ok(/^Recorded knowledge entry [0-9a-f]{8}-\d+/.test(summary))
 
   const list = await waitFor(
     async () => {

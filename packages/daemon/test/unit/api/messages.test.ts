@@ -24,7 +24,7 @@ test('POST /v1/messages: direct to handle passes', async (t) => {
   const res = await app.inject({
     method: 'POST',
     url: '/v1/pacts/default/messages',
-    payload: { to: 'anon-cobra-3e91', content: 'hi' },
+    payload: { to: 'anon-cobra-3e910000', content: 'hi' },
   })
   t.is(res.statusCode, 200)
 })
@@ -82,14 +82,14 @@ test('GET /v1/messages: filter by recipient', async (t) => {
   await app.inject({
     method: 'POST',
     url: '/v1/pacts/default/messages',
-    payload: { to: 'anon-cobra-3e91', content: 'direct' },
+    payload: { to: 'anon-cobra-3e910000', content: 'direct' },
   })
   await daemon.update()
   await daemon.waitForViewVersion(2, { timeout: 2000 })
 
   const res = await app.inject({
     method: 'GET',
-    url: '/v1/pacts/default/messages?to=anon-cobra-3e91',
+    url: '/v1/pacts/default/messages?to=anon-cobra-3e910000',
   })
   const body = JSON.parse(res.body)
   t.is(body.entries.length, 1)

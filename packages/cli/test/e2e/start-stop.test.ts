@@ -73,8 +73,15 @@ test('start binds on an empty data dir (no pacts yet)', async (t) => {
   })
 
   // Daemon answers REST calls; /v1/pacts returns an empty registry.
+  // The route is auth-protected (Phase 1b) so the test reads the
+  // bearer token that the daemon persisted during start.
   await new Promise((r) => setTimeout(r, 600))
-  const res = await fetch(`http://127.0.0.1:${port}/v1/pacts`)
+  const daemonCfg = JSON.parse(await fs.readFile(`${home}/daemon.json`, 'utf8')) as {
+    apiToken: string
+  }
+  const res = await fetch(`http://127.0.0.1:${port}/v1/pacts`, {
+    headers: { authorization: `Bearer ${daemonCfg.apiToken}` },
+  })
   t.is(res.status, 200)
   const body = (await res.json()) as { pacts: unknown[]; current: string | null }
   t.alike(body.pacts, [])

@@ -13,8 +13,8 @@
 import test from 'brittle'
 import { reduceTaskHistory, type TaskEntry } from '../../../src/api/tasks-state'
 
-const ALICE = 'anon-alice-0001'
-const BOB = 'anon-bob-0002'
+const ALICE = 'anon-alice-00010000'
+const BOB = 'anon-bob-00020000'
 
 // Pin the wall-clock close to the entry timestamps below so the
 // post-reduction wall-clock TTL check (default 24h) never fires
@@ -117,4 +117,34 @@ test('after release, anyone can re-claim', (t) => {
   const claim2 = update('a000-4', BOB, { title: 'do it', status: 'claimed', claimed_by: BOB })
   const s = REDUCE([ORIG, claim1, release, claim2])!
   t.is(s.claimed_by, BOB)
+})
+
+test('claim uses writer-bound agent_id, not payload.claimed_by', (t) => {
+  // Reducer must trust only `agent_id` (which apply has already verified
+  // matches the writer key). A forged `claimed_by` in the payload is
+  // ignored for the `claimed_by` state field.
+  const claim = update('a000-2', ALICE, {
+    title: 'do it',
+    status: 'claimed',
+    claimed_by: BOB, // payload tries to claim on Bob's behalf
+  })
+  const s = REDUCE([ORIG, claim])!
+  t.is(s.status, 'claimed')
+  t.is(s.claimed_by, ALICE, 'claimed_by tracks the writer, not the payload')
+})
+
+test('complete rejected when agent_id does not match claimed_by', (t) => {
+  // With agent_id now bound to the writer key in apply(), Bob cannot
+  // forge a complete for a task Alice has claimed.
+  const claim = update('a000-2', ALICE, { title: 'do it', status: 'claimed', claimed_by: ALICE })
+  const forged = update('a000-3', BOB, {
+    title: 'do it',
+    status: 'complete',
+    claimed_by: ALICE, // Bob tries to look like he's completing Alice's claim
+    result: 'forged',
+  })
+  const s = REDUCE([ORIG, claim, forged])!
+  t.is(s.status, 'claimed', 'forged complete ignored')
+  t.is(s.claimed_by, ALICE)
+  t.is(s.result, null)
 })

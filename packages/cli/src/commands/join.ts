@@ -1,63 +1,25 @@
-import { type GlobalCliOpts } from '../lib/data-dir'
-import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
+import { invites as inviteCodec, type InviteTokenPayload } from '@openpact/daemon'
+import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
+import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji } from '../lib/theme'
 import { askText } from '../lib/prompt'
 import { suggestDisplayName } from '../lib/themes'
 import { startCmd } from './start'
 
-/**
- * Lightweight token decoder — mirrors the daemon's invites.ts. Kept
- * local so the CLI can surface pact name and expiry before it even
- * talks to the daemon.
- */
-interface Decoded {
-  pactId: string
-  nonce: string
-  expiresAt: string
-  pactName: string | null
-  pactPurpose: string | null
-  issuerDisplay: string | null
-}
+// Phase 2d: the CLI used to carry its own copy of decodeToken. Both
+// copies drifting independently is a correctness footgun — e.g. pre-
+// flight here accepting `v:2` tokens the daemon would reject. We now
+// import the canonical decoder from `@openpact/daemon` so the pre-flight
+// validation matches exactly what the daemon will later accept on
+// redeem. We only wrap it here to turn `InviteDecodeError` into a plain
+// Error message for the user.
+type Decoded = InviteTokenPayload
 
 function decodeToken(token: string): Decoded {
-  if (typeof token !== 'string' || token.length === 0) {
-    throw new Error('empty token')
-  }
-  let json: string
   try {
-    json = Buffer.from(token, 'base64url').toString('utf8')
-  } catch {
-    throw new Error('token is not valid base64url')
-  }
-  let obj: unknown
-  try {
-    obj = JSON.parse(json)
-  } catch {
-    throw new Error('token payload is not valid JSON')
-  }
-  if (!obj || typeof obj !== 'object') {
-    throw new Error('token payload must be a JSON object')
-  }
-  const p = obj as Partial<Decoded> & { v?: number }
-  if (p.v !== 1) {
-    throw new Error(`unsupported token version: ${String(p.v)}`)
-  }
-  if (typeof p.pactId !== 'string' || !/^[0-9a-f]{64}$/i.test(p.pactId)) {
-    throw new Error('token.pactId is missing or not 64-hex')
-  }
-  if (typeof p.nonce !== 'string' || !/^[0-9a-f]{48}$/i.test(p.nonce)) {
-    throw new Error('token.nonce is missing or not 48-hex')
-  }
-  if (typeof p.expiresAt !== 'string' || Number.isNaN(Date.parse(p.expiresAt))) {
-    throw new Error('token.expiresAt is missing or not an ISO timestamp')
-  }
-  return {
-    pactId: p.pactId,
-    nonce: p.nonce,
-    expiresAt: p.expiresAt,
-    pactName: typeof p.pactName === 'string' ? p.pactName : null,
-    pactPurpose: typeof p.pactPurpose === 'string' ? p.pactPurpose : null,
-    issuerDisplay: typeof p.issuerDisplay === 'string' ? p.issuerDisplay : null,
+    return inviteCodec.decodeToken(token)
+  } catch (err) {
+    throw new Error((err as Error).message)
   }
 }
 
@@ -103,12 +65,13 @@ export async function joinCmd(
 
   const apiPort = Number(opts.port ?? 7666)
   const timeoutMs = Number(opts.timeout ?? 30) * 1000
+  const dir = resolveDataDir(cmd.optsWithGlobals())
 
   // Ping before prompting so we auto-start without the user first
   // typing an agent name into a dead daemon.
-  const hostApi = new ApiClient({ port: apiPort })
+  const hostClient = new OpenPact({ port: apiPort, hostDir: dir })
   try {
-    await hostApi.ping()
+    await hostClient.ping()
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
       process.stderr.write(c.ash('  daemon not running, summoning one…\n'))
@@ -116,7 +79,7 @@ export async function joinCmd(
         { port: opts.port, dashboard: opts.dashboard, dashboardPort: opts.dashboardPort },
         cmd,
       )
-      await hostApi.ping() // startCmd already waited for ready; this just surfaces a clean error if something went sideways
+      await hostClient.ping() // startCmd already waited for ready; this just surfaces a clean error if something went sideways
     } else {
       throw err
     }
@@ -137,7 +100,8 @@ export async function joinCmd(
   // 1. Join the pact using the pactId extracted from the token.
   let joined: { alias: string; pact_id: string }
   try {
-    const res = await hostApi.joinPact(decoded.pactId, {
+    const res = await hostClient.pacts.join({
+      key: decoded.pactId,
       alias: chosenAlias,
       display_name: displayName,
       pact_name: decoded.pactName,
@@ -163,10 +127,10 @@ export async function joinCmd(
     process.stderr.write(c.ash(`  Alias   ${joined.alias}\n`))
   }
 
-  const pactApi = new ApiClient({ port: apiPort, pactId: joined.alias })
+  const pactClient = new OpenPact({ port: apiPort, pactId: joined.alias, hostDir: dir })
 
   // 2. Find our own member key.
-  const status = await pactApi.status()
+  const status = await pactClient.status()
   const memberKey = status.public_key as string
 
   // 3. Wait for at least one online peer in this pact, then redeem.
@@ -175,10 +139,10 @@ export async function joinCmd(
   const deadline = Date.now() + timeoutMs
   let lastErr: unknown = null
   while (Date.now() < deadline) {
-    const status = await pactApi.status().catch(() => null)
+    const status = await pactClient.status().catch(() => null)
     if ((status?.peers ?? 0) > 0) {
       try {
-        await pactApi.redeemInvite(tokenArg, memberKey)
+        await pactClient.invites.redeem(tokenArg, memberKey)
         lastErr = null
         break
       } catch (err) {
@@ -204,11 +168,11 @@ export async function joinCmd(
   // 4. Wait for the membership grant to confirm on our frontier.
   const memberDeadline = Date.now() + timeoutMs
   while (Date.now() < memberDeadline) {
-    const s = await pactApi.status()
+    const s = await pactClient.status()
     if (s.is_member === true) break
     await new Promise((r) => setTimeout(r, 250))
   }
-  const finalStatus = await pactApi.status()
+  const finalStatus = await pactClient.status()
 
   if (process.stdout.isTTY) {
     process.stderr.write('\n')

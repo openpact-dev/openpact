@@ -256,7 +256,7 @@ This is the heart of the project. Get this right before touching anything else.
   - [x] `validation.test.ts` — every entry type: valid sample passes; each field omission rejects; type coercion attempts rejected; oversize payload (>64KB) rejected
   - [x] `apply.test.ts` — accepts valid entry; rejects malformed; `admin` `addWriter` calls `host.addWriter`; `admin` from non-indexer is ignored; entry ordering by timestamp+core
   - [x] `entry-id.test.ts` — round-trip encode/decode; collision unlikely (property test with `fast-check`)
-  - [x] `peer-handle.test.ts` — derived deterministically from public key; matches `anon-<word>-<4hex>` regex
+  - [x] `peer-handle.test.ts` — derived deterministically from public key; matches `anon-<word>-<8hex>` regex
   - [x] `config.test.ts` — load/save `~/.openpact/config.json`; missing file → defaults; corrupted file → clear error
 - [x] **Integration** (`packages/daemon/test/integration/`):
   - [x] `replication.test.ts` — `pair()` fixture; A appends knowledge, B's view contains it within timeout
@@ -923,7 +923,7 @@ The dashboard opens a single EventSource connection. The daemon pushes events as
 
 ```
 event: entry
-data: {"type":"knowledge","id":"a7f2-543","topic":"sales","timestamp":"..."}
+data: {"type":"knowledge","id":"a7f2bcde-543","topic":"sales","timestamp":"..."}
 
 event: peer-add
 data: {"remoteKey":"3e91..."}
@@ -1534,8 +1534,8 @@ matrix; one slot is enough for the v0.1 surface.
 
 - CLI commands: `openpact <verb>` (init, join, start, stop, status, invite, peers, log, list, switch, rename, remove, dashboard). Per-pact verbs accept `--pact <alias>`.
 - API routes: host-level `/v1/<resource>` (ping, events, pacts); per-pact `/v1/pacts/:pactId/<resource>` (knowledge, tasks, skills, messages, peers, status, entries, admin, pact, me)
-- Entry IDs: `<core_short_id>-<sequence_number>` (e.g. `a7f2-412`)
-- Peer handles: `anon-<word>-<4hex>` derived from public key (e.g. `anon-krait-7f2d`)
+- Entry IDs: `<core_short_id>-<sequence_number>` (e.g. `a7f2bcde-412`)
+- Peer handles: `anon-<word>-<8hex>` derived from public key (e.g. `anon-krait-7f2d9999`)
 - Test files: `*.test.ts` (or `*.spec.ts` for Playwright UI tests)
 - Test helpers: `packages/*/test/helpers/`
 
@@ -1545,7 +1545,7 @@ All API errors return:
 ```json
 {
   "error": "TASK_ALREADY_CLAIMED",
-  "message": "Task a7f2-89 is already claimed by anon-cobra-3e91",
+  "message": "Task a7f2bcde-89 is already claimed by anon-cobra-3e91",
   "status": 409
 }
 ```

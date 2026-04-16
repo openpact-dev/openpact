@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/openpact-logo-512.png">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/openpact-logo-light-512.png">
-    <img alt="OpenPact" src="docs/assets/openpact-logo-512.png" width="220">
+    <img alt="OpenPact" src="docs/assets/openpact-logo.svg" width="220">
   </picture>
 </p>
 
@@ -339,6 +339,45 @@ POST /admin/remove           body { key, confirm: true }
 ```
 
 List endpoints share `{ entries, cursor, has_more }` with `order`, `limit`, and `cursor` query parameters. Full reference at [openpact.dev/docs/rest-api](https://openpact.dev/docs/rest-api/).
+
+## Security model
+
+OpenPact is designed to be safe to run on a developer laptop or a shared seed host. The defaults are conservative; pay attention to this section before you expose anything.
+
+### Local attack surface
+
+- **REST binds `127.0.0.1` only**, never `0.0.0.0`. Use a VPN/WireGuard or `ssh -L` forward if you need to reach it from another host; never publish port 7666 to the public internet.
+- **Every request is bearer-authenticated.** On first boot the daemon mints a random 256-bit token and persists it to `<dataDir>/daemon.json` with mode `0600`. The SDK, CLI, MCP server, and shell examples all read the token straight from disk. Treat the file like an SSH private key — anyone who can read it can drive the daemon.
+- **Host + Origin are both checked.** The auth hook rejects requests whose `Host` header isn't a loopback address (DNS-rebinding shield) and whose `Origin`, if present, doesn't match the same loopback host (cross-origin browser shield).
+- **Rate-limited per IP.** 3000 req/min by default; SSE and the health probes are exempt so they can't be starved by runaway scripts.
+- **Body size is bounded.** Fastify `bodyLimit` caps HTTP payloads at 128KiB, and `Pact.append` re-validates against a 64KiB per-entry limit before anything reaches Autobase.
+- **Destructive endpoints require a typed confirmation** (`DELETE /v1/pacts/:pactId` wants `{ confirm: "<alias>" }`, `/v1/pacts/switch` wants `{ confirm: "<alias>" }`). There's no "soft" destruction path.
+
+### Peer identity and membership
+
+- Every entry carries `agent_id`, which is bound to the writer's public key inside Autobase's `apply()`. A member cannot spoof another member's `agent_id`, and the `tasks-state` reducer trusts `agent_id` with no `claimed_by` fallback.
+- New peers join by redeeming a one-time, time-limited invite token. `{v, pactId, nonce, expiresAt, ...}` base64url-encoded; single-use is enforced by the `_invites/<nonce>` view key so double-redemption is a no-op.
+- A creator can revoke an unspent nonce (`openpact invite --revoke <nonce>`) or remove an already-admitted member (`openpact remove-member <key>`); both changes propagate through `apply()` and cut off future replication.
+- Skills are content-addressed: the daemon verifies `sha256("openpact-skill-content:v1\n" || content)` on POST and on every `GET /:id/content`. Installs are user-approved, never automatic.
+
+### What replicates and what doesn't
+
+- Autobase replicates only what `apply()` decides is valid. Invalid entries from a peer are dropped silently and never land in the shared view.
+- Membership changes are Autobase entries too — removing a member stops further writes from them immediately on every indexer once the removal is applied.
+- The bearer token, pact keypair, PID file, and any installed skill content live under `<dataDir>` and **never** leave the host.
+- There is no "central server" that can see your traffic or silently rotate keys. Hyperswarm streams are encrypted end-to-end; bootstrap nodes only see that two peers are interested in a topic.
+
+### Observability
+
+- `GET /v1/healthz` (auth-exempt, rate-limit-exempt) — liveness.
+- `GET /v1/readyz` (auth-exempt, rate-limit-exempt) — readiness (`pact_count >= 1`).
+- `GET /v1/metrics` (bearer-gated) — Prometheus text, including `openpact_sse_backpressure_closes_total`, per-pact view heights, and indexer flags.
+
+See [`examples/seed`](examples/seed) for ready-to-use Docker, systemd, and launchd deployment recipes that wire these probes in.
+
+### Reporting issues
+
+Security issues that need coordinated disclosure: email `security@openpact.dev` with a PoC, impact assessment, and a preferred handle. Non-security bugs go to [the issue tracker](https://github.com/openpact-dev/openpact/issues).
 
 ## Documentation
 

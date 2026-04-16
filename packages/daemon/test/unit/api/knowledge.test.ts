@@ -14,7 +14,7 @@ test('POST /v1/knowledge: happy path', async (t) => {
   })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(body.id), 'id matches entry-id format')
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(body.id), 'id matches entry-id format')
   t.ok(typeof body.timestamp === 'string')
 })
 

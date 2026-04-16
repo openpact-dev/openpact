@@ -63,7 +63,7 @@ test('record.sh + recall.sh round-trip', async (t) => {
   const created = JSON.parse(
     await sh(base, 'record.sh', 'routing', 'use the resolver factory', '0.9'),
   )
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(created.id))
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(created.id))
 
   const list = await waitFor(
     async () => sh(base, 'recall.sh', 'routing'),
@@ -93,7 +93,7 @@ test('tasks.sh: create → list → claim → complete', async (t) => {
 test('send.sh broadcasts a message', async (t) => {
   const { base } = await bootDaemon(t)
   const sent = JSON.parse(await sh(base, 'send.sh', '*', 'hello from shell'))
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(sent.id))
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(sent.id))
 
   await waitFor(
     async () => {

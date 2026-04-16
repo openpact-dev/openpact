@@ -1,5 +1,11 @@
 import test from 'brittle'
-import { OpenPact, TaskNotOpenError, NotFoundError, BadRequestError } from '../../src'
+import {
+  OpenPact,
+  TaskNotOpenError,
+  NotFoundError,
+  BadRequestError,
+  computeSkillChecksum,
+} from '../../src'
 import { Daemon, createApi, bind } from '@openpact/daemon'
 import fs from 'fs/promises'
 import os from 'os'
@@ -44,7 +50,7 @@ test('SDK end-to-end: knowledge create + list', async (t) => {
     content: 'Tuesdays convert better',
     confidence: 0.8,
   })
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(id))
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(id))
 
   // Wait for the apply to land in the view.
   const deadline = Date.now() + 2000
@@ -89,8 +95,7 @@ test('SDK end-to-end: tasks.get on unknown id throws NotFoundError', async (t) =
 test('SDK end-to-end: skills create + getContent', async (t) => {
   const { pact } = await tmpDaemonWithApi(t)
   const content = 'real content'
-  const { createHash } = await import('crypto')
-  const checksum = 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  const checksum = await computeSkillChecksum(content)
   const { id } = await pact.skills.create({
     name: 'scraper',
     version: '1.0.0',

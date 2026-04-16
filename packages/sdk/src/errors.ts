@@ -1,6 +1,8 @@
 // Error class hierarchy. Every server error code maps to a typed subclass
 // so callers can `instanceof`-check rather than string-match.
 
+import { ERROR_CODES } from './error-codes'
+
 export class OpenPactError extends Error {
   status?: number
   code?: string
@@ -185,6 +187,65 @@ export class DaemonError extends OpenPactError {
 }
 
 /**
+ * Daemon refused the bearer token (missing, wrong, or the preHandler
+ * mapped a Host/Origin mismatch to 403 FORBIDDEN_*). CLI surfaces this
+ * as "your token is wrong — check ~/.openpact/daemon.json".
+ */
+export class UnauthorizedError extends OpenPactError {
+  constructor(
+    message: string,
+    code: 'UNAUTHORIZED' | 'FORBIDDEN_HOST' | 'FORBIDDEN_ORIGIN' = 'UNAUTHORIZED',
+  ) {
+    super(message, { status: code === 'UNAUTHORIZED' ? 401 : 403, code })
+    this.name = 'UnauthorizedError'
+  }
+}
+
+/**
+ * Pre-append validation failure — schema shape wrong, type unknown, or
+ * payload > MAX_PAYLOAD_BYTES. Fires before the local Hypercore grows.
+ */
+export class BadEntryError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 400, code: 'BAD_ENTRY' })
+    this.name = 'BadEntryError'
+  }
+}
+
+/** Body > bodyLimit, or payload > MAX_PAYLOAD_BYTES. */
+export class PayloadTooLargeError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 413, code: 'PAYLOAD_TOO_LARGE' })
+    this.name = 'PayloadTooLargeError'
+  }
+}
+
+/**
+ * Caller-side write succeeded (local Hypercore appended) but the
+ * daemon's Autobase view didn't surface the entry within the wait
+ * window. Typically recoverable: retry, or re-read the task state
+ * after the SSE update tick.
+ */
+export class ViewTimeoutError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 504, code: 'VIEW_TIMEOUT' })
+    this.name = 'ViewTimeoutError'
+  }
+}
+
+/**
+ * Daemon has applied its per-IP rate limit. Surface to SDK callers
+ * so they can back off — the envelope's message includes a
+ * `retry in <n>s` hint from the daemon.
+ */
+export class RateLimitedError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 429, code: 'RATE_LIMITED' })
+    this.name = 'RateLimitedError'
+  }
+}
+
+/**
  * Map a daemon error envelope to a typed error subclass. Falls back to the
  * generic DaemonError for unknown codes so forward-compat additions don't
  * crash older SDK versions.
@@ -194,54 +255,69 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
   const code = envelope.error ?? 'UNKNOWN'
   const message = envelope.message ?? `HTTP ${status}`
   switch (code) {
-    case 'BAD_REQUEST':
+    case ERROR_CODES.BAD_REQUEST:
       return new BadRequestError(message)
-    case 'BAD_CURSOR':
+    case ERROR_CODES.BAD_CURSOR:
       return new BadCursorError(message)
-    case 'NOT_FOUND':
+    case ERROR_CODES.NOT_FOUND:
+    case ERROR_CODES.UNKNOWN_PACT:
       return new NotFoundError(message)
-    case 'TASK_NOT_OPEN':
+    case ERROR_CODES.UNAUTHORIZED:
+      return new UnauthorizedError(message, 'UNAUTHORIZED')
+    case ERROR_CODES.FORBIDDEN_HOST:
+      return new UnauthorizedError(message, 'FORBIDDEN_HOST')
+    case ERROR_CODES.FORBIDDEN_ORIGIN:
+      return new UnauthorizedError(message, 'FORBIDDEN_ORIGIN')
+    case ERROR_CODES.BAD_ENTRY:
+      return new BadEntryError(message)
+    case ERROR_CODES.PAYLOAD_TOO_LARGE:
+      return new PayloadTooLargeError(message)
+    case ERROR_CODES.TASK_NOT_OPEN:
       return new TaskNotOpenError(message)
-    case 'TASK_ALREADY_CLAIMED':
+    case ERROR_CODES.TASK_ALREADY_CLAIMED:
       return new TaskAlreadyClaimedError(message)
-    case 'TASK_ALREADY_COMPLETE':
+    case ERROR_CODES.TASK_ALREADY_COMPLETE:
       return new TaskAlreadyCompleteError(message)
-    case 'NOT_CLAIMER':
+    case ERROR_CODES.NOT_CLAIMER:
       return new NotClaimerError(message)
-    case 'NOT_CLAIMED':
+    case ERROR_CODES.NOT_CLAIMED:
       return new NotClaimedError(message)
-    case 'NOT_A_MEMBER':
+    case ERROR_CODES.NOT_A_MEMBER:
       return new NotAMemberError(message)
-    case 'SKILL_CHECKSUM_MISMATCH':
+    case ERROR_CODES.SKILL_CHECKSUM_MISMATCH:
       return new SkillChecksumMismatchError(message, status)
-    case 'NOT_INDEXER':
+    case ERROR_CODES.NOT_INDEXER:
       return new NotIndexerError(message)
-    case 'BAD_SKILL_NAME':
+    case ERROR_CODES.BAD_SKILL_NAME:
       return new BadSkillNameError(message)
-    case 'NOT_CONFIRMED':
+    case ERROR_CODES.NOT_CONFIRMED:
       return new NotConfirmedError(message)
-    case 'NOT_CREATOR':
+    case ERROR_CODES.NOT_CREATOR:
       return new NotCreatorError(message)
-    case 'INVITE_BAD_SHAPE':
+    case ERROR_CODES.INVITE_BAD_SHAPE:
       return new InviteBadShapeError(message)
-    case 'INVITE_WRONG_PACT':
+    case ERROR_CODES.INVITE_WRONG_PACT:
       return new InviteWrongPactError(message)
-    case 'UNKNOWN_INVITE':
+    case ERROR_CODES.UNKNOWN_INVITE:
       return new UnknownInviteError(message)
-    case 'INVITE_REVOKED':
+    case ERROR_CODES.INVITE_REVOKED:
       return new InviteRevokedError(message)
-    case 'INVITE_SPENT':
+    case ERROR_CODES.INVITE_SPENT:
       return new InviteSpentError(message)
-    case 'INVITE_NOT_INDEXER':
+    case ERROR_CODES.INVITE_NOT_INDEXER:
       return new InviteNotIndexerError(message)
-    case 'INVITE_EXPIRED':
+    case ERROR_CODES.INVITE_EXPIRED:
       return new InviteExpiredError(message)
-    case 'NO_PEERS':
+    case ERROR_CODES.NO_PEERS:
       return new NoIndexerReachableError(message, 'NO_PEERS')
-    case 'NO_INDEXER_REACHABLE':
-    case 'PEER_DISCONNECTED':
+    case ERROR_CODES.NO_INDEXER_REACHABLE:
+    case ERROR_CODES.PEER_DISCONNECTED:
       return new NoIndexerReachableError(message)
-    case 'INTERNAL':
+    case ERROR_CODES.VIEW_TIMEOUT:
+      return new ViewTimeoutError(message)
+    case ERROR_CODES.RATE_LIMITED:
+      return new RateLimitedError(message)
+    case ERROR_CODES.INTERNAL:
       return new DaemonError(message, status, code)
     default:
       return new DaemonError(message, status, code)

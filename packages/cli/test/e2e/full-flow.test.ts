@@ -1,7 +1,7 @@
 import test from 'brittle'
 import createTestnet from 'hyperdht/testnet'
 import net from 'net'
-import { tmpHome, runCli } from './helpers/run-cli'
+import { tmpHome, runCli, authHeaders } from './helpers/run-cli'
 import { readPidFile, isAlive } from '../../src/lib/pid'
 
 async function ensureKilled(pid: number | null) {
@@ -116,8 +116,11 @@ test(
       peer_handle: '',
     }
     const bDeadline = Date.now() + 5000
+    const headersB = await authHeaders(homeB)
     while (Date.now() < bDeadline) {
-      const bStatusRes = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`)
+      const bStatusRes = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`, {
+        headers: headersB,
+      })
       bStatus = (await bStatusRes.json()) as { public_key: string; peer_handle: string }
       if (bStatus.public_key && /^[0-9a-f]{64}$/.test(bStatus.public_key)) break
       await new Promise((r) => setTimeout(r, 100))
@@ -127,9 +130,10 @@ test(
     // The redeem path should have already formed the live swarm connection.
     const peersDeadline = Date.now() + 15_000
     let aPeers: number = 0
+    const headersA = await authHeaders(homeA)
     while (Date.now() < peersDeadline) {
       const aStatus = (await (
-        await fetch(`http://127.0.0.1:${portA}/v1/pacts/default/status`)
+        await fetch(`http://127.0.0.1:${portA}/v1/pacts/default/status`, { headers: headersA })
       ).json()) as {
         peers: number
       }
@@ -145,7 +149,7 @@ test(
     let bIsMember = false
     while (Date.now() < writableDeadline) {
       const bs = (await (
-        await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`)
+        await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/status`, { headers: headersB })
       ).json()) as {
         is_member: boolean
       }
@@ -159,7 +163,7 @@ test(
 
     const post = await fetch(`http://127.0.0.1:${portB}/v1/pacts/default/knowledge`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { ...headersB, 'content-type': 'application/json' },
       body: JSON.stringify({ topic: 'two-daemon', content: 'B wrote this; A should see it' }),
     })
     t.is(post.status, 200, 'B POST succeeded')

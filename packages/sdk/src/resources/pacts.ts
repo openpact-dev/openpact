@@ -47,6 +47,7 @@ export function pactsResource(client: OpenPactClient) {
       pact_name: string | null
       pact_purpose: string | null
       display_name: string | null
+      peer_handle: string | null
       role: string
     }> {
       return client.json('/v1/pacts', 'POST', { ...body, confirm: true })
@@ -62,9 +63,15 @@ export function pactsResource(client: OpenPactClient) {
     }> {
       return client.json('/v1/pacts/join', 'POST', { ...body, confirm: true })
     },
-    /** POST /v1/pacts/switch — set which pact is "current" on this host. */
+    /**
+     * POST /v1/pacts/switch — set which pact is "current" on this host.
+     *
+     * The daemon now requires a typed confirmation (echo the alias in
+     * `confirm`). The SDK always provides it so regular consumers don't
+     * need to care; it exists to catch scripted typos on the wire.
+     */
     switch(alias: string): Promise<{ ok: true; current: string }> {
-      return client.json('/v1/pacts/switch', 'POST', { alias })
+      return client.json('/v1/pacts/switch', 'POST', { alias, confirm: alias })
     },
     /** PUT /v1/pacts/:pactId/alias — rename a pact's local alias (pact_id unchanged). */
     rename(
@@ -75,12 +82,21 @@ export function pactsResource(client: OpenPactClient) {
         alias: newAlias,
       })
     },
-    /** DELETE /v1/pacts/:pactId — leave a pact and delete its data (destructive). */
-    remove(alias: string): Promise<{ ok: true; removed: { alias: string; pact_id: string } }> {
+    /**
+     * DELETE /v1/pacts/:pactId — leave a pact and delete its data (destructive).
+     *
+     * The daemon demands `confirm` equal the alias (or 64-hex pact_id) in
+     * the URL as typed confirmation — a boolean is no longer accepted.
+     * The SDK echoes whatever identifier the caller passed so the two
+     * always line up.
+     */
+    remove(
+      aliasOrPactId: string,
+    ): Promise<{ ok: true; removed: { alias: string; pact_id: string } }> {
       return client.json<{ ok: true; removed: { alias: string; pact_id: string } }>(
-        `/v1/pacts/${encodeURIComponent(alias)}`,
+        `/v1/pacts/${encodeURIComponent(aliasOrPactId)}`,
         'DELETE',
-        { confirm: true },
+        { confirm: aliasOrPactId },
       )
     },
   }

@@ -86,7 +86,7 @@ export class InviteDecodeError extends Error {
 export type RedeemErrorCode =
   | 'INVITE_BAD_SHAPE'
   | 'INVITE_WRONG_PACT'
-  | 'INVITE_UNKNOWN'
+  | 'UNKNOWN_INVITE'
   | 'INVITE_EXPIRED'
   | 'INVITE_REVOKED'
   | 'INVITE_SPENT'

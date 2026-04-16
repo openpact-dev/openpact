@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  examples/seed/launchd/com.openpact.daemon.plist
+
+  A launchd job description for running the OpenPact seed daemon on
+  macOS. Install to /Library/LaunchDaemons/ (system-wide, runs at
+  boot) or ~/Library/LaunchAgents/ (per-user, runs at login).
+
+  Install (system-wide):
+      sudo cp com.openpact.daemon.plist /Library/LaunchDaemons/
+      sudo launchctl bootstrap system \
+          /Library/LaunchDaemons/com.openpact.daemon.plist
+
+  Unload:
+      sudo launchctl bootout \
+          system/com.openpact.daemon
+
+  The plist uses /usr/local paths, which fits the default Homebrew
+  layout on Intel Macs. Adjust for Apple-silicon Homebrew
+  (/opt/homebrew) or your own npm install path.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.openpact.daemon</string>
+
+    <!-- Absolute paths; launchd does not honour $PATH. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/openpact</string>
+        <string>start</string>
+        <string>--foreground</string>
+        <string>--no-dashboard</string>
+        <string>--data-dir</string>
+        <string>/usr/local/var/openpact</string>
+        <string>--log-file</string>
+        <string>-</string>
+    </array>
+
+    <!-- Run at boot and keep alive. ThrottleInterval prevents a
+         broken build from hammering the CPU via restart loops. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>UserName</key>
+    <string>_openpact</string>
+    <key>GroupName</key>
+    <string>_openpact</string>
+
+    <key>WorkingDirectory</key>
+    <string>/usr/local/var/openpact</string>
+
+    <!-- stdout + stderr go to log files that launchd won't rotate on
+         its own; use newsyslog or a periodic job if you need rotation. -->
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/openpact/daemon.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/openpact/daemon.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin</string>
+        <key>OPENPACT_DATA_DIR</key>
+        <string>/usr/local/var/openpact</string>
+        <key>NODE_ENV</key>
+        <string>production</string>
+    </dict>
+
+    <!-- Raise the default FD budget; hyperswarm + SSE pile them up. -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>65536</integer>
+    </dict>
+    <key>HardResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>65536</integer>
+    </dict>
+
+    <!-- Send SIGINT (not SIGTERM) on `launchctl kickstart -k` so the
+         daemon's clean-shutdown path fires. -->
+    <key>AbandonProcessGroup</key>
+    <false/>
+</dict>
+</plist>

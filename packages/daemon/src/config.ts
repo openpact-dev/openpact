@@ -1,7 +1,13 @@
 import fs from 'fs/promises'
+import crypto from 'crypto'
 import { daemonConfigPath, pactConfigPath, pactConfigDir, pactsRoot } from './data-dir'
 
 export const DEFAULT_PORT = 7666
+
+/** 32 random bytes, hex-encoded. */
+export const API_TOKEN_BYTES = 32
+const API_TOKEN_HEX_LEN = API_TOKEN_BYTES * 2
+const API_TOKEN_RE = new RegExp(`^[0-9a-f]{${API_TOKEN_HEX_LEN}}$`)
 
 export const ROLES = ['creator', 'indexer', 'member'] as const
 export type Role = (typeof ROLES)[number]
@@ -105,10 +111,17 @@ export interface DaemonConfig {
   pacts: PactRegistryEntry[]
   /** Alias of the "current" pact — the one that /v1/pacts/current resolves to. */
   currentAlias: string | null
+  /**
+   * Bearer token required on every mutating REST request. Generated on
+   * first start and persisted in `~/.openpact/daemon.json` with mode
+   * 0600 on POSIX. `null` means "not yet generated" (legacy config);
+   * `ensureApiToken` will mint one and rewrite the file.
+   */
+  apiToken: string | null
 }
 
 export function daemonDefaults(): DaemonConfig {
-  return { port: DEFAULT_PORT, pacts: [], currentAlias: null }
+  return { port: DEFAULT_PORT, pacts: [], currentAlias: null, apiToken: null }
 }
 
 export async function loadDaemonConfig(hostDir: string): Promise<DaemonConfig> {
@@ -137,8 +150,50 @@ export async function saveDaemonConfig(hostDir: string, config: DaemonConfig): P
   await fs.mkdir(hostDir, { recursive: true })
   const file = daemonConfigPath(hostDir)
   const tmp = file + '.tmp'
-  await fs.writeFile(tmp, JSON.stringify(config, null, 2) + '\n', 'utf8')
+  // mode 0600 so only the daemon's user can read the api token. No-op
+  // on Windows; POSIX uses this to keep other local accounts out.
+  await fs.writeFile(tmp, JSON.stringify(config, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 })
   await fs.rename(tmp, file)
+}
+
+/**
+ * Return a random hex token suitable for the daemon's `apiToken` field.
+ * Exported so tests and e.g. a future `openpact rotate-token` command
+ * can mint one without going through the full load/save cycle.
+ */
+export function newApiToken(): string {
+  return crypto.randomBytes(API_TOKEN_BYTES).toString('hex')
+}
+
+/**
+ * Load the daemon config, mint an api token if one isn't already
+ * present, persist the result, and return the config (with a guaranteed
+ * non-null `apiToken`). Call this at daemon startup.
+ */
+export async function ensureApiToken(
+  hostDir: string,
+): Promise<DaemonConfig & { apiToken: string }> {
+  const config = await loadDaemonConfig(hostDir)
+  if (config.apiToken && API_TOKEN_RE.test(config.apiToken)) {
+    return config as DaemonConfig & { apiToken: string }
+  }
+  const next: DaemonConfig = { ...config, apiToken: newApiToken() }
+  await saveDaemonConfig(hostDir, next)
+  return next as DaemonConfig & { apiToken: string }
+}
+
+/**
+ * Read the `apiToken` off disk without mutating anything. Returns null
+ * when no daemon.json exists or the token field is missing. CLI and
+ * MCP clients use this to find the running daemon's bearer credential.
+ */
+export async function readApiToken(hostDir: string): Promise<string | null> {
+  try {
+    const config = await loadDaemonConfig(hostDir)
+    return config.apiToken && API_TOKEN_RE.test(config.apiToken) ? config.apiToken : null
+  } catch {
+    return null
+  }
 }
 
 export function validateDaemonConfig(config: DaemonConfig): void {
@@ -169,6 +224,11 @@ export function validateDaemonConfig(config: DaemonConfig): void {
   }
   if (config.currentAlias !== null && !aliases.has(config.currentAlias)) {
     throw new Error(`currentAlias ${config.currentAlias} is not in the pacts list`)
+  }
+  if (config.apiToken !== null && config.apiToken !== undefined) {
+    if (typeof config.apiToken !== 'string' || !API_TOKEN_RE.test(config.apiToken)) {
+      throw new Error(`apiToken must be a ${API_TOKEN_HEX_LEN}-hex string or null`)
+    }
   }
 }
 

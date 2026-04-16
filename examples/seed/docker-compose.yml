@@ -1,0 +1,54 @@
+# examples/seed/docker-compose.yml
+#
+# Single-service compose file for an OpenPact seed node. The daemon
+# binds its REST API on loopback inside the container; we map it back
+# to the host on 127.0.0.1:7666 so only processes on this host can
+# reach it. Hyperswarm traffic goes over UDP/TCP on whatever ports the
+# DHT picks — container networking just needs outbound connectivity.
+#
+# Bring it up:   docker compose up -d
+# Follow logs:   docker compose logs -f openpact
+# Shell:         docker compose exec openpact bash
+# Tear down:     docker compose down           (keeps the data volume)
+# Purge:         docker compose down -v        (DESTROYS pact data)
+
+services:
+  openpact:
+    build:
+      context: .
+      # Pin a published CLI version for reproducible rebuilds. "latest"
+      # is fine for dev but will silently drift on each `build`.
+      args:
+        OPENPACT_VERSION: latest
+    image: openpact-seed:local
+    container_name: openpact-seed
+    restart: unless-stopped
+
+    # Loopback-only publish: the daemon is auth-gated but the bearer
+    # token is minted on first boot, so we never want it reachable from
+    # the public internet. Override to a private VLAN / WireGuard
+    # interface if you need to reach it from another host.
+    ports:
+      - '127.0.0.1:7666:7666'
+
+    volumes:
+      - openpact-data:/data
+
+    environment:
+      # Match the value baked into the Dockerfile so callers that set
+      # OPENPACT_DATA_DIR picking up env don't drift.
+      OPENPACT_DATA_DIR: /data
+
+    # Run as the non-root "openpact" user baked into the image.
+    # `stop_grace_period` gives the daemon time to close the swarm
+    # sockets cleanly before docker sends SIGKILL.
+    stop_grace_period: 30s
+
+    # The Dockerfile already wires `HEALTHCHECK`; compose surfaces the
+    # same status via `docker compose ps`.
+
+volumes:
+  openpact-data:
+    # Named volume — survives `docker compose down`. Use a bind mount
+    # (e.g. `./data:/data`) if you'd rather keep the corestore outside
+    # Docker's managed volumes.

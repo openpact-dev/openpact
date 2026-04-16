@@ -15,6 +15,8 @@ export interface StartOpts {
   /** Commander gives `dashboard: false` when --no-dashboard is set; default true. */
   dashboard?: boolean
   dashboardPort?: string | number
+  logLevel?: string
+  logFile?: string
 }
 
 export async function startCmd(
@@ -55,6 +57,8 @@ export async function startCmd(
     ...(opts.bootstrap ? ['--bootstrap', opts.bootstrap] : []),
     ...(opts.dashboard === false ? ['--no-dashboard'] : []),
     ...(opts.dashboardPort !== undefined ? ['--dashboard-port', String(opts.dashboardPort)] : []),
+    ...(opts.logLevel ? ['--log-level', opts.logLevel] : []),
+    ...(opts.logFile ? ['--log-file', opts.logFile] : []),
   ]
 
   const child = spawn(process.execPath, childArgs, {
@@ -104,7 +108,17 @@ export async function startCmd(
   const ourPactIds = new Set((registry?.pacts ?? []).map((p) => p.pactId))
   if (ourPactIds.size > 0) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/v1/pacts`)
+      // The GET /v1/pacts route is protected — send the token we know.
+      // If a stranger daemon holds this port it won't have our token and
+      // will 401; treat that as "not ours" and bail below.
+      const token = await daemonConfig.readApiToken(dir)
+      const headers: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {}
+      const res = await fetch(`http://127.0.0.1:${port}/v1/pacts`, { headers })
+      if (res.status === 401) {
+        await bail(
+          `port :${port} is already held by a different daemon (unauthorized). run \`openpact stop\` in that dataDir first, or pass \`--port <n>\` to use a different port.`,
+        )
+      }
       const body = (await res.json()) as { pacts?: Array<{ pact_id?: string }> }
       const theirs = (body.pacts ?? []).map((p) => p.pact_id).filter(Boolean) as string[]
       const overlap = theirs.some((id) => ourPactIds.has(id))

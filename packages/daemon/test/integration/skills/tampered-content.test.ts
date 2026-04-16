@@ -8,12 +8,12 @@
  */
 import test from 'brittle'
 import Fastify from 'fastify'
-import { createHash } from 'crypto'
 import skillsRoute from '../../../src/api/routes/skills'
 import { errorHandler, envelope } from '../../../src/api/errors'
+import { skillChecksum } from '../../../src/skills'
 
 function sha(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 function stubDaemon(entries: any[]) {
@@ -24,7 +24,7 @@ function stubDaemon(entries: any[]) {
         for (const value of entries) yield { key: `skill/${value.timestamp}/${value.id}`, value }
       },
     },
-    peerHandle: 'anon-stub-0001',
+    peerHandle: 'anon-stub-00010000',
     displayName: null,
     append: async () => ({ id: 'stub-1', timestamp: '2026-04-15T00:00:00Z' }),
   }
@@ -64,10 +64,10 @@ test('GET /v1/skills/:id/content detects tampered local content', async (t) => {
   const realContent = 'real, signed content'
   const realChecksum = sha(realContent)
   const tampered = {
-    id: 'aaaa-1',
+    id: 'aaaaaaaa-1',
     type: 'skill',
     timestamp: '2026-04-15T00:00:00Z',
-    agent_id: 'anon-stub-0001',
+    agent_id: 'anon-stub-00010000',
     payload: {
       name: 'integrity-test',
       version: '1.0.0',
@@ -86,10 +86,10 @@ test('GET /v1/skills/:id/content detects tampered local content', async (t) => {
 test('GET /v1/skills/:id/content passes through when content matches checksum', async (t) => {
   const content = 'real, signed content'
   const good = {
-    id: 'aaaa-2',
+    id: 'aaaaaaaa-2',
     type: 'skill',
     timestamp: '2026-04-15T00:00:00Z',
-    agent_id: 'anon-stub-0001',
+    agent_id: 'anon-stub-00010000',
     payload: {
       name: 'integrity-test',
       version: '1.0.0',

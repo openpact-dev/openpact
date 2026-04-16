@@ -20,7 +20,7 @@
  * commonjs type by default.
  */
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -42,11 +42,29 @@ async function walk(dir) {
   return out
 }
 
-function rewrite(src) {
-  return src.replace(SPEC_RE, (match, prefix, quote, spec) => {
-    if (/\.(m?js|json)$/.test(spec)) return match
-    return `${prefix}${quote}${spec}.js${quote}`
-  })
+async function isDir(p) {
+  try {
+    return (await stat(p)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+async function rewrite(src, fromFile) {
+  const dir = dirname(fromFile)
+  const matches = [...src.matchAll(SPEC_RE)]
+  if (!matches.length) return src
+  const replacements = await Promise.all(
+    matches.map(async (m) => {
+      const [match, prefix, quote, spec] = m
+      if (/\.(m?js|json)$/.test(spec)) return { match, replacement: match }
+      const abs = resolve(dir, spec)
+      const finalSpec = (await isDir(abs)) ? `${spec}/index.js` : `${spec}.js`
+      return { match, replacement: `${prefix}${quote}${finalSpec}${quote}` }
+    }),
+  )
+  let i = 0
+  return src.replace(SPEC_RE, () => replacements[i++].replacement)
 }
 
 async function main() {
@@ -54,7 +72,7 @@ async function main() {
   let changed = 0
   for (const file of files) {
     const before = await readFile(file, 'utf8')
-    const after = rewrite(before)
+    const after = await rewrite(before, file)
     if (after !== before) {
       await writeFile(file, after)
       changed++

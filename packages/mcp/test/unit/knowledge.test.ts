@@ -16,7 +16,7 @@ test('recall_knowledge: forwards topic + limit to pact.knowledge.list', async (t
 
 test('record_knowledge: forwards full payload and prefixes a summary', async (t) => {
   const pact = fakePact()
-  pact.knowledge.create.resolveWith({ id: 'a7f2-412', timestamp: '2026-04-15T19:30:00Z' })
+  pact.knowledge.create.resolveWith({ id: 'a7f2bcde-412', timestamp: '2026-04-15T19:30:00Z' })
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'record_knowledge')
   const r = await handler({
@@ -27,5 +27,7 @@ test('record_knowledge: forwards full payload and prefixes a summary', async (t)
   t.alike(pact.knowledge.create.calls[0].args, [
     { topic: 'routing', content: 'Use the resolver factory.', confidence: 0.9 },
   ])
-  t.ok(r.content[0].text.startsWith('Recorded knowledge entry a7f2-412 at 2026-04-15T19:30:00Z.'))
+  t.ok(
+    r.content[0].text.startsWith('Recorded knowledge entry a7f2bcde-412 at 2026-04-15T19:30:00Z.'),
+  )
 })

@@ -83,7 +83,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
       }),
     ),
   )
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(created.id), 'returns id in <core>-<seq> format')
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(created.id), 'returns id in <core>-<seq> format')
 
   // list filtered by topic — wait for view
   const list = await waitFor(

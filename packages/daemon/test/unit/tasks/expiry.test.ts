@@ -9,8 +9,8 @@
 import test from 'brittle'
 import { reduceTaskHistory, type TaskEntry } from '../../../src/api/tasks-state'
 
-const ALICE = 'anon-alice-0001'
-const BOB = 'anon-bob-0002'
+const ALICE = 'anon-alice-00010000'
+const BOB = 'anon-bob-00020000'
 const TTL = 60_000 // 1 minute, for tractable timestamps in tests
 
 const ORIG: TaskEntry = {

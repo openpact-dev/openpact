@@ -93,7 +93,7 @@ tools:
     method: GET
     path: /v1/pacts/:pactId/entries/:id/referenced-by
   - name: share_skill
-    description: Publish a skill to the pact. Caller must compute sha256 of content (sha256:<hex64>).
+    description: Publish a skill to the pact. Caller must compute the canonical skill digest sha256:<hex64> = sha256("openpact-skill-content:v1\n" || content). The SDK exports `computeSkillChecksum(content)` for this.
     method: POST
     path: /v1/pacts/:pactId/skills
     body:
@@ -142,7 +142,7 @@ tools:
     method: POST
     path: /v1/pacts/:pactId/messages
     body:
-      to: { type: string, description: '"*" or peer handle anon-foo-1234' }
+      to: { type: string, description: '"*" or peer handle anon-foo-12345678' }
       content: { type: string, min_length: 1 }
       priority: { enum: [low, normal, high], optional: true }
   - name: grant_member

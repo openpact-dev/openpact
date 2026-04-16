@@ -1,7 +1,7 @@
 import { config as daemonConfig } from '@openpact/daemon'
+import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
-import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { formatHostStatus, formatStatus, type StatusContext } from '../lib/format'
 import { readPidFile } from '../lib/pid'
 import { c, emoji } from '../lib/theme'
@@ -26,11 +26,11 @@ export async function statusCmd(
   const pid = await readPidFile(dir)
   const explicitPact = opts.pact?.trim() || process.env.OPENPACT_PACT?.trim() || null
   const hasAnyPacts = (registry?.pacts.length ?? 0) > 0
-  const hostApi = new ApiClient({ port: apiPort })
+  const hostClient = new OpenPact({ port: apiPort, hostDir: dir })
 
   if (!explicitPact && !hasAnyPacts) {
     try {
-      const hostStatus = await hostApi.hostStatus()
+      const hostStatus = await hostClient.hostStatus()
       console.log(
         formatHostStatus(hostStatus, {
           totalPacts: registry?.pacts.length ?? hostStatus.pact_count,
@@ -64,9 +64,9 @@ export async function statusCmd(
     pid,
   }
 
-  const api = new ApiClient({ port: apiPort, pactId })
+  const client = new OpenPact({ port: apiPort, pactId, hostDir: dir })
   try {
-    const status = await api.status()
+    const status = await client.status()
     console.log(formatStatus(status, ctx))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {

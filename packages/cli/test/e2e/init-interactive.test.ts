@@ -3,7 +3,7 @@ import createTestnet from 'hyperdht/testnet'
 import fs from 'fs/promises'
 import net from 'net'
 import path from 'path'
-import { tmpHome, runWithDir } from './helpers/run-cli'
+import { tmpHome, runWithDir, authHeaders } from './helpers/run-cli'
 import { readPidFile, isAlive } from '../../src/lib/pid'
 
 // These tests exercise the non-interactive path of `init` + `join` —
@@ -220,7 +220,9 @@ test('init against a running daemon creates via REST (no double-start error)', a
   t.is(brandHits.length, 1, 'banner printed exactly once')
 
   // The running daemon should be the one that owns the new pact.
-  const listRes = await fetch(`http://127.0.0.1:${port}/v1/pacts`)
+  const listRes = await fetch(`http://127.0.0.1:${port}/v1/pacts`, {
+    headers: await authHeaders(home),
+  })
   const body = (await listRes.json()) as { pacts: Array<{ pact_name: string | null }> }
   t.ok(
     body.pacts.some((p) => p.pact_name === 'Running Pact'),

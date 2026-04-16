@@ -13,8 +13,7 @@ import test from 'brittle'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
-import { Daemon, createApi, bind } from '@openpact/daemon'
-import { createHash } from 'crypto'
+import { Daemon, createApi, bind, skillChecksum } from '@openpact/daemon'
 
 const ROOT = path.resolve(__dirname, '..')
 const WORKSPACE_SKILL = path.join(ROOT, 'workspace', 'SKILL.md')
@@ -109,13 +108,13 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
   const taskId: string = taskCreate.body.id
 
   const skillContent = 'sample'
-  const skillChecksum = 'sha256:' + createHash('sha256').update(skillContent, 'utf8').digest('hex')
+  const skillSha = skillChecksum(skillContent)
   const skillCreate = await call(base, 'POST', '/v1/pacts/default/skills', {
     name: 's',
     version: '1.0.0',
     format: 'openclaw',
     content: skillContent,
-    checksum: skillChecksum,
+    checksum: skillSha,
   })
   const skillId: string = skillCreate.body.id
 
@@ -158,7 +157,7 @@ test('every tool in the workspace skill hits a live daemon endpoint', async (t) 
           version: '1.0.0',
           format: 'generic',
           content: c,
-          checksum: 'sha256:' + createHash('sha256').update(c, 'utf8').digest('hex'),
+          checksum: skillChecksum(c),
         }
       }
     }

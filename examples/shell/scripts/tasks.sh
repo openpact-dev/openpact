@@ -11,6 +11,10 @@ base="${OPENPACT_URL:-http://127.0.0.1:7666}"
 pact="${OPENPACT_PACT:-default}"
 cmd="${1:-}"
 
+# shellcheck source=./_auth.sh
+source "$(dirname "$0")/_auth.sh"
+AUTH=(${OPENPACT_AUTH_HEADER:+-H "$OPENPACT_AUTH_HEADER"})
+
 usage() {
   cat <<USAGE
 tasks.sh <subcommand> [args]
@@ -34,7 +38,7 @@ case "$cmd" in
     status="${2:-}"
     q=""
     [[ -n "$status" ]] && q="?status=${status}"
-    curl -sf "${base}/v1/pacts/${pact}/tasks${q}" | python3 -m json.tool
+    curl -sf "${AUTH[@]}" "${base}/v1/pacts/${pact}/tasks${q}" | python3 -m json.tool
     ;;
 
   create)
@@ -56,12 +60,13 @@ PY
     fi
     curl -sf -X POST "${base}/v1/pacts/${pact}/tasks" \
       -H 'content-type: application/json' \
+      "${AUTH[@]}" \
       -d "$body" | python3 -m json.tool
     ;;
 
   claim)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/claim" | python3 -m json.tool
+    curl -sf -X PUT "${AUTH[@]}" "${base}/v1/pacts/${pact}/tasks/${id}/claim" | python3 -m json.tool
     ;;
 
   complete)
@@ -78,12 +83,13 @@ PY
     fi
     curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/complete" \
       -H 'content-type: application/json' \
+      "${AUTH[@]}" \
       -d "$body" | python3 -m json.tool
     ;;
 
   release)
     id="${2:?task id required}"
-    curl -sf -X PUT "${base}/v1/pacts/${pact}/tasks/${id}/release" | python3 -m json.tool
+    curl -sf -X PUT "${AUTH[@]}" "${base}/v1/pacts/${pact}/tasks/${id}/release" | python3 -m json.tool
     ;;
 
   *)

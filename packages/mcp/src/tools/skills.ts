@@ -36,7 +36,7 @@ export function registerSkillsTools(server: McpServer, pact: OpenPact): void {
     'share_skill',
     {
       description:
-        'Publish a skill to the pact. The caller must compute the sha256 checksum of the content (format "sha256:<64-hex>"). Skills are never auto-installed.',
+        'Publish a skill to the pact. The caller must compute the canonical skill digest "sha256:<hex64>" = sha256("openpact-skill-content:v1\\n" || content). Use `computeSkillChecksum` from @openpact/sdk. Skills are never auto-installed.',
       inputSchema: {
         name: z.string().min(1).max(200),
         version: z.string().min(1),
@@ -45,7 +45,9 @@ export function registerSkillsTools(server: McpServer, pact: OpenPact): void {
         checksum: z
           .string()
           .regex(/^sha256:[a-f0-9]{64}$/)
-          .describe('sha256 of content in the form "sha256:<64-hex>".'),
+          .describe(
+            'Canonical skill digest "sha256:<64-hex>" = sha256("openpact-skill-content:v1\\n" || content). Use computeSkillChecksum() from @openpact/sdk.',
+          ),
         description: z.string().optional(),
         requires_approval: z.boolean().optional(),
       },

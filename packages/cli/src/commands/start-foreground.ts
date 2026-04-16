@@ -1,4 +1,13 @@
-import { Daemon, createApi, bind } from '@openpact/daemon'
+import {
+  Daemon,
+  createApi,
+  bind,
+  config as daemonConfig,
+  createLogger,
+  defaultLogFile,
+  isLogLevel,
+  type LogLevel,
+} from '@openpact/daemon'
 import { startDashboard, type StartDashboardResult } from '@openpact/dashboard'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { writePidFile, removePidFile } from '../lib/pid'
@@ -16,6 +25,14 @@ export interface StartForegroundOpts {
   dashboard?: boolean
   /** Override the dashboard port (default 7667; pass 0 for an OS-chosen free port in tests). */
   dashboardPort?: string | number
+  /** Pino log level (info, debug, warn, etc). Defaults to 'info'. */
+  logLevel?: string
+  /**
+   * Where to send the JSON log stream. Defaults to
+   * `<dataDir>/logs/daemon.log`. Pass `-` to skip the file sink and
+   * only log to stdout.
+   */
+  logFile?: string
 }
 
 /**
@@ -36,11 +53,28 @@ export async function startForegroundCmd(
   const port = Number(opts.port ?? 7666)
   const bootstrap = resolveBootstrap(opts.bootstrap)
 
+  const requestedLevel = opts.logLevel
+  if (requestedLevel && !isLogLevel(requestedLevel)) {
+    throw new Error(
+      `--log-level must be one of fatal|error|warn|info|debug|trace|silent (got ${requestedLevel})`,
+    )
+  }
+  const level: LogLevel = (requestedLevel as LogLevel | undefined) ?? 'info'
+  const { logger, close: closeLogger } = await createLogger({
+    level,
+    file: opts.logFile,
+    dataDir: dir,
+  })
+
   const swarm = bootstrap ? { bootstrap } : undefined
   const daemon = await Daemon.load({ dataDir: dir, swarm })
   await daemon.start()
 
-  const app = createApi(daemon)
+  // Mint (or load) the bearer token the REST API requires. Written to
+  // ~/.openpact/daemon.json with mode 0600 so only this user can read it.
+  const { apiToken } = await daemonConfig.ensureApiToken(dir)
+
+  const app = createApi(daemon, { token: apiToken, logger })
   const url = await bind(app, { port })
 
   let dashboard: StartDashboardResult | null = null
@@ -49,7 +83,11 @@ export async function startForegroundCmd(
   if (opts.dashboard !== false) {
     const dashboardPort = Number(opts.dashboardPort ?? 7667)
     try {
-      dashboard = await startDashboard({ daemonPort: port, port: dashboardPort })
+      dashboard = await startDashboard({
+        daemonPort: port,
+        port: dashboardPort,
+        daemonToken: apiToken,
+      })
     } catch (err) {
       console.error(c.brand(`✗ dashboard failed to start: ${(err as Error).message}`))
       console.error(c.ash('  daemon will continue without the dashboard'))
@@ -70,25 +108,58 @@ export async function startForegroundCmd(
       `  ${c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.')}`,
     )
   }
+  if (opts.logFile !== '-') {
+    console.log(`  ${c.ash(`logs   ${opts.logFile ?? defaultLogFile(dir)}  (level=${level})`)}`)
+  }
   console.log()
+  logger.info(
+    { url, dashboard: dashboard?.url ?? null, pactKey: daemon.pactKey ?? null },
+    'daemon up',
+  )
 
   let shuttingDown = false
   const shutdown = async (signal: string) => {
     if (shuttingDown) return
     shuttingDown = true
     console.error(c.ash(`\nreceived ${signal}, banishing…`))
+    logger.info({ signal }, 'shutdown')
     try {
       if (dashboard) await dashboard.close()
       await app.close()
       await daemon.stop()
       await removePidFile(dir)
+      await closeLogger()
     } catch (err) {
+      logger.error({ err }, 'error during shutdown')
       console.error(c.brand(`✗ error during shutdown: ${(err as Error).message}`))
     }
     process.exit(0)
   }
   process.on('SIGINT', () => void shutdown('SIGINT'))
   process.on('SIGTERM', () => void shutdown('SIGTERM'))
+
+  // Phase 3a: keep the daemon up when something downstream throws an
+  // unhandled exception or rejects a promise without a catch. The
+  // alternative — Node's default — is to print the stack and exit,
+  // which is the worst possible failure mode for a service that holds
+  // long-running swarm state. Log loudly and stay alive; the swarm
+  // and Autobase recover on the next tick.
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'unhandledRejection')
+  })
+  process.on('uncaughtException', (err) => {
+    logger.error({ err }, 'uncaughtException')
+  })
+
+  // Surface peer + swarm errors that the daemon has already swallowed
+  // (see Daemon._swarm.on('error') / conn.on('error')) so an operator
+  // tailing `op start --foreground` sees them.
+  daemon.on('peer-error', ({ remoteKey, error }) => {
+    logger.warn({ remoteKey: remoteKey?.slice(0, 16) ?? null, err: error }, 'peer error')
+  })
+  daemon.on('swarm-error', ({ error }) => {
+    logger.warn({ err: error }, 'swarm error')
+  })
 
   // Block forever — Node stays alive while the swarm + http server hold handles.
   await new Promise(() => {})

@@ -3,7 +3,7 @@ import type { OpenPact } from '@openpact/sdk'
 import { z } from 'zod'
 import { jsonContent, registerTool, safeHandler, summaryAndJson } from '../format'
 
-const PEER_HANDLE = z.string().regex(/^anon-[a-z]+-[0-9a-f]{4}$|^\*$/)
+const PEER_HANDLE = z.string().regex(/^anon-[a-z]+-[0-9a-f]{8}$|^\*$/)
 
 export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
   registerTool(
@@ -18,7 +18,7 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
           .optional()
           .describe('ISO timestamp; only entries with timestamp > since are returned.'),
         to: PEER_HANDLE.optional().describe(
-          'Filter by recipient handle ("anon-foo-1234") or "*" for broadcasts.',
+          'Filter by recipient handle ("anon-foo-12345678") or "*" for broadcasts.',
         ),
         order: z
           .enum(['asc', 'desc'])

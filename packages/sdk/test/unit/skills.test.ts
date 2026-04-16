@@ -40,7 +40,7 @@ test('skills.iterate: walks pages', async (t) => {
 })
 
 test('skills.create: POSTs full payload incl. checksum', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: 'now' } })
+  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
   const r = skillsResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   await r.create({
     name: 'scraper',
@@ -58,7 +58,7 @@ test('skills.getContent: returns full content body', async (t) => {
   const m = mockFetch({
     status: 200,
     body: {
-      id: 'aaaa-1',
+      id: 'aaaaaaaa-1',
       name: 'x',
       version: '1',
       format: 'openclaw',
@@ -67,9 +67,9 @@ test('skills.getContent: returns full content body', async (t) => {
     },
   })
   const r = skillsResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  const res = await r.getContent('aaaa-1')
+  const res = await r.getContent('aaaaaaaa-1')
   t.is(res.content, 'BODY')
-  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/skills/aaaa-1/content')
+  t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/skills/aaaaaaaa-1/content')
 })
 
 test('skills.getContent: 404 → NotFoundError', async (t) => {

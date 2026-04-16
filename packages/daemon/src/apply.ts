@@ -1,6 +1,7 @@
 import b4a from 'b4a'
 import { validate, type ValidationResult } from './schemas'
 import * as entryId from './entry-id'
+import * as peerHandle from './peer-handle'
 
 export const INDEXER_PREFIX = '_indexers/'
 // '/' is 0x2F, '0' is 0x30, so '_indexers0' bounds the prefix range exactly.
@@ -42,6 +43,7 @@ export type InvalidReason =
   | 'schema'
   | 'payload-too-large'
   | 'no-writer-key'
+  | 'agent-mismatch'
   | 'admin-from-non-indexer'
   | 'invite-from-non-indexer'
   | 'invite-already-spent'
@@ -97,6 +99,20 @@ export function makeApply(opts: ApplyOpts = {}): ApplyFn {
         continue
       }
       const writerKeyHex = b4a.toString(writerKey, 'hex') as string
+
+      // `agent_id` must be canonical: derived deterministically from the
+      // writer's public key. Any other value means a writer is either
+      // misconfigured or trying to spoof another peer's identity in
+      // their entries. Reject before anything touches the view.
+      const expectedHandle = peerHandle.derive(writerKey as Buffer)
+      const claimedHandle =
+        typeof (entry as { agent_id?: unknown }).agent_id === 'string'
+          ? ((entry as { agent_id: string }).agent_id as string)
+          : ''
+      if (claimedHandle !== expectedHandle) {
+        onInvalid({ reason: 'agent-mismatch', node, entry })
+        continue
+      }
 
       await upsertAgentName(entry, view)
 

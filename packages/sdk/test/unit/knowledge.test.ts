@@ -69,10 +69,13 @@ test('knowledge.iterate: walks every page', async (t) => {
 })
 
 test('knowledge.create: POSTs payload', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: '2026-04-15T00:00:00Z' } })
+  const m = mockFetch({
+    status: 200,
+    body: { id: 'aaaaaaaa-1', timestamp: '2026-04-15T00:00:00Z' },
+  })
   const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   const res = await r.create({ topic: 'sales', content: 'hi', confidence: 0.8 })
-  t.is(res.id, 'aaaa-1')
+  t.is(res.id, 'aaaaaaaa-1')
   t.is(m.calls[0].method, 'POST')
   t.alike(JSON.parse(m.calls[0].body!), { topic: 'sales', content: 'hi', confidence: 0.8 })
 })

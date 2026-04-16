@@ -26,7 +26,7 @@ test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) 
   const body = JSON.parse(res.body)
 
   t.ok(typeof body.pact_id === 'string')
-  t.ok(/^anon-[a-z]+-[0-9a-f]{4}$/.test(body.peer_handle))
+  t.ok(/^anon-[a-z]+-[0-9a-f]{8}$/.test(body.peer_handle))
   t.is(body.role, 'creator')
   t.is(body.peers, 0)
   t.is(typeof body.entries, 'number')

@@ -88,7 +88,10 @@ def test_lost_claim_race_raises(client: OpenPactClient) -> None:
 
 def test_skill_checksum_matters(client: OpenPactClient) -> None:
     content = "verified content"
-    checksum = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
+    # Phase 2e: skill checksums are domain-separated. The daemon hashes
+    # b"openpact-skill-content:v1\n" || content, never raw content.
+    label = b"openpact-skill-content:v1\n"
+    checksum = "sha256:" + hashlib.sha256(label + content.encode()).hexdigest()
     created = client.call(
         "share_skill",
         name="from-python",

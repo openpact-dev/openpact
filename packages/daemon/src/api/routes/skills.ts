@@ -1,4 +1,3 @@
-import { createHash } from 'crypto'
 import { mkdir, readFile, writeFile, rename } from 'fs/promises'
 import path from 'path'
 import type { FastifyInstance } from 'fastify'
@@ -8,9 +7,9 @@ import { listByType, getById, BadCursorError } from '../views'
 import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
 import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
+import { SKILL_NAME_RE, isValidSkillName, skillChecksum } from '../../skills'
 
 const SKILL_FORMATS = ['openclaw', 'langchain', 'generic'] as const
-const SKILL_NAME_RE = /^[a-z0-9][a-z0-9._-]*$/
 const FORMAT_EXT: Record<string, string> = {
   openclaw: 'md',
   langchain: 'py',
@@ -18,7 +17,7 @@ const FORMAT_EXT: Record<string, string> = {
 }
 
 function expectedChecksum(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 function skillsDir(pact: Pact): string {
@@ -36,6 +35,21 @@ interface InstalledRecord {
   name: string
   version: string
   format: string
+}
+
+interface SkillPayload {
+  name: string
+  version: string
+  format: string
+  content: string
+  checksum: string
+  description?: string
+  requires_approval?: boolean
+}
+
+interface SkillEntry {
+  id: string
+  payload: SkillPayload
 }
 
 async function readInstalled(pact: Pact): Promise<Record<string, InstalledRecord>> {
@@ -103,11 +117,16 @@ export default async function skillsRoute(
       const pact = await resolvePact(daemon, req)
       const { format, order, limit, cursor } = req.query
       try {
-        return await listByType(pact.view, 'skill', {
+        return await listByType<SkillEntry>(pact.view, 'skill', {
           order,
           limit,
           cursor: cursor ?? null,
-          filter: format ? (v) => v?.payload?.format === format : undefined,
+          filter: format
+            ? (v: unknown) => {
+                const entry = v as SkillEntry | null
+                return entry?.payload?.format === format
+              }
+            : undefined,
         })
       } catch (err) {
         if (err instanceof BadCursorError) {
@@ -124,6 +143,19 @@ export default async function skillsRoute(
     async (req) => {
       const pact = await resolvePact(daemon, req)
       const payload = req.body as Record<string, unknown>
+      const name = payload.name as string
+      const version = payload.version as string
+      // Reject bad names *before* hashing so a malicious caller can't
+      // sneak a path-traversing name into the pact log just because we
+      // happened to spell its checksum correctly. Install would refuse
+      // it later, but the entry would still pollute history.
+      if (!isValidSkillName(name) || !isValidSkillName(version)) {
+        throw new HttpError(
+          400,
+          'BAD_SKILL_NAME',
+          `name and version must match ${SKILL_NAME_RE.source}; got name=${JSON.stringify(name)}, version=${JSON.stringify(version)}`,
+        )
+      }
       const content = payload.content as string
       const claimed = payload.checksum as string
       const actual = expectedChecksum(content)
@@ -131,7 +163,7 @@ export default async function skillsRoute(
         throw new HttpError(
           400,
           'SKILL_CHECKSUM_MISMATCH',
-          `checksum ${claimed} does not match sha256(content) ${actual}`,
+          `checksum ${claimed} does not match the canonical skill digest ${actual}`,
         )
       }
       const timestamp = new Date().toISOString()
@@ -148,12 +180,13 @@ export default async function skillsRoute(
 
   app.get<{ Params: IdParams }>('/v1/pacts/:pactId/skills/:id/content', async (req) => {
     const pact = await resolvePact(daemon, req)
-    const entry = await getById(pact.view, 'skill', req.params.id)
-    if (!entry) {
+    const raw = await getById(pact.view, 'skill', req.params.id)
+    if (!raw) {
       throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
     }
-    const stored = entry.payload.content as string
-    const claimed = entry.payload.checksum as string
+    const entry = raw as unknown as SkillEntry
+    const stored = entry.payload.content
+    const claimed = entry.payload.checksum
     const actual = expectedChecksum(stored)
     if (claimed !== actual) {
       throw new HttpError(
@@ -200,18 +233,15 @@ export default async function skillsRoute(
       }
 
       const pact = await resolvePact(daemon, req)
-      const entry = await getById(pact.view, 'skill', req.params.id)
-      if (!entry) {
+      const raw = await getById(pact.view, 'skill', req.params.id)
+      if (!raw) {
         throw new HttpError(404, 'NOT_FOUND', `skill ${req.params.id} not found`)
       }
+      const entry = raw as unknown as SkillEntry
 
-      const name = entry.payload.name as string
-      const version = entry.payload.version as string
-      const format = entry.payload.format as string
-      const content = entry.payload.content as string
-      const claimedChecksum = entry.payload.checksum as string
+      const { name, version, format, content, checksum: claimedChecksum } = entry.payload
 
-      if (!SKILL_NAME_RE.test(name) || !SKILL_NAME_RE.test(version)) {
+      if (!isValidSkillName(name) || !isValidSkillName(version)) {
         throw new HttpError(
           400,
           'BAD_SKILL_NAME',
@@ -235,14 +265,22 @@ export default async function skillsRoute(
       const dir = skillsDir(pact)
       await mkdir(dir, { recursive: true })
       const filename = `${name}@${version}.${ext}`
-      const target = path.join(dir, filename)
+      const target = path.resolve(dir, filename)
+      // Defence in depth: the SKILL_NAME_RE checks above already
+      // forbid `..`, `/`, and `\` in name/version, but we re-verify
+      // against the resolved path so a future regex regression can't
+      // silently hand someone an arbitrary-write primitive.
+      const dirPrefix = path.resolve(dir) + path.sep
+      if (!(target + path.sep).startsWith(dirPrefix)) {
+        throw new HttpError(400, 'BAD_SKILL_NAME', `resolved skill path ${target} escapes ${dir}`)
+      }
       const tmp = `${target}.tmp`
       await writeFile(tmp, content, { mode: 0o644 })
       await rename(tmp, target)
 
       const installedAt = new Date().toISOString()
       const manifest = await readInstalled(pact)
-      manifest[entry.id as string] = {
+      manifest[entry.id] = {
         path: target,
         installed_at: installedAt,
         checksum: claimedChecksum,

@@ -22,12 +22,16 @@ pact="${OPENPACT_PACT:-default}"
 topic="${1:-}"
 limit="${2:-20}"
 
+# shellcheck source=./_auth.sh
+source "$(dirname "$0")/_auth.sh"
+
 query="?limit=${limit}"
 if [[ -n "$topic" ]]; then
   query="${query}&topic=${topic}"
 fi
 
-curl -sf "${base}/v1/pacts/${pact}/knowledge${query}" | python3 -c '
+curl -sf ${OPENPACT_AUTH_HEADER:+-H "$OPENPACT_AUTH_HEADER"} \
+  "${base}/v1/pacts/${pact}/knowledge${query}" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
 entries = [

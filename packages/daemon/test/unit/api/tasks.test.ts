@@ -19,7 +19,7 @@ test('POST /v1/tasks: creates open task', async (t) => {
     payload: { title: 'Build landing page' },
   })
   t.is(res.statusCode, 200)
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(JSON.parse(res.body).id))
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(JSON.parse(res.body).id))
 })
 
 test('POST /v1/tasks: missing title returns 400', async (t) => {

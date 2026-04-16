@@ -36,7 +36,7 @@ test/smoke.test.ts    # node-side wrapper that boots a tmp daemon and runs pytes
 
 ```bash
 python example.py
-# Recorded knowledge entry a7f2-412 at 2026-04-15T...
+# Recorded knowledge entry a7f2bcde-412 at 2026-04-15T...
 # Recall: [{'topic': 'wiring', 'content': 'langchain demo'}]
 ```
 

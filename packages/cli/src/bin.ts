@@ -80,6 +80,11 @@ export function buildProgram(): Command {
     )
     .option('--no-dashboard', 'skip the dashboard (headless / seed nodes / CI)')
     .option('--dashboard-port <n>', 'dashboard port (default 7667; 0 = OS-chosen)')
+    .option('--log-level <level>', 'pino log level (fatal|error|warn|info|debug|trace|silent)')
+    .option(
+      '--log-file <path>',
+      'JSON log sink (default <data-dir>/logs/daemon.log; pass `-` to disable)',
+    )
     .action(startCmd)
 
   program
@@ -88,6 +93,8 @@ export function buildProgram(): Command {
     .option('--bootstrap <list>', '')
     .option('--no-dashboard', '')
     .option('--dashboard-port <n>', '')
+    .option('--log-level <level>', '')
+    .option('--log-file <path>', '')
     .action(startForegroundCmd)
 
   program
@@ -158,6 +165,7 @@ export function buildProgram(): Command {
     .description('leave a pact and delete its local data (destructive)')
     .option('--yes', 'skip the type-to-confirm prompt (required in CI/pipes)')
     .option('--no-interactive', 'skip prompts')
+    .option('--port <n>', 'daemon port (when routing through REST)', (v) => Number(v))
     .action(removeCmd)
 
   program

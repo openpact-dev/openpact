@@ -1,4 +1,4 @@
-export const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{4}$'
+export const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{8}$'
 
 export const ENTRY_TYPES = [
   'knowledge',

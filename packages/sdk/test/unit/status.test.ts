@@ -14,7 +14,7 @@ test('status.ping returns { ok: true }', async (t) => {
 test('status.get returns full status payload', async (t) => {
   const payload = {
     pact_id: 'abc',
-    peer_handle: 'anon-fox-1234',
+    peer_handle: 'anon-fox-12345678',
     role: 'creator',
     public_key: 'def',
     peers: 2,

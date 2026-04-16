@@ -24,12 +24,12 @@ test('pact_status: calls pact.status() and returns the JSON', async (t) => {
 
 test('list_peers: calls pact.peers() and returns the JSON array', async (t) => {
   const pact = fakePact()
-  pact.peers.resolveWith([{ id: 'anon-fox-1234', remote_key: 'k', online: true }])
+  pact.peers.resolveWith([{ id: 'anon-fox-12345678', remote_key: 'k', online: true }])
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'list_peers')
   const r = await handler({})
   t.is(pact.peers.calls.length, 1)
-  t.ok(r.content[0].text.includes('"id": "anon-fox-1234"'))
+  t.ok(r.content[0].text.includes('"id": "anon-fox-12345678"'))
 })
 
 test('SDK errors surface as isError: true with the code prefix', async (t) => {

@@ -9,6 +9,52 @@ import type {
 } from '../types'
 import { paginate } from './paginate'
 
+/**
+ * Domain label baked into every skill checksum. The daemon enforces
+ * the same prefix in `packages/daemon/src/skills.ts` — keep these two
+ * in lock-step. Bumping `:vN` invalidates older digests on purpose.
+ */
+export const SKILL_CHECKSUM_LABEL = 'openpact-skill-content:v1\n'
+
+function utf8Bytes(s: string): Uint8Array {
+  return new TextEncoder().encode(s)
+}
+
+function hexOf(buf: ArrayBuffer): string {
+  const b = new Uint8Array(buf)
+  let out = ''
+  for (let i = 0; i < b.length; i++) out += b[i].toString(16).padStart(2, '0')
+  return out
+}
+
+/**
+ * Compute the canonical, domain-separated checksum the daemon expects
+ * on `POST /v1/pacts/:pactId/skills`. Async because we use the Web
+ * Crypto SubtleCrypto API, which is available in modern Node (>=18)
+ * and every browser the SDK supports.
+ *
+ * Returns `sha256:<hex>` so the result drops straight into the
+ * `checksum` field of `SkillPayload`.
+ */
+interface SubtleLike {
+  digest(algo: string, data: ArrayBuffer | Uint8Array): Promise<ArrayBuffer>
+}
+
+export async function computeSkillChecksum(content: string): Promise<string> {
+  const label = utf8Bytes(SKILL_CHECKSUM_LABEL)
+  const body = utf8Bytes(content)
+  const merged = new Uint8Array(label.length + body.length)
+  merged.set(label, 0)
+  merged.set(body, label.length)
+  const subtle: SubtleLike | undefined = (globalThis as { crypto?: { subtle?: SubtleLike } }).crypto
+    ?.subtle
+  if (!subtle) {
+    throw new Error('SubtleCrypto is unavailable; need Node 18+ or a browser')
+  }
+  const digest = await subtle.digest('SHA-256', merged)
+  return 'sha256:' + hexOf(digest)
+}
+
 export interface SkillsListOpts extends ListOpts {
   format?: SkillFormat
 }

@@ -1,5 +1,5 @@
 import test from 'brittle'
-import { tmpHome, runWithDir } from './helpers/run-cli'
+import { tmpHome, runWithDir, authHeaders } from './helpers/run-cli'
 import { readPidFile, isAlive } from '../../src/lib/pid'
 
 let nextPort = 17500
@@ -28,14 +28,15 @@ test('log prints entries posted via REST', async (t) => {
   const base = `http://127.0.0.1:${port}`
   await waitForPing(base)
 
+  const headers = await authHeaders(home, { 'content-type': 'application/json' })
   await fetch(`${base}/v1/pacts/default/knowledge`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify({ topic: 'sales', content: 'cli log smoke' }),
   })
   await fetch(`${base}/v1/pacts/default/messages`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify({ to: '*', content: 'hi everyone' }),
   })
 

@@ -78,6 +78,7 @@ export type { ClientOpts } from './client'
 export type { HostStatus } from './resources/status'
 export type { PactSummary, PactListPayload, CreatePactBody, JoinPactBody } from './resources/pacts'
 export type { InviteSummary, MintInviteOpts, MintInviteResult } from './resources/invites'
+export { computeSkillChecksum, SKILL_CHECKSUM_LABEL } from './resources/skills'
 export type {
   AppendResult,
   BaseEntry,
@@ -123,5 +124,11 @@ export {
   InviteNotIndexerError,
   InviteExpiredError,
   NoIndexerReachableError,
+  UnauthorizedError,
+  BadEntryError,
+  PayloadTooLargeError,
+  ViewTimeoutError,
+  RateLimitedError,
   DaemonError,
 } from './errors'
+export { ERROR_CODES, type ErrorCode } from './error-codes'

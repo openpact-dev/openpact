@@ -43,8 +43,30 @@ const switchSchema = {
   type: 'object',
   properties: {
     alias: { type: 'string' },
+    /**
+     * Typed confirmation: the client MUST echo the alias. A slipped keystroke
+     * in a script otherwise silently re-points every default-pact command at
+     * the wrong pact, which surfaces as hard-to-diagnose data-not-appearing
+     * bugs. Making the confirm field mirror the target forces callers to be
+     * explicit.
+     */
+    confirm: { type: 'string' },
   },
-  required: ['alias'],
+  required: ['alias', 'confirm'],
+  additionalProperties: false,
+}
+
+const deleteSchema = {
+  type: 'object',
+  properties: {
+    /**
+     * Typed confirmation: must match the pact's alias (or 64-hex pact_id) in
+     * the URL. A boolean `confirm: true` is no longer accepted — this route
+     * wipes the pact's data dir and the aliases are short enough to type.
+     */
+    confirm: { type: 'string' },
+  },
+  required: ['confirm'],
   additionalProperties: false,
 }
 
@@ -176,10 +198,17 @@ export default async function pactsRoute(
 
   // Switch which pact is "current" on this host. Used by the dashboard's
   // pact switcher and by `openpact switch <alias>`.
-  app.post<{ Body: { alias: string } }>(
+  app.post<{ Body: { alias: string; confirm: string } }>(
     '/v1/pacts/switch',
     { schema: { body: switchSchema } },
     async (req) => {
+      if (req.body.confirm !== req.body.alias) {
+        throw new HttpError(
+          400,
+          'NOT_CONFIRMED',
+          'POST /v1/pacts/switch requires `confirm` to equal `alias`',
+        )
+      }
       await daemon.setCurrentAlias(req.body.alias)
       return { ok: true, current: req.body.alias }
     },
@@ -203,32 +232,30 @@ export default async function pactsRoute(
   )
 
   // Leave a pact (destructive — removes from registry and deletes data).
-  app.delete<{ Params: { pactId: string }; Body: { confirm: boolean } }>(
+  app.delete<{ Params: { pactId: string }; Body: { confirm: string } }>(
     '/v1/pacts/:pactId',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          properties: { confirm: { type: 'boolean' } },
-          required: ['confirm'],
-          additionalProperties: false,
-        },
-      },
-    },
+    { schema: { body: deleteSchema } },
     async (req) => {
-      if (req.body?.confirm !== true) {
-        throw new HttpError(
-          400,
-          'NOT_CONFIRMED',
-          'DELETE /v1/pacts/:pactId requires explicit { "confirm": true }',
-        )
-      }
       const entries = await daemon.listPacts()
       const match =
         entries.find((p) => p.alias === req.params.pactId) ??
         entries.find((p) => p.pactId === req.params.pactId)
       if (!match) {
         throw new HttpError(404, 'UNKNOWN_PACT', `no pact ${req.params.pactId}`)
+      }
+      // The confirm token must match either the alias or the full pact_id —
+      // whichever the caller used in the URL. Rejecting a mismatch protects
+      // against copy-paste errors where the URL was updated but the body
+      // still carries the previous target's alias.
+      const confirm = req.body?.confirm
+      const accepted =
+        typeof confirm === 'string' && (confirm === match.alias || confirm === match.pactId)
+      if (!accepted) {
+        throw new HttpError(
+          400,
+          'NOT_CONFIRMED',
+          `DELETE /v1/pacts/${req.params.pactId} requires body { "confirm": "<alias or pact_id>" } matching the target pact`,
+        )
       }
       await daemon.removePact(match.alias)
       return { ok: true, removed: { alias: match.alias, pact_id: match.pactId } }

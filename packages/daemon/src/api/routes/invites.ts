@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Daemon } from '../../daemon'
 import { HttpError } from '../errors'
+import { ERROR_CODES, type ErrorCode } from '../../error-codes'
 import { resolvePact } from '../pact-resolver'
 import { RedeemError } from '../../invites'
 
@@ -168,29 +169,28 @@ export default async function invitesRoute(
     if (result.ok) {
       return { ok: true, nonce: result.nonce }
     }
-    const status = errorStatus(result.code)
-    throw new HttpError(status, result.code || 'REDEEM_FAILED', result.message || 'redeem failed')
+    const code: ErrorCode = result.code ?? ERROR_CODES.INTERNAL
+    throw new HttpError(errorStatus(code), code, result.message || 'redeem failed')
   })
 }
 
-function errorStatus(code: string | undefined): number {
+function errorStatus(code: ErrorCode): number {
   switch (code) {
-    case 'INVITE_BAD_SHAPE':
-    case 'INVITE_WRONG_PACT':
+    case ERROR_CODES.INVITE_BAD_SHAPE:
+    case ERROR_CODES.INVITE_WRONG_PACT:
       return 400
-    case 'INVITE_UNKNOWN':
-    case 'UNKNOWN_PACT':
+    case ERROR_CODES.UNKNOWN_INVITE:
+    case ERROR_CODES.UNKNOWN_PACT:
       return 404
-    case 'INVITE_NOT_INDEXER':
-    case 'INVITE_REVOKED':
-    case 'INVITE_SPENT':
+    case ERROR_CODES.INVITE_NOT_INDEXER:
+    case ERROR_CODES.INVITE_REVOKED:
+    case ERROR_CODES.INVITE_SPENT:
       return 409
-    case 'INVITE_EXPIRED':
+    case ERROR_CODES.INVITE_EXPIRED:
       return 410
-    case 'NO_PEERS':
-    case 'NO_INDEXER_REACHABLE':
-    case 'TIMEOUT':
-    case 'PEER_DISCONNECTED':
+    case ERROR_CODES.NO_PEERS:
+    case ERROR_CODES.NO_INDEXER_REACHABLE:
+    case ERROR_CODES.PEER_DISCONNECTED:
       return 503
     default:
       return 500

@@ -42,8 +42,8 @@ Each script prints `--help` when called with `-h`.
 # Post a task and claim it.
 ./scripts/tasks.sh create "Migrate legacy session store"
 ./scripts/tasks.sh list
-./scripts/tasks.sh claim a7f2-412
-./scripts/tasks.sh complete a7f2-412 "PR #123 merged"
+./scripts/tasks.sh claim a7f2bcde-412
+./scripts/tasks.sh complete a7f2bcde-412 "PR #123 merged"
 
 # Broadcast a status message.
 ./scripts/send.sh '*' "Starting refactor of src/router/*"

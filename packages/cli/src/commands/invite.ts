@@ -1,6 +1,6 @@
+import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
-import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 
 export interface InviteOpts {
@@ -30,11 +30,11 @@ export async function inviteCmd(
   const hostDir = resolveDataDir(cmd.optsWithGlobals())
   const pactId = await resolveCurrentPact(hostDir, opts.pact)
   const apiPort = Number(opts.port ?? 7666)
-  const api = new ApiClient({ port: apiPort, pactId })
+  const client = new OpenPact({ port: apiPort, pactId, hostDir })
 
   try {
     if (opts.revoke) {
-      await api.revokeInvite(opts.revoke)
+      await client.invites.revoke(opts.revoke)
       if (process.stdout.isTTY) {
         process.stderr.write(
           `${emoji.brand} ${c.brandBold('Invite revoked.')} ${c.ash(opts.revoke)}\n`,
@@ -44,7 +44,7 @@ export async function inviteCmd(
     }
 
     if (opts.list) {
-      const { entries } = await api.listInvites()
+      const entries = await client.invites.list()
       const live = entries.filter((e) => !e.dead)
       const dead = entries.filter((e) => e.dead)
       if (live.length === 0 && dead.length === 0) {
@@ -75,7 +75,7 @@ export async function inviteCmd(
     }
 
     const ttlMs = opts.ttl ? parseTtl(opts.ttl) : DEFAULT_TTL_MS
-    const invite = await api.createInvite({ ttl_ms: ttlMs })
+    const invite = await client.invites.create({ ttlMs })
 
     // Share URL to stdout — scripts pipe it around, humans copy-paste.
     process.stdout.write(invite.share_url + '\n')

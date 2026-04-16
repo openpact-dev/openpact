@@ -1,10 +1,10 @@
 import test from 'brittle'
-import { createHash } from 'crypto'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
+import { skillChecksum } from '../../../src/skills'
 
 function sha(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 function skillBody(over: Record<string, unknown> = {}) {

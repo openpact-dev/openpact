@@ -3,13 +3,13 @@
  * Boots the api against a single tmp daemon — no swarm needed.
  */
 import test from 'brittle'
-import { createHash } from 'crypto'
 import { createApi, bind } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
 import { listByType } from '../../../src/api/views'
+import { skillChecksum } from '../../../src/skills'
 
 function sha(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 async function bootApi(t: any) {
@@ -41,7 +41,7 @@ test('POST /v1/skills: correct checksum is accepted', async (t) => {
     checksum: sha(content),
   })
   t.is(res.status, 200)
-  t.ok(/^[0-9a-f]{4}-\d+$/.test(res.body.id))
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(res.body.id))
 })
 
 test('POST /v1/skills: mismatched checksum returns 400 SKILL_CHECKSUM_MISMATCH', async (t) => {
@@ -71,5 +71,6 @@ test('POST /v1/skills: requires_approval is preserved on the appended entry', as
   t.is(res.status, 200)
   const page = await listByType(daemon.view, 'skill', { limit: 10 })
   t.is(page.entries.length, 1)
-  t.is(page.entries[0].payload.requires_approval, true, 'requires_approval round-trips')
+  const entry = page.entries[0] as { payload: { requires_approval: boolean } }
+  t.is(entry.payload.requires_approval, true, 'requires_approval round-trips')
 })

@@ -3,33 +3,35 @@ import { preferredName, shortHandle, relTime } from '../../src/lib/format'
 
 describe('preferredName', () => {
   it('returns display_name when present and non-empty', () => {
-    expect(preferredName({ agent_id: 'anon-krait-7f2d', display_name: 'Cinnabar' })).toBe(
+    expect(preferredName({ agent_id: 'anon-krait-7f2d9999', display_name: 'Cinnabar' })).toBe(
       'Cinnabar',
     )
   })
 
   it('falls back to shortened agent_id when display_name is null', () => {
-    expect(preferredName({ agent_id: 'anon-krait-7f2d', display_name: null })).toBe(
-      'anon-krait-7f2d',
+    expect(preferredName({ agent_id: 'anon-krait-7f2d9999', display_name: null })).toBe(
+      'anon-krait-7f2d9999',
     )
   })
 
   it('falls back when display_name is undefined', () => {
-    expect(preferredName({ agent_id: 'anon-krait-7f2d' })).toBe('anon-krait-7f2d')
+    expect(preferredName({ agent_id: 'anon-krait-7f2d9999' })).toBe('anon-krait-7f2d9999')
   })
 
   it('falls back when display_name is an empty string', () => {
-    expect(preferredName({ agent_id: 'anon-krait-7f2d', display_name: '' })).toBe('anon-krait-7f2d')
+    expect(preferredName({ agent_id: 'anon-krait-7f2d9999', display_name: '' })).toBe(
+      'anon-krait-7f2d9999',
+    )
   })
 
   it('falls back when display_name is whitespace only', () => {
-    expect(preferredName({ agent_id: 'anon-krait-7f2d', display_name: '   ' })).toBe(
-      'anon-krait-7f2d',
+    expect(preferredName({ agent_id: 'anon-krait-7f2d9999', display_name: '   ' })).toBe(
+      'anon-krait-7f2d9999',
     )
   })
 
   it('accepts unicode display names', () => {
-    expect(preferredName({ agent_id: 'anon-wren-a1b2', display_name: '狐火' })).toBe('狐火')
+    expect(preferredName({ agent_id: 'anon-wren-a1b24444', display_name: '狐火' })).toBe('狐火')
   })
 })
 
@@ -40,7 +42,7 @@ describe('shortHandle', () => {
   })
 
   it('returns handle unchanged when ≤20 chars', () => {
-    expect(shortHandle('anon-krait-7f2d')).toBe('anon-krait-7f2d')
+    expect(shortHandle('anon-krait-7f2d9999')).toBe('anon-krait-7f2d9999')
   })
 
   it('truncates at 12 with ellipsis when >20 chars', () => {

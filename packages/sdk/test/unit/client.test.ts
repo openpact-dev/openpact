@@ -137,7 +137,7 @@ test('client: other network error rethrown as-is', async (t) => {
 })
 
 test('client: json POST sets content-type and body', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: 'now' } })
+  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
   const c = new OpenPactClient({ fetch: m.fetch, pactId: 'default' })
   await c.json('/v1/knowledge', 'POST', { topic: 'sales', content: 'hi' })
   t.is(m.calls[0].method, 'POST')

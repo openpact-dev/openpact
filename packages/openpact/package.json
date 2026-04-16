@@ -5,9 +5,11 @@
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/openpact-dev/openpact.git"
+    "url": "git+https://github.com/openpact-dev/openpact.git",
+    "directory": "packages/openpact"
   },
   "license": "SEE LICENSE IN LICENSE",
+  "type": "commonjs",
   "keywords": [
     "openpact",
     "p2p",
@@ -25,5 +27,12 @@
   "files": [
     "bin.js",
     "README.md"
-  ]
+  ],
+  "scripts": {
+    "validate": "publint --strict",
+    "prepublishOnly": "npm run validate"
+  },
+  "devDependencies": {
+    "publint": "^0.2.12"
+  }
 }

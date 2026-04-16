@@ -107,7 +107,7 @@ export function RestApi() {
       <Endpoint
         method="POST"
         path="/messages"
-        request={`{ "to": "anon-wyrm-7f2d", "content": "seen" }`}
+        request={`{ "to": "anon-wyrm-7f2d5555", "content": "seen" }`}
       />
 
       <h3>Entries (cross-type)</h3>

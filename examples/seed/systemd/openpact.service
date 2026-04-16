@@ -1,0 +1,77 @@
+# examples/seed/systemd/openpact.service
+#
+# A hardened systemd unit for running an OpenPact seed daemon on a
+# Linux host. Install to /etc/systemd/system/openpact.service and
+# enable with `systemctl enable --now openpact`.
+#
+# Prereqs:
+#   * `openpact` on $PATH (via `npm install -g @openpact/cli`).
+#   * A dedicated system user + group `openpact` (see README.md).
+#   * A data directory owned by that user (default: /var/lib/openpact).
+
+[Unit]
+Description=OpenPact seed daemon
+Documentation=https://openpact.dev/docs
+# Networking must be ready before we can bind 127.0.0.1:7666 and open
+# UDP/TCP sockets for hyperswarm. `network-online.target` waits for at
+# least one routable interface.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=openpact
+Group=openpact
+
+# Foreground mode — systemd owns the lifecycle. `--no-dashboard`
+# because a seed node doesn't serve UI, and `--log-file -` because we
+# let journald capture stdout/stderr instead of double-writing.
+Environment=OPENPACT_DATA_DIR=/var/lib/openpact
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env openpact start --foreground --no-dashboard --data-dir ${OPENPACT_DATA_DIR} --log-file -
+
+# Wait for liveness before systemd marks the service "active". `curl`
+# retries every second for up to 30s; if the daemon hasn't bound its
+# port by then something is wrong and we want the unit to fail loudly.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do curl -sf http://127.0.0.1:7666/v1/healthz >/dev/null && exit 0; sleep 1; done; echo "openpact: /v1/healthz never returned 200"; exit 1'
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=60s
+# Give the daemon a chance to flush Autobase + close the swarm before
+# systemd sends SIGKILL. Matches the CLI's own shutdown budget.
+TimeoutStopSec=30s
+# SIGINT triggers the clean-shutdown path (see start-foreground.ts).
+# SIGTERM works too; we use SIGINT for parity with `openpact stop`.
+KillSignal=SIGINT
+
+# ---------- Hardening -------------------------------------------------
+# The daemon only needs:
+#   * read/write access to its data dir
+#   * outbound network (DHT + UDP holepunch)
+#   * CAP_NET_BIND_SERVICE is NOT required (7666 is unprivileged)
+#
+# Everything else is locked down.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/openpact
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+# node needs it — V8 JIT writes executable pages.
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+# File-descriptor budget: SSE + hyperswarm + Autobase leaves the
+# default of 1024 uncomfortably tight on busy seeds.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

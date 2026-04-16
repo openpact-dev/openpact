@@ -1,11 +1,11 @@
 import open from 'open'
 import { Daemon, config as daemonConfig } from '@openpact/daemon'
+import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji, banner } from '../lib/theme'
 import { askText } from '../lib/prompt'
 import { suggestPactName, suggestPactPurpose, suggestDisplayName } from '../lib/themes'
 import { startCmd } from './start'
-import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { pidFileLooksAlive, pidPath } from '../lib/pid'
 
 export interface InitOpts {
@@ -67,11 +67,11 @@ export async function initCmd(
   // data dir we're initing into. A stranger daemon on :7666 backing a
   // different host dir can't be allowed to hijack writes meant for the
   // `--data-dir` target.
-  const hostApi = new ApiClient({ port: apiPort })
+  const hostClient = new OpenPact({ port: apiPort, hostDir })
   let daemonAlreadyRunning = false
   if (await pidFileLooksAlive(hostDir)) {
     try {
-      await hostApi.ping()
+      await hostClient.ping()
       daemonAlreadyRunning = true
     } catch (err) {
       if (err instanceof DaemonNotRunningError) {
@@ -84,7 +84,7 @@ export async function initCmd(
   }
 
   const sealed = daemonAlreadyRunning
-    ? await createViaApi(hostApi, {
+    ? await createViaApi(hostClient, {
         alias: chosenAlias,
         pactName,
         pactPurpose,
@@ -147,7 +147,7 @@ export async function initCmd(
  * an existing alias.
  */
 async function createViaApi(
-  api: ApiClient,
+  client: OpenPact,
   opts: {
     alias: string
     pactName: string
@@ -158,13 +158,13 @@ async function createViaApi(
   },
 ): Promise<SealedPact> {
   if (opts.force) {
-    const list = await api.listPacts()
+    const list = await client.pacts.list()
     if (list.pacts.some((p) => p.alias === opts.alias)) {
-      await api.deletePact(opts.alias)
+      await client.pacts.remove(opts.alias)
     }
   }
   try {
-    const res = await api.createPact({
+    const res = await client.pacts.create({
       name: opts.pactName,
       purpose: opts.pactPurpose,
       display_name: opts.displayName,

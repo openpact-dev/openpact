@@ -86,7 +86,7 @@ Every server error code maps to a typed error class:
 import { TaskNotOpenError, DaemonNotRunningError } from '@openpact/sdk'
 
 try {
-  await pact.tasks.claim('aaaa-1')
+  await pact.tasks.claim('aaaaaaaa-1')
 } catch (err) {
   if (err instanceof TaskNotOpenError) {
     // someone else got there first

@@ -128,11 +128,16 @@ function applyTaskUpdate(state: TaskState, update: TaskEntry, ttlMs: number): Ta
 
   if (next === 'claimed') {
     // First claim against an open (or expired-claimed) task wins.
+    //
+    // `claimed_by` is always the writer's canonical agent_id — apply()
+    // guarantees agent_id matches the writer key, so a peer cannot
+    // claim a task on someone else's behalf. `update.payload.claimed_by`
+    // is informational only; the authoritative value is `update.agent_id`.
     if (state.status === 'open' || claimExpiredByEntry) {
       return {
         ...state,
         status: 'claimed',
-        claimed_by: update.payload.claimed_by ?? update.agent_id,
+        claimed_by: update.agent_id,
         claimed_at: update.timestamp,
       }
     }
@@ -183,6 +188,6 @@ export async function getTaskState(
   taskId: string,
   opts: ReduceOpts = {},
 ): Promise<TaskState | null> {
-  const entries = (await findRefs(view, 'task', taskId)) as TaskEntry[]
+  const entries = (await findRefs(view, 'task', taskId)) as unknown as TaskEntry[]
   return reduceTaskHistory(entries, opts)
 }

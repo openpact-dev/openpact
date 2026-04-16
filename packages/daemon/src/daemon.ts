@@ -16,36 +16,20 @@ import {
 } from './config'
 import { Pact } from './pact'
 import { RedeemError } from './invites'
+import type { RedeemRequest, RedeemResponse } from './invite-wire'
+import type { MemberAuthRequest, MemberAuthResponse } from './member-auth-wire'
 import {
-  PROTOCOL as INVITE_PROTOCOL,
-  redeemRequestEnc,
-  redeemResponseEnc,
-  type RedeemRequest,
-  type RedeemResponse,
-} from './invite-wire'
-import {
-  PROTOCOL as MEMBER_AUTH_PROTOCOL,
-  memberAuthRequestEnc,
-  memberAuthResponseEnc,
-  type MemberAuthRequest,
-  type MemberAuthResponse,
-} from './member-auth-wire'
-
-interface PeerLink {
-  conn: unknown
-  channel: unknown
-  authChannel: unknown
-  sendRequest: (req: RedeemRequest) => boolean
-  sendAuthRequest: (req: MemberAuthRequest) => boolean
-  pending: Map<string, (res: RedeemResponse) => void>
-  pendingAuth: Map<
-    string,
-    { pactId: string; challenge: Buffer; resolve: (res: MemberAuthResponse) => void }
-  >
-  claimedMembers: Map<string, string>
-  authenticatedMembers: Map<string, string>
-  revocationTimers: Map<string, ReturnType<typeof setTimeout>>
-}
+  type PeerLink,
+  newPeerLink,
+  destroyPeerLink,
+  clearRevocationTimer,
+  scheduleRevocationDisconnect,
+  attachPactToLink,
+  corrKey,
+} from './peer-link'
+import { openInviteChannel } from './invite-channel'
+import { openMemberAuthChannel, requestMemberAuth } from './member-auth-channel'
+import { ERROR_CODES, type ErrorCode } from './error-codes'
 
 export interface DaemonOpts {
   dataDir?: string
@@ -111,6 +95,7 @@ export class Daemon extends EventEmitter {
   private _swarmOpts: Record<string, unknown>
   private _swarm: any = null
   private _started = false
+  private _stopped = false
   private _pacts: Map<string /* alias */, Pact> = new Map()
   private _currentAlias: string | null = null
   private _joinedTopics: Set<string> = new Set()
@@ -326,14 +311,17 @@ export class Daemon extends EventEmitter {
         } catch {
           // non-fatal
         }
+        let didRevoke = false
         try {
-          await pact.leaveAsWriter()
+          didRevoke = await pact.leaveAsWriter()
         } catch {
           // non-fatal — likely the last-indexer case.
         }
         // Give autobase a window to flush both entries to any currently
-        // connected peer before we tear down the pact locally.
-        await new Promise((r) => setTimeout(r, 2000))
+        // connected peer before we tear down the pact locally. If we
+        // skipped the revocation (sole indexer) there's nobody to flush
+        // to, so the sleep is pointless.
+        if (didRevoke) await new Promise((r) => setTimeout(r, 2000))
       }
       // Stop announcing the topic so the swarm won't re-attach to this
       // pact on reconnect. The existing conn may persist if shared with
@@ -394,12 +382,38 @@ export class Daemon extends EventEmitter {
   async start(): Promise<void> {
     if (this._started) return
     this._swarm = new Hyperswarm(this._swarmOpts)
+    // Hyperswarm itself emits 'error' for DHT bootstrap / topic-join
+    // failures. A missing listener would tear the daemon down — log
+    // and keep going; the swarm retries internally.
+    this._swarm.on('error', (err: Error) => {
+      this.emit('swarm-error', { error: err })
+    })
     this._swarm.on('connection', (conn: any) => {
+      // Phase 3a: every Hyperswarm socket is a Pear "noise" stream
+      // that emits 'error' on transport faults (peer reset the link,
+      // protocol mismatch, etc). Without a listener Node treats it as
+      // an unhandled 'error' and crashes the whole process — fatal in
+      // production where one flaky peer would take the daemon down.
+      // We log + swallow; the matching 'close' handler below cleans up
+      // the link state.
+      conn.on('error', (err: Error) => {
+        this.emit('peer-error', {
+          remoteKey: conn.remotePublicKey ? b4a.toString(conn.remotePublicKey, 'hex') : null,
+          error: err,
+        })
+      })
       // Attach protomux BEFORE corestore, so our channel shares the
       // same mux that replicate() grabs via Protomux.from().
       const mux: any = Protomux.from(conn)
-      const link = this._openInviteChannel(conn, mux)
-      this._openMemberAuthChannel(link, mux)
+      const link = newPeerLink(conn)
+      openInviteChannel(link, mux, {
+        handleRedeemRequest: (req) => this._handleRedeemRequest(req),
+        onAdmission: (l, pactId, writerKey) =>
+          this._bootstrapReplicationForAdmission(l, pactId, writerKey),
+      })
+      openMemberAuthChannel(link, mux, {
+        handleMemberAuthRequest: (req) => this._handleMemberAuthRequest(req),
+      })
       this._peerLinks.add(link)
 
       this._scheduleMemberAuth(link)
@@ -427,155 +441,6 @@ export class Daemon extends EventEmitter {
     this.emit('start')
   }
 
-  /**
-   * Open the `openpact/invites/v1` channel on a newly-connected peer.
-   * The returned PeerLink is used by redeemThroughPeers() to broadcast
-   * requests and correlate responses. Incoming redeem-requests are
-   * handled locally and responded to in place.
-   */
-  private _openInviteChannel(conn: any, mux: any): PeerLink {
-    const pending = new Map<string, (res: RedeemResponse) => void>()
-    const pendingAuth = new Map<
-      string,
-      { pactId: string; challenge: Buffer; resolve: (res: MemberAuthResponse) => void }
-    >()
-    let sendMsg: any = null
-    const link: PeerLink = {
-      conn,
-      channel: null,
-      authChannel: null,
-      sendRequest: () => false,
-      sendAuthRequest: () => false,
-      pending,
-      pendingAuth,
-      claimedMembers: new Map(),
-      authenticatedMembers: new Map(),
-      revocationTimers: new Map(),
-    }
-
-    const channel = mux.createChannel({
-      protocol: INVITE_PROTOCOL,
-      onclose: () => {
-        for (const resolve of pending.values()) {
-          resolve({
-            corr: Buffer.alloc(0),
-            ok: false,
-            code: 'PEER_DISCONNECTED',
-            message: 'peer disconnected before responding',
-          })
-        }
-        pending.clear()
-        for (const { resolve } of pendingAuth.values()) {
-          resolve({
-            corr: Buffer.alloc(0),
-            ok: false,
-            code: 'PEER_DISCONNECTED',
-            message: 'peer disconnected before responding',
-          })
-        }
-        pendingAuth.clear()
-      },
-    })
-    if (!channel) {
-      // peer didn't advertise our protocol — construct a dead link
-      return link
-    }
-
-    const requestMsg = channel.addMessage({
-      encoding: redeemRequestEnc,
-      onmessage: (req: RedeemRequest) => {
-        this._handleRedeemRequest(req)
-          .then(async (res) => {
-            if (res.ok) {
-              await this._bootstrapReplicationForAdmission(link, req.pactId, req.writerKey)
-            }
-            if (sendMsg) sendMsg.send({ ...res, corr: req.corr })
-          })
-          .catch(
-            (err) =>
-              sendMsg &&
-              sendMsg.send({
-                corr: req.corr,
-                ok: false,
-                code: 'INTERNAL',
-                message: (err as Error).message,
-              }),
-          )
-      },
-    })
-    const responseMsg = channel.addMessage({
-      encoding: redeemResponseEnc,
-      onmessage: (res: RedeemResponse) => {
-        const key = corrKey(res.corr)
-        const resolve = pending.get(key)
-        if (resolve) {
-          pending.delete(key)
-          resolve(res)
-        }
-      },
-    })
-    sendMsg = responseMsg
-    channel.open()
-    link.channel = channel
-    link.sendRequest = (req) => requestMsg.send(req)
-    return link
-  }
-
-  private _openMemberAuthChannel(link: PeerLink, mux: any): void {
-    let sendMsg: any = null
-    const channel = mux.createChannel({
-      protocol: MEMBER_AUTH_PROTOCOL,
-      onclose: () => {
-        for (const { resolve } of link.pendingAuth.values()) {
-          resolve({
-            corr: Buffer.alloc(0),
-            ok: false,
-            code: 'PEER_DISCONNECTED',
-            message: 'peer disconnected before responding',
-          })
-        }
-        link.pendingAuth.clear()
-      },
-    })
-    if (!channel) {
-      link.authChannel = null
-      link.sendAuthRequest = () => false
-      return
-    }
-
-    const requestMsg = channel.addMessage({
-      encoding: memberAuthRequestEnc,
-      onmessage: (req: MemberAuthRequest) => {
-        this._handleMemberAuthRequest(req)
-          .then((res) => sendMsg && sendMsg.send({ ...res, corr: req.corr }))
-          .catch(
-            (err) =>
-              sendMsg &&
-              sendMsg.send({
-                corr: req.corr,
-                ok: false,
-                code: 'INTERNAL',
-                message: (err as Error).message,
-              }),
-          )
-      },
-    })
-    const responseMsg = channel.addMessage({
-      encoding: memberAuthResponseEnc,
-      onmessage: (res: MemberAuthResponse) => {
-        const key = corrKey(res.corr)
-        const pending = link.pendingAuth.get(key)
-        if (!pending) return
-        link.pendingAuth.delete(key)
-        pending.resolve(res)
-      },
-    })
-    sendMsg = responseMsg
-    channel.open()
-    link.authChannel = channel
-    link.sendAuthRequest = (req) => requestMsg.send(req)
-  }
-
   private async _handleMemberAuthRequest(req: MemberAuthRequest): Promise<MemberAuthResponse> {
     const pact = await this._findPactByPactId(req.pactId)
     if (!pact) {
@@ -593,56 +458,16 @@ export class Daemon extends EventEmitter {
     }
   }
 
-  private async _requestMemberAuth(link: PeerLink, pact: Pact): Promise<void> {
-    if (!pact.isMember || !link.authChannel) return
-    const pactId = pact.pactKey?.toLowerCase()
-    if (!pactId) return
-    if (link.authenticatedMembers.has(pactId)) return
-    for (const pending of link.pendingAuth.values()) {
-      if (pending.pactId === pactId) return
-    }
-
-    const corr = crypto.randomBytes(8)
-    const key = corrKey(corr)
-    const challenge = crypto.randomBytes(32)
-    const req: MemberAuthRequest = { pactId, challenge, corr }
-    const response = new Promise<MemberAuthResponse>((resolve) => {
-      link.pendingAuth.set(key, { pactId, challenge, resolve })
+  private _requestMemberAuth(link: PeerLink, pact: Pact): Promise<void> {
+    return requestMemberAuth(link, pact, {
+      onMemberAuthenticated: (pactKey, memberKey) => {
+        this.emit('member-online', {
+          pactId: pactKey,
+          alias: this._aliasForPactKey(pactKey),
+          member_key: memberKey,
+        })
+      },
     })
-    const sent = link.sendAuthRequest(req)
-    if (!sent) {
-      link.pendingAuth.delete(key)
-      return
-    }
-    const res = await response
-    if (!res.ok || !res.memberKey || !res.signerKey || !res.signature) return
-    if (
-      !pact.verifyMembershipChallenge(
-        challenge,
-        pactId,
-        res.signature,
-        res.memberKey,
-        res.signerKey,
-        res.signerNamespace,
-        res.compat,
-      )
-    ) {
-      return
-    }
-    const memberKey = res.memberKey.toLowerCase()
-    link.claimedMembers.set(pactId, memberKey)
-    if (!(await pact.hasActiveMemberKey(memberKey))) return
-    this._clearRevocationTimer(link, pactId)
-    const wasAuthed = link.authenticatedMembers.has(pactId)
-    link.authenticatedMembers.set(pactId, memberKey)
-    this._attachPactToLink(pact, link)
-    if (!wasAuthed) {
-      this.emit('member-online', {
-        pactId: pact.pactKey,
-        alias: this._aliasForPactKey(pact.pactKey),
-        member_key: memberKey,
-      })
-    }
   }
 
   private async _bootstrapReplicationForAdmission(
@@ -674,7 +499,7 @@ export class Daemon extends EventEmitter {
     const isOwnKey = !!selfKey && selfKey === claimedKey
     if (!isOwnKey) {
       link.claimedMembers.set(pactKey, claimedKey)
-      this._clearRevocationTimer(link, pactKey)
+      clearRevocationTimer(link, pactKey)
       const wasAuthed = link.authenticatedMembers.has(pactKey)
       link.authenticatedMembers.set(pactKey, claimedKey)
       if (!wasAuthed) {
@@ -685,20 +510,7 @@ export class Daemon extends EventEmitter {
         })
       }
     }
-    this._attachPactToLink(pact, link)
-  }
-
-  private _attachPactToLink(pact: Pact, link: PeerLink): void {
-    pact.store.replicate(link.conn)
-    const muxer = Protomux.from(link.conn as any)
-    const tracker = pact.store?.cores
-    if (!tracker || typeof tracker[Symbol.iterator] !== 'function') return
-    for (const core of tracker as Iterable<any>) {
-      if (!core?.opened || !core?.replicator?.attached || !core?.replicator?.attachTo) continue
-      if (!core.replicator.attached(muxer)) {
-        core.replicator.attachTo(muxer)
-      }
-    }
+    attachPactToLink(pact, link)
   }
 
   private async _reconcilePactLinks(pact: Pact): Promise<void> {
@@ -708,20 +520,20 @@ export class Daemon extends EventEmitter {
       const remoteMemberKey = link.authenticatedMembers.get(pactId)
       if (remoteMemberKey) {
         if (!pact.isMember) {
-          this._destroyPeerLink(link)
+          destroyPeerLink(link)
           continue
         }
         if (!(await pact.hasActiveMemberKey(remoteMemberKey))) {
-          this._scheduleRevocationDisconnect(link, pact, pactId, remoteMemberKey)
+          scheduleRevocationDisconnect(link, pact, pactId, remoteMemberKey, this._peerLinks)
           continue
         }
-        this._clearRevocationTimer(link, pactId)
+        clearRevocationTimer(link, pactId)
       } else if (pact.isMember) {
         const claimedMemberKey = link.claimedMembers.get(pactId)
         if (claimedMemberKey && (await pact.hasActiveMemberKey(claimedMemberKey))) {
-          this._clearRevocationTimer(link, pactId)
+          clearRevocationTimer(link, pactId)
           link.authenticatedMembers.set(pactId, claimedMemberKey)
-          this._attachPactToLink(pact, link)
+          attachPactToLink(pact, link)
           this.emit('member-online', {
             pactId: pact.pactKey,
             alias: this._aliasForPactKey(pact.pactKey),
@@ -734,14 +546,6 @@ export class Daemon extends EventEmitter {
     }
   }
 
-  private _destroyPeerLink(link: PeerLink): void {
-    try {
-      ;(link.conn as { destroy?: () => void }).destroy?.()
-    } catch {
-      // best effort
-    }
-  }
-
   private _scheduleMemberAuth(link: PeerLink): void {
     for (const delayMs of [0, 250, 1000]) {
       setTimeout(() => {
@@ -749,31 +553,6 @@ export class Daemon extends EventEmitter {
         for (const pact of this._pacts.values()) void this._requestMemberAuth(link, pact)
       }, delayMs)
     }
-  }
-
-  private _scheduleRevocationDisconnect(
-    link: PeerLink,
-    pact: Pact,
-    pactId: string,
-    remoteMemberKey: string,
-  ): void {
-    if (link.revocationTimers.has(pactId)) return
-    const timer = setTimeout(() => {
-      link.revocationTimers.delete(pactId)
-      void (async () => {
-        if (!this._peerLinks.has(link)) return
-        if (link.authenticatedMembers.get(pactId) !== remoteMemberKey) return
-        if (!(await pact.hasActiveMemberKey(remoteMemberKey))) this._destroyPeerLink(link)
-      })()
-    }, 500)
-    link.revocationTimers.set(pactId, timer)
-  }
-
-  private _clearRevocationTimer(link: PeerLink, pactId: string): void {
-    const timer = link.revocationTimers.get(pactId)
-    if (!timer) return
-    clearTimeout(timer)
-    link.revocationTimers.delete(pactId)
   }
 
   /** Handle an inbound redeem-request: map to local Pact.redeemInvite and reply. */
@@ -820,9 +599,9 @@ export class Daemon extends EventEmitter {
     token: string,
     writerKey: string,
     { timeoutMs = 15_000 }: { timeoutMs?: number } = {},
-  ): Promise<{ ok: true; nonce: string } | { ok: false; code: string; message: string }> {
+  ): Promise<{ ok: true; nonce: string } | { ok: false; code: ErrorCode; message: string }> {
     if (this._peerLinks.size === 0) {
-      return { ok: false, code: 'NO_PEERS', message: 'no peers connected' }
+      return { ok: false, code: ERROR_CODES.NO_PEERS, message: 'no peers connected' }
     }
     const corr = crypto.randomBytes(8)
     const req: RedeemRequest = { pactId, token, writerKey, corr }
@@ -837,8 +616,16 @@ export class Daemon extends EventEmitter {
         const last = responses.at(-1)
         resolve(
           last
-            ? { ok: false, code: last.code || 'TIMEOUT', message: last.message || 'timeout' }
-            : { ok: false, code: 'NO_INDEXER_REACHABLE', message: 'no indexer responded' },
+            ? {
+                ok: false,
+                code: (last.code as ErrorCode | undefined) ?? ERROR_CODES.NO_INDEXER_REACHABLE,
+                message: last.message || 'timeout',
+              }
+            : {
+                ok: false,
+                code: ERROR_CODES.NO_INDEXER_REACHABLE,
+                message: 'no indexer responded',
+              },
         )
       }, timeoutMs)
 
@@ -850,7 +637,7 @@ export class Daemon extends EventEmitter {
         else
           resolve({
             ok: false,
-            code: res.code || 'UNKNOWN',
+            code: (res.code as ErrorCode | undefined) ?? ERROR_CODES.INTERNAL,
             message: res.message || 'redeem failed',
           })
       }
@@ -886,7 +673,7 @@ export class Daemon extends EventEmitter {
         clearTimeout(timer)
         resolve({
           ok: false,
-          code: 'NO_INDEXER_REACHABLE',
+          code: ERROR_CODES.NO_INDEXER_REACHABLE,
           message: 'no peer accepted the invite channel',
         })
       }
@@ -903,19 +690,75 @@ export class Daemon extends EventEmitter {
     this._joinedTopics.add(hex)
   }
 
+  /**
+   * Ordered shutdown sequence. Executed in this order:
+   *   1. Stop announcing every pact topic so no new peers dial in.
+   *   2. Cancel pending revocation timers (they hold ref'd timeouts).
+   *   3. Destroy swarm (closes every peer socket).
+   *   4. Close each pact (flushes autobase to disk).
+   *   5. Clear in-memory maps and emit 'stop'.
+   *
+   * Earlier versions tore down the swarm before pact.close(), which
+   * left autobase to try replicating over already-destroyed streams
+   * — mostly harmless but produced noisy EBADF-style errors. The
+   * new order guarantees pacts see a clean "no peers" state before
+   * their cores close, and that close() has a chance to flush any
+   * in-flight writes.
+   */
   async stop(): Promise<void> {
+    if (this._stopped) return
+    this._stopped = true
     this._started = false
+
+    // Stop announcing every pact topic. Best-effort: leave() can
+    // fail if the swarm already tore down mid-shutdown.
     if (this._swarm) {
-      await this._swarm.destroy()
+      for (const hex of this._joinedTopics) {
+        try {
+          await this._swarm.leave(b4a.from(hex, 'hex'))
+        } catch {
+          // non-fatal
+        }
+      }
+    }
+    this._joinedTopics.clear()
+
+    // Cancel any revocation disconnect timers we queued so they
+    // don't fire against a torn-down link.
+    for (const link of this._peerLinks) {
+      for (const timer of link.revocationTimers.values()) clearTimeout(timer)
+      link.revocationTimers.clear()
+    }
+
+    // Destroy the swarm — this closes every peer socket, which in
+    // turn triggers our conn.on('close') cleanup for each link.
+    if (this._swarm) {
+      try {
+        await this._swarm.destroy()
+      } catch {
+        // non-fatal
+      }
       this._swarm = null
     }
+    this._peerLinks.clear()
+
+    // Flush each pact to disk. Errors here are logged via the
+    // caller's 'stop' listener; we still proceed to clear state so
+    // a retried stop() doesn't deadlock on an already-closed pact.
+    const closeErrors: Error[] = []
     for (const pact of this._pacts.values()) {
-      await pact.close()
+      try {
+        await pact.close()
+      } catch (err) {
+        closeErrors.push(err as Error)
+      }
     }
     this._pacts.clear()
-    this._joinedTopics.clear()
-    this._peerLinks.clear()
+
     this.emit('stop')
+    if (closeErrors.length) {
+      this.emit('stop-error', { errors: closeErrors })
+    }
   }
 
   get connections(): number {
@@ -1130,8 +973,4 @@ async function _wait(
     await new Promise((r) => setTimeout(r, 50))
   }
   throw new Error(`timeout: ${label()}`)
-}
-
-function corrKey(buf: Buffer): string {
-  return b4a.toString(buf, 'hex') as string
 }

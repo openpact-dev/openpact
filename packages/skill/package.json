@@ -6,21 +6,25 @@
   "homepage": "https://openpact.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/openpact-dev/openpact.git",
+    "url": "git+https://github.com/openpact-dev/openpact.git",
     "directory": "packages/skill"
   },
   "engines": {
     "node": ">=22"
   },
+  "type": "commonjs",
   "files": [
     "SKILL.md",
     "tools.json",
     "README.md"
   ],
   "scripts": {
+    "validate": "publint --strict",
+    "prepublishOnly": "npm run validate",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/integration/**/*.test.ts'"
   },
   "devDependencies": {
-    "@openpact/daemon": "*"
+    "@openpact/daemon": "*",
+    "publint": "^0.2.12"
   }
 }

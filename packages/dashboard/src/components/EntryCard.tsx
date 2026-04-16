@@ -11,7 +11,7 @@ export interface Entry {
   payload: Record<string, any>
 }
 
-// Mid-sentence verbs after a peer handle: "anon-fox-1234 shared a
+// Mid-sentence verbs after a peer handle: "anon-fox-12345678 shared a
 // note about routing: …". Handle starts the sentence (a literal
 // value), so these verb fragments stay lowercase.
 const TYPE_VERB: Record<SigilKind, string> = {

@@ -21,10 +21,14 @@
 import test from 'brittle'
 import b4a from 'b4a'
 import { makeApply, type ApplyView, type ApplyHost, type ApplyNode } from '../../../src/apply'
+import { derive as deriveHandle } from '../../../src/peer-handle'
 
-const VALID_HANDLE = 'anon-krait-7f2d'
 const TS = '2026-04-14T10:30:00.000Z'
 const KEY_A = 'aa'.repeat(32)
+// apply.ts enforces agent_id === deriveHandle(writerKey). Any hardcoded
+// handle that isn't the derived one gets rejected as 'agent-mismatch'
+// and silently drops the write.
+const HANDLE_A = deriveHandle(b4a.from(KEY_A, 'hex') as Buffer)
 
 interface FakeView extends ApplyView {
   _data: Map<string, unknown>
@@ -70,7 +74,7 @@ function entry(type: string, payload: unknown, refs?: string[]): Record<string, 
   const out: Record<string, unknown> = {
     type,
     timestamp: TS,
-    agent_id: VALID_HANDLE,
+    agent_id: HANDLE_A,
     payload,
   }
   if (refs) out.refs = refs
@@ -183,7 +187,7 @@ test('admin entries do not write ref keys (admin path is separate)', async (t) =
         {
           type: 'admin',
           timestamp: TS,
-          agent_id: VALID_HANDLE,
+          agent_id: HANDLE_A,
           payload: { action: 'addWriter', key: 'bb'.repeat(32), indexer: false },
           refs: ['some-target'],
         },

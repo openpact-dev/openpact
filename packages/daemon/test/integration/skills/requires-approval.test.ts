@@ -4,13 +4,13 @@
  * preserved.
  */
 import test from 'brittle'
-import { createHash } from 'crypto'
 import { pair } from '../../helpers/pair'
 import { listByType } from '../../../src/api/views'
 import type { Daemon } from '../../../src/daemon'
+import { skillChecksum } from '../../../src/skills'
 
 function sha(content: string): string {
-  return 'sha256:' + createHash('sha256').update(content, 'utf8').digest('hex')
+  return skillChecksum(content)
 }
 
 test('requires_approval flag replicates from A to B', async (t) => {
@@ -34,8 +34,11 @@ test('requires_approval flag replicates from A to B', async (t) => {
 
   const page = await waitForSkills(b.daemon, 1, { timeout: 15000 })
   t.is(page.entries.length, 1, 'B sees the skill')
-  t.is(page.entries[0].payload.requires_approval, true, 'flag preserved across replication')
-  t.is(page.entries[0].payload.checksum, sha(content), 'checksum preserved')
+  const entry = page.entries[0] as {
+    payload: { requires_approval: boolean; checksum: string }
+  }
+  t.is(entry.payload.requires_approval, true, 'flag preserved across replication')
+  t.is(entry.payload.checksum, sha(content), 'checksum preserved')
 })
 
 async function admitMember(a: Daemon, b: Daemon): Promise<void> {

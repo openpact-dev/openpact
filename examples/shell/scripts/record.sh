@@ -21,6 +21,9 @@ topic="$1"
 content="$2"
 confidence="${3:-}"
 
+# shellcheck source=./_auth.sh
+source "$(dirname "$0")/_auth.sh"
+
 if [[ -n "$confidence" ]]; then
   body="$(python3 - "$topic" "$content" "$confidence" <<'PY'
 import json, sys
@@ -39,4 +42,5 @@ fi
 
 curl -sf -X POST "${base}/v1/pacts/${pact}/knowledge" \
   -H 'content-type: application/json' \
+  ${OPENPACT_AUTH_HEADER:+-H "$OPENPACT_AUTH_HEADER"} \
   -d "$body" | python3 -m json.tool

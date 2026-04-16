@@ -1,6 +1,6 @@
+import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
-import { ApiClient, DaemonNotRunningError } from '../lib/api-client'
 import { c, emoji } from '../lib/theme'
 
 export interface RemoveMemberOpts {
@@ -18,9 +18,9 @@ export async function removeMemberCmd(
   }
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pactId = await resolveCurrentPact(dir, opts.pact)
-  const api = new ApiClient({ port: Number(opts.port ?? 7666), pactId })
+  const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
   try {
-    await api.removeMember(key)
+    await client.admin.removeMember(key)
     console.log(
       `${emoji.sever} ${c.brandBold('The bond has been severed.')}  ${c.ash(`(${key.slice(0, 12)}… on ${pactId})`)}`,
     )

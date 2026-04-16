@@ -55,7 +55,7 @@ test('messages.iterate: paginates across pages', async (t) => {
 })
 
 test('messages.send: broadcast', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: 'now' } })
+  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
   const r = messagesResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   await r.send({ to: '*', content: 'heads up' })
   const body = JSON.parse(m.calls[0].body!)
@@ -64,8 +64,8 @@ test('messages.send: broadcast', async (t) => {
 })
 
 test('messages.send: direct to handle', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaa-1', timestamp: 'now' } })
+  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
   const r = messagesResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.send({ to: 'anon-fox-1234', content: 'private' })
-  t.is(JSON.parse(m.calls[0].body!).to, 'anon-fox-1234')
+  await r.send({ to: 'anon-fox-12345678', content: 'private' })
+  t.is(JSON.parse(m.calls[0].body!).to, 'anon-fox-12345678')
 })

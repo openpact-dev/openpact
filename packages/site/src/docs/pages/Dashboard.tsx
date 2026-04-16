@@ -178,8 +178,8 @@ openpact dashboard             # open the dashboard URL in your default browser`
       <ul>
         <li>Every screen has a stable URL. Bookmarks and deep links survive daemon restarts.</li>
         <li>
-          <code>/trace/:id</code> accepts the full entry ID (for example <code>a7f2-412</code>) and
-          is the canonical share link for an entry.
+          <code>/trace/:id</code> accepts the full entry ID (for example <code>a7f2bcde-412</code>)
+          and is the canonical share link for an entry.
         </li>
         <li>
           <code>Esc</code> closes any open confirm dialog or entry drawer.
