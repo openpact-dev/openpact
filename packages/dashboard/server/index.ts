@@ -91,16 +91,20 @@ export async function startDashboard(opts: StartDashboardOpts = {}): Promise<Sta
     proxyPayloads: false,
     httpMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     // Inject the daemon's bearer token server-side so it never reaches
-    // the browser. The daemon's host/origin check is also satisfied
-    // because the proxy rewrites the Host header to the upstream.
-    replyOptions: daemonToken
-      ? {
-          rewriteRequestHeaders: (_req, headers) => ({
-            ...headers,
-            authorization: `Bearer ${daemonToken}`,
-          }),
-        }
-      : undefined,
+    // the browser. Also drop browser-stamped Origin/Referer: the daemon's
+    // DNS-rebinding shield requires Origin.host === Host.host, but the
+    // browser's Origin is the dashboard port (7667) while this proxy
+    // forwards to the daemon port (7666). Stripping them makes the hop
+    // look like any other server-side caller (curl, the CLI), which is
+    // what it is.
+    replyOptions: {
+      rewriteRequestHeaders: (_req, headers) => {
+        const { origin: _o, referer: _r, ...rest } = headers
+        const out: Record<string, unknown> = { ...rest }
+        if (daemonToken) out.authorization = `Bearer ${daemonToken}`
+        return out as typeof headers
+      },
+    },
   })
 
   // Static SPA. Only mount when the build output exists; otherwise the

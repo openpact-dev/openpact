@@ -20,11 +20,11 @@ interface DaemonHarness {
   daemonPort: number
 }
 
-async function bootDaemon(t: any): Promise<DaemonHarness> {
+async function bootDaemon(t: any, opts: { token?: string } = {}): Promise<DaemonHarness> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-dash-'))
   const daemon = await Daemon.create({ dataDir: dir })
   // await daemon.start() — skipped: no swarm needed for HTTP-only tests
-  const app = createApi(daemon)
+  const app = createApi(daemon, opts.token ? { token: opts.token } : {})
   const daemonPort = nextDaemonPort++
   await bind(app, { host: '127.0.0.1', port: daemonPort })
   t.teardown(async () => {
@@ -81,6 +81,30 @@ test('GET /api/v1/pacts/default/knowledge proxies query strings through to the d
   }
   t.is(arr.length, 1)
   t.is(arr[0].payload.content, 'proxy works')
+})
+
+test('proxy strips the browser Origin so the daemon accepts POSTs from :7667 → :7666', async (t) => {
+  // Reproduces the "Origin http://localhost:7667 is not loopback or does
+  // not match Host" 403 the dashboard would surface when a browser POSTed
+  // a message. The daemon's Host/Origin guard requires Origin.host ===
+  // Host.host; the dashboard is on a different port than the daemon, so
+  // the proxy must scrub Origin (and Referer) before forwarding.
+  const token = 'a'.repeat(64)
+  const { daemonPort } = await bootDaemon(t, { token })
+  const dash = await startDashboard({ daemonPort, port: 0, daemonToken: token })
+  t.teardown(() => dash.close())
+
+  const browserOrigin = `http://localhost:${dash.port}`
+  const res = await fetch(`${dash.url}/api/v1/pacts/default/messages`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: browserOrigin,
+      referer: `${browserOrigin}/messages`,
+    },
+    body: JSON.stringify({ to: '*', content: 'hi from browser' }),
+  })
+  t.is(res.status, 200, 'proxy forwarded cleanly; daemon accepted the write')
 })
 
 test('GET / returns 404 when no static dir is mounted (test default)', async (t) => {
