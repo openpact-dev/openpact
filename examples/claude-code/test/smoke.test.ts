@@ -152,7 +152,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
     '-H',
     'content-type: application/json',
     '-d',
-    JSON.stringify({ to: '*', content: 'Starting refactor of src/router/*' }),
+    JSON.stringify({ content: 'Starting refactor of src/router/*' }),
   )
   await waitFor(
     async () =>

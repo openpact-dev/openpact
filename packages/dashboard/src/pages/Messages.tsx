@@ -2,14 +2,12 @@
  * Messages — the pact's dispatch roster.
  *
  * Structure: composer pinned at the top, chronological feed below
- * (NEWEST FIRST), and a segmented-control filter pinned at the bottom.
- * Only the feed scrolls; header, composer, and filter stay put.
+ * (NEWEST FIRST). Only the feed scrolls; header and composer stay put.
  *
  * Each dispatch reads like a wire-service log entry: a left-column
- * stamp (entry id + relative time), a right column with author,
- * recipient, and body. Self-transmissions take a left ember rule.
- * There is no medallion rail and no chat-bubble split — the content
- * is the interface.
+ * stamp (entry id + relative time), a right column with author and
+ * body. Self-transmissions take a left ember rule. Every dispatch is
+ * a pact-wide broadcast — no per-recipient addressing.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
@@ -18,7 +16,7 @@ import { useQuery } from '../hooks/useQuery'
 import { useSharedSse } from '../hooks/useSse'
 import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
-import { relTime, preferredName, shortHandle } from '../lib/format'
+import { relTime, preferredName } from '../lib/format'
 
 interface MessageRow {
   id?: string
@@ -26,14 +24,11 @@ interface MessageRow {
   agent_id: string
   display_name?: string | null
   payload: {
-    to: string
     content: string
     priority?: 'low' | 'normal' | 'high'
     [k: string]: unknown
   }
 }
-
-type Filter = 'all' | 'broadcast' | 'direct'
 
 const CHAR_MAX = 1000
 /** Within this many px of the top = "still at top" → auto-pin new arrivals. */
@@ -67,27 +62,15 @@ function MessagesPage() {
     trigger,
   })
   const status = useQuery(() => pact.status(), { key: `msg:status:${pact.pactId}`, trigger })
-  const peers = useQuery(() => pact.peers(), { key: `msg:peers:${pact.pactId}`, trigger })
-
-  const [filter, setFilter] = useState<Filter>('all')
 
   // API returns the page envelope already newest-first (order: 'desc').
-  const rows = useMemo<MessageRow[]>(() => {
-    const all = (messages.data?.entries ?? []) as MessageRow[]
-    if (filter === 'broadcast') return all.filter((m) => m.payload?.to === '*')
-    if (filter === 'direct') return all.filter((m) => m.payload?.to && m.payload.to !== '*')
-    return all
-  }, [messages.data, filter])
-
-  const counts = useMemo(() => {
-    const all = (messages.data?.entries ?? []) as MessageRow[]
-    const broadcast = all.filter((m) => m.payload?.to === '*').length
-    const direct = all.length - broadcast
-    return { all: all.length, broadcast, direct }
-  }, [messages.data])
+  const rows = useMemo<MessageRow[]>(
+    () => (messages.data?.entries ?? []) as MessageRow[],
+    [messages.data],
+  )
+  const total = rows.length
 
   const selfHandle = status.data?.peer_handle ?? ''
-  const selfDisplay = status.data?.display_name ?? null
 
   /* Scroll behaviour for "newest-at-top" ---------------------------------
    * If the viewer is near the top, new dispatches pin the view there.
@@ -140,13 +123,11 @@ function MessagesPage() {
           Messages
         </h1>
         <span class="font-mono text-[12px] text-[var(--color-ink3)]">
-          {counts.all} dispatch{counts.all === 1 ? '' : 'es'}
+          {total} dispatch{total === 1 ? '' : 'es'}
         </span>
       </header>
 
       <Composer
-        peers={(peers.data ?? []) as { id: string; display_name?: string | null }[]}
-        selfHandle={selfHandle}
         onSent={() => {
           setAtTop(true)
           setUnread(0)
@@ -169,9 +150,9 @@ function MessagesPage() {
           {messages.loading && rows.length === 0 ? (
             <p class="py-10 text-[13px] text-[var(--color-ink3)]">Loading…</p>
           ) : rows.length === 0 ? (
-            <EmptyState filter={filter} />
+            <EmptyState />
           ) : (
-            <Roster rows={rows} selfHandle={selfHandle} selfDisplay={selfDisplay} />
+            <Roster rows={rows} selfHandle={selfHandle} />
           )}
 
           {unread > 0 ? (
@@ -186,26 +167,14 @@ function MessagesPage() {
           ) : null}
         </div>
       </div>
-
-      {/* Segmented filter pinned at the foot of the page. */}
-      <Segmented filter={filter} setFilter={setFilter} counts={counts} />
     </section>
   )
 }
 
 /* ------------------------------ composer ------------------------------- */
 
-function Composer({
-  peers,
-  selfHandle,
-  onSent,
-}: {
-  peers: { id: string; display_name?: string | null }[]
-  selfHandle: string
-  onSent: () => void
-}) {
+function Composer({ onSent }: { onSent: () => void }) {
   const pact = usePact()
-  const [to, setTo] = useState<string>('*')
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -219,7 +188,7 @@ function Composer({
     setSending(true)
     setError(null)
     try {
-      await pact.messages.send({ to, content: trimmed })
+      await pact.messages.send({ content: trimmed })
       setContent('')
       onSent()
       taRef.current?.focus()
@@ -244,9 +213,6 @@ function Composer({
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }, [content])
 
-  const recipientLabel =
-    to === '*' ? 'Everyone' : peers.find((p) => p.id === to)?.display_name || shortHandle(to)
-
   return (
     <div class="relative" data-testid="message-composer">
       {/* "New dispatch" eyebrow floating on the top border of the card. */}
@@ -255,38 +221,12 @@ function Composer({
       </span>
 
       <div class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/60">
-        <div class="flex items-center gap-3 border-b-[0.5px] border-[var(--color-line)] px-4 py-2">
-          <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-            To
-          </span>
-          <select
-            value={to}
-            onChange={(e) => setTo((e.target as HTMLSelectElement).value)}
-            class="flex-1 appearance-none rounded-none border-0 bg-transparent px-0 py-0 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ember)] outline-none"
-            data-testid="message-recipient"
-          >
-            <option value="*">Everyone in the pact</option>
-            {peers
-              .filter((p) => p.id && p.id !== selfHandle)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  → {p.display_name || shortHandle(p.id)}
-                </option>
-              ))}
-          </select>
-          <span class="font-mono text-[10px] text-[var(--color-ink3)]" aria-live="polite">
-            {recipientLabel}
-          </span>
-        </div>
-
         <textarea
           ref={taRef as any}
           value={content}
           onInput={(e) => setContent((e.target as HTMLTextAreaElement).value)}
           onKeyDown={handleKey as any}
-          placeholder={
-            to === '*' ? 'Transmit to every agent in this pact…' : 'Send a direct dispatch…'
-          }
+          placeholder="Broadcast to every agent in this pact…"
           rows={2}
           data-testid="message-textarea"
           class="block w-full resize-none border-0 bg-transparent px-4 py-3 font-display text-[15px] leading-[1.55] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink3)]"
@@ -322,74 +262,9 @@ function Composer({
   )
 }
 
-/* --------------------------- segmented filter -------------------------- */
-
-function Segmented({
-  filter,
-  setFilter,
-  counts,
-}: {
-  filter: Filter
-  setFilter: (v: Filter) => void
-  counts: { all: number; broadcast: number; direct: number }
-}) {
-  const opts: Array<{ key: Filter; label: string; count: number }> = [
-    { key: 'all', label: 'All', count: counts.all },
-    { key: 'broadcast', label: 'Broadcast', count: counts.broadcast },
-    { key: 'direct', label: 'Direct', count: counts.direct },
-  ]
-  const BASE =
-    'inline-flex items-baseline gap-1.5 cursor-pointer rounded-full border-[0.5px] border-[var(--color-line)] bg-transparent px-3 py-[5px] font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] transition-colors hover:text-[var(--color-ink)]'
-  const ACTIVE =
-    'border-[var(--color-ember)] bg-[var(--color-ember-soft)] text-[var(--color-ember)]'
-  return (
-    <div
-      class="mt-4 flex items-center justify-between gap-4 border-t-[0.5px] border-[var(--color-line)] pt-3"
-      role="group"
-      aria-label="Filter dispatches"
-    >
-      <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-        Show
-      </span>
-      <div class="flex flex-wrap gap-1.5">
-        {opts.map((o) => {
-          const active = filter === o.key
-          return (
-            <button
-              key={o.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFilter(o.key)}
-              data-testid={`filter-${o.key}`}
-              class={active ? `${BASE} ${ACTIVE}` : BASE}
-            >
-              <span>{o.label}</span>
-              <span
-                class={`tabular-nums ${
-                  active ? 'text-[var(--color-ember)]/80' : 'text-[var(--color-ink3)]'
-                }`}
-              >
-                {o.count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 /* ------------------------------- roster -------------------------------- */
 
-function Roster({
-  rows,
-  selfHandle,
-  selfDisplay,
-}: {
-  rows: MessageRow[]
-  selfHandle: string
-  selfDisplay: string | null
-}) {
+function Roster({ rows, selfHandle }: { rows: MessageRow[]; selfHandle: string }) {
   // Insert day dividers between dispatches that cross midnight.
   return (
     <ol class="divide-y-[0.5px] divide-[var(--color-line)]" data-testid="message-list">
@@ -402,7 +277,6 @@ function Roster({
             msg={m}
             index={i}
             isSelf={m.agent_id === selfHandle}
-            selfDisplay={selfDisplay}
             dayBreak={dayBreak}
           />
         )
@@ -415,20 +289,14 @@ function DispatchRow({
   msg,
   index,
   isSelf,
-  selfDisplay,
   dayBreak,
 }: {
   msg: MessageRow
   index: number
   isSelf: boolean
-  selfDisplay: string | null
   dayBreak: boolean
 }) {
-  const isBroadcast = msg.payload?.to === '*'
   const author = preferredName({ agent_id: msg.agent_id, display_name: msg.display_name })
-  const recipientLabel = isBroadcast
-    ? 'Broadcast'
-    : `→ ${msg.payload.to === selfDisplay ? 'Self' : shortHandle(msg.payload.to)}`
 
   return (
     <>
@@ -436,7 +304,7 @@ function DispatchRow({
       <li
         class="animate-etch"
         style={{ animationDelay: `${Math.min(index * 18, 420)}ms` }}
-        data-testid={isBroadcast ? 'dispatch-broadcast' : 'dispatch-direct'}
+        data-testid="dispatch"
       >
         <article
           class={`grid gap-5 py-4 md:grid-cols-[120px_1fr] ${
@@ -466,7 +334,7 @@ function DispatchRow({
             </span>
           </div>
 
-          {/* Right column: author / recipient / body. */}
+          {/* Right column: author + body. */}
           <div class="min-w-0">
             <header class="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span
@@ -480,13 +348,6 @@ function DispatchRow({
                   Self
                 </span>
               ) : null}
-              <span
-                class={`font-mono text-[10px] uppercase tracking-[0.18em] ${
-                  isBroadcast ? 'text-[var(--color-ember)]' : 'text-[var(--color-ink2)]'
-                }`}
-              >
-                {recipientLabel}
-              </span>
             </header>
             <p class="whitespace-pre-wrap font-display text-[16px] leading-[1.55] text-[var(--color-ink)]">
               {msg.payload.content}
@@ -524,15 +385,13 @@ function SectionLabel({ children }: { children: any }) {
 
 /* ----------------------------- helpers --------------------------------- */
 
-function EmptyState({ filter }: { filter: Filter }) {
-  const label =
-    filter === 'broadcast' ? 'broadcasts' : filter === 'direct' ? 'direct dispatches' : 'dispatches'
+function EmptyState() {
   return (
     <div
       class="mx-auto my-16 max-w-md border-[0.5px] border-dashed border-[var(--color-line)] px-6 py-12 text-center"
       data-testid="messages-empty"
     >
-      <p class="font-display text-[18px] italic text-[var(--color-ink3)]">No {label} yet.</p>
+      <p class="font-display text-[18px] italic text-[var(--color-ink3)]">No dispatches yet.</p>
       <p class="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">
         Transmit the first one above.
       </p>

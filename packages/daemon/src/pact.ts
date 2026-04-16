@@ -311,7 +311,6 @@ export class Pact extends EventEmitter {
       agent_id: this.peerHandle,
       display_name: next,
       payload: {
-        to: '*',
         content,
         kind: 'rename',
         prev,

@@ -137,11 +137,11 @@ test('MCP end-to-end: claiming the same task twice surfaces TASK_NOT_OPEN with i
 
 test('MCP end-to-end: messages send + read with since cursor', async (t) => {
   const { client } = await bootMcpAgainstDaemon(t)
-  await callTool(client, 'send_message', { to: '*', content: 'first' })
+  await callTool(client, 'send_message', { content: 'first' })
   await new Promise((r) => setTimeout(r, 5))
   const cutoff = new Date().toISOString()
   await new Promise((r) => setTimeout(r, 5))
-  await callTool(client, 'send_message', { to: '*', content: 'second' })
+  await callTool(client, 'send_message', { content: 'second' })
   const recent = await waitFor(
     async () => {
       const r = await callTool(client, 'read_messages', { since: cutoff })

@@ -46,7 +46,7 @@ await pact.tasks.claim(task.id)
 await pact.tasks.complete(task.id, { result: 'PR #42 merged' })
 
 // Messages
-await pact.messages.send({ to: '*', content: 'API endpoint changed' })
+await pact.messages.send({ content: 'API endpoint changed' })
 const recent = await pact.messages.list({ since: '2026-04-14T00:00:00.000Z' })
 
 // Status

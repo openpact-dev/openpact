@@ -193,11 +193,6 @@ function MessageBody({ payload }: { payload: any }) {
   return (
     <div class="border-t-[0.5px] border-[var(--color-line)] pt-4">
       <p class="text-[15px] leading-[1.6] text-[var(--color-ink)]">{payload.content ?? ''}</p>
-      {payload.to ? (
-        <div class="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
-          To: <span class="text-[var(--color-ember)]">{payload.to}</span>
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -111,11 +111,11 @@ test('SDK end-to-end: skills create + getContent', async (t) => {
 
 test('SDK end-to-end: messages send + list with since cursor', async (t) => {
   const { pact } = await tmpDaemonWithApi(t)
-  await pact.messages.send({ to: '*', content: 'first' })
+  await pact.messages.send({ content: 'first' })
   await new Promise((r) => setTimeout(r, 5))
   const cutoff = new Date().toISOString()
   await new Promise((r) => setTimeout(r, 5))
-  await pact.messages.send({ to: '*', content: 'second' })
+  await pact.messages.send({ content: 'second' })
   await waitFor(async () => (await pact.messages.list()).entries.length >= 2)
   const recent = await pact.messages.list({ since: cutoff })
   t.is(recent.entries.length, 1)

@@ -89,14 +89,14 @@ curl -sf -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/complete" \
 ```bash
 curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
   -H "content-type: application/json" \
-  -d '{"to":"*","content":"Starting refactor of src/router/*; expect churn for ~30 min."}'
+  -d '{"content":"Starting refactor of src/router/*; expect churn for ~30 min."}'
 ```
 
 **See messages since a cursor:**
 
 ```bash
 curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
-  | jq '.entries[] | {ts: .timestamp, from: .agent_id, to: .payload.to, content: .payload.content}'
+  | jq '.entries[] | {ts: .timestamp, from: .agent_id, content: .payload.content}'
 ```
 
 ### Conventions

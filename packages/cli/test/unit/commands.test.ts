@@ -78,7 +78,13 @@ test('joinCmd: rejects an expired token before contacting the daemon', async (t)
   await t.exception(() => joinCmd(expired, { interactive: false }, ctx(dir)), /expired/)
 })
 
-test('joinCmd: does not redeem when the target pact has no online peers', async (t) => {
+test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeout', async (t) => {
+  // The pre-fix CLI gated the redeem on `status.peers > 0` and never
+  // attempted it when the joiner had no authenticated peers — which
+  // was every fresh joiner, since member-auth requires being a member
+  // first. The fix lets the daemon's own retry semantics drive the
+  // loop: it returns NO_PEERS instantly when the swarm is empty, and
+  // the CLI loops until the outer deadline.
   const dir = await tmpHome(t)
   const future = new Date(Date.now() + 60_000).toISOString()
   const token = Buffer.from(
@@ -102,9 +108,7 @@ test('joinCmd: does not redeem when the target pact has no online peers', async 
     if (url.endsWith('/v1/pacts/join')) {
       return new Response(
         JSON.stringify({ alias: 'joined', pact_id: 'a'.repeat(64), role: 'member' }),
-        {
-          status: 200,
-        },
+        { status: 200 },
       )
     }
     if (url.endsWith('/v1/pacts/joined/status')) {
@@ -121,7 +125,10 @@ test('joinCmd: does not redeem when the target pact has no online peers', async 
     }
     if (url.endsWith('/v1/pacts/joined/invites/redeem')) {
       redeemCalls++
-      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      return new Response(
+        JSON.stringify({ error: 'NO_PEERS', message: 'no peers connected', status: 503 }),
+        { status: 503 },
+      )
     }
     throw new Error(`unexpected fetch: ${url}`)
   }) as typeof globalThis.fetch
@@ -133,12 +140,12 @@ test('joinCmd: does not redeem when the target pact has no online peers', async 
     () =>
       joinCmd(
         token,
-        { interactive: false, displayName: 'tester', port: 19999, timeout: '0' },
+        { interactive: false, displayName: 'tester', port: 19999, timeout: '1' },
         ctx(dir),
       ),
-    /could not find an indexer peer/,
+    /no peers connected|NO_PEERS|reach an indexer/i,
   )
-  t.is(redeemCalls, 0, 'redeem is never attempted without pact-scoped online peers')
+  t.ok(redeemCalls >= 1, 'redeem is attempted even when status.peers is 0')
 })
 
 // Happy-path invite / join live in

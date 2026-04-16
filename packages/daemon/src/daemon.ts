@@ -303,7 +303,6 @@ export class Daemon extends EventEmitter {
             agent_id: pact.peerHandle,
             display_name: pact.displayName,
             payload: {
-              to: '*',
               content: `${pact.displayName ?? pact.peerHandle} has left the pact.`,
               kind: 'leave',
             },

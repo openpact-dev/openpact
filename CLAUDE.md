@@ -238,8 +238,8 @@ GET  /skills/:id/content                      -> verifies checksum
 POST /skills/:id/install                      -> body { confirm: true } (creator only)
 GET  /skills/installed                        -> installed-skills.json (bare array)
 
-GET  /messages?since=&to=&order=&limit=&cursor= -> ListPage<MessageEntry>
-POST /messages
+GET  /messages?since=&order=&limit=&cursor=   -> ListPage<MessageEntry>
+POST /messages                                -> body { content, priority? } (pact-wide broadcast)
 
 GET  /entries/:id                             -> full entry across any type
 GET  /entries/:id/referenced-by               -> entries that ref this id (bare array)

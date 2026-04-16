@@ -5,8 +5,6 @@ import { paginate } from './paginate'
 export interface MessagesListOpts extends ListOpts {
   /** ISO timestamp; only entries with timestamp > since are returned. */
   since?: string
-  /** Filter by recipient handle (or '*' for broadcast). */
-  to?: string
 }
 
 export function messagesResource(client: OpenPactClient) {
@@ -16,13 +14,13 @@ export function messagesResource(client: OpenPactClient) {
     )
 
   return {
-    /** GET /v1/pacts/:pactId/messages — list messages, paginated. */
+    /** GET /v1/pacts/:pactId/messages — list pact-wide broadcasts, paginated. */
     list,
     /** Walk every page; stops when `has_more` is false. */
     iterate(opts: MessagesListOpts = {}): AsyncGenerator<MessageEntry> {
       return paginate<MessageEntry, MessagesListOpts>(list, opts)
     },
-    /** POST /v1/pacts/:pactId/messages — send a message to '*' or a peer handle. */
+    /** POST /v1/pacts/:pactId/messages — broadcast a message to every member of the pact. */
     send(payload: MessagePayload): Promise<AppendResult> {
       return client.json<AppendResult>(client.pactPath('/messages'), 'POST', payload)
     },

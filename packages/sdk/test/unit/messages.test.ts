@@ -5,19 +5,18 @@ import { mockFetch } from '../helpers/mock-fetch'
 
 const emptyPage = { entries: [], cursor: null, has_more: false }
 
-test('messages.list: builds query with since + to', async (t) => {
+test('messages.list: builds query with since', async (t) => {
   const m = mockFetch({ status: 200, body: emptyPage })
   const r = messagesResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.list({ since: '2026-04-15T00:00:00Z', to: '*' })
+  await r.list({ since: '2026-04-15T00:00:00Z' })
   t.ok(m.calls[0].url.includes('since=2026-04-15T00%3A00%3A00Z'))
-  t.ok(m.calls[0].url.includes('to=*'), 'URLSearchParams leaves * as-is')
 })
 
 test('messages.list: returns envelope', async (t) => {
   const m = mockFetch({
     status: 200,
     body: {
-      entries: [{ id: 'a', type: 'message', payload: { to: '*', content: 'hi' } }],
+      entries: [{ id: 'a', type: 'message', payload: { content: 'hi' } }],
       cursor: 'message/2026/a',
       has_more: false,
     },
@@ -34,7 +33,7 @@ test('messages.iterate: paginates across pages', async (t) => {
     {
       status: 200,
       body: {
-        entries: [{ id: 'b', payload: { to: '*', content: 'second' } }],
+        entries: [{ id: 'b', payload: { content: 'second' } }],
         cursor: 'message/b',
         has_more: true,
       },
@@ -42,7 +41,7 @@ test('messages.iterate: paginates across pages', async (t) => {
     {
       status: 200,
       body: {
-        entries: [{ id: 'a', payload: { to: '*', content: 'first' } }],
+        entries: [{ id: 'a', payload: { content: 'first' } }],
         cursor: 'message/a',
         has_more: false,
       },
@@ -57,15 +56,7 @@ test('messages.iterate: paginates across pages', async (t) => {
 test('messages.send: broadcast', async (t) => {
   const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
   const r = messagesResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.send({ to: '*', content: 'heads up' })
+  await r.send({ content: 'heads up' })
   const body = JSON.parse(m.calls[0].body!)
-  t.is(body.to, '*')
   t.is(body.content, 'heads up')
-})
-
-test('messages.send: direct to handle', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
-  const r = messagesResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.send({ to: 'anon-fox-12345678', content: 'private' })
-  t.is(JSON.parse(m.calls[0].body!).to, 'anon-fox-12345678')
 })

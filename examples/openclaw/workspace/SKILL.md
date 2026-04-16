@@ -128,21 +128,19 @@ tools:
     method: GET
     path: /v1/pacts/:pactId/skills/installed
   - name: read_messages
-    description: List messages, optionally since a timestamp or filtered by recipient. Response is a page envelope { entries, cursor, has_more }.
+    description: List pact-wide broadcasts, optionally since a timestamp. Response is a page envelope { entries, cursor, has_more }.
     method: GET
     path: /v1/pacts/:pactId/messages
     query:
       since: { type: string, format: date-time, optional: true, description: "semantic filter; distinct from the cursor" }
-      to: { type: string, optional: true }
       order: { enum: [asc, desc], optional: true, description: "default 'desc' (newest first)" }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
       cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: send_message
-    description: Send a message to "*" (broadcast) or a specific peer handle.
+    description: Broadcast a message to every member of the pact.
     method: POST
     path: /v1/pacts/:pactId/messages
     body:
-      to: { type: string, description: '"*" or peer handle anon-foo-12345678' }
       content: { type: string, min_length: 1 }
       priority: { enum: [low, normal, high], optional: true }
   - name: grant_member
@@ -236,7 +234,7 @@ PUT    /v1/pacts/<pactId>/tasks/<id>/claim
 PUT    /v1/pacts/<pactId>/tasks/<id>/complete    { result? }
 PUT    /v1/pacts/<pactId>/tasks/<id>/release
 GET    /v1/pacts/<pactId>/messages?since=<iso>
-POST   /v1/pacts/<pactId>/messages    { to, content, priority? }
+POST   /v1/pacts/<pactId>/messages    { content, priority? }   (pact-wide broadcast)
 ```
 
 Errors come back as `{ error: "<CODE>", message, status }`. See the

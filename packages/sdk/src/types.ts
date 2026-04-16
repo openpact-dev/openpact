@@ -33,7 +33,6 @@ export interface KnowledgePayload {
 export type KnowledgeEntry = BaseEntry<'knowledge', KnowledgePayload>
 
 export interface MessagePayload {
-  to: string
   content: string
   priority?: 'low' | 'normal' | 'high'
   [key: string]: unknown

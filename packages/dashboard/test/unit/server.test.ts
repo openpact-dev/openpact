@@ -102,7 +102,7 @@ test('proxy strips the browser Origin so the daemon accepts POSTs from :7667 →
       origin: browserOrigin,
       referer: `${browserOrigin}/messages`,
     },
-    body: JSON.stringify({ to: '*', content: 'hi from browser' }),
+    body: JSON.stringify({ content: 'hi from browser' }),
   })
   t.is(res.status, 200, 'proxy forwarded cleanly; daemon accepted the write')
 })

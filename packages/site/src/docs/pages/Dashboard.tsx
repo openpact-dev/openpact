@@ -26,7 +26,7 @@ const SCREENS: Screen[] = [
   {
     name: 'Messages',
     path: '/messages',
-    note: 'Direct messages between peers, ordered newest first. Filter by sender or recipient.',
+    note: 'Pact-wide broadcasts, ordered newest first.',
   },
   {
     name: 'Skills',

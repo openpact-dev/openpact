@@ -23,7 +23,7 @@ test('creator admits B via invite; B appends; A sees B entry', async (t) => {
     type: 'message',
     timestamp: new Date().toISOString(),
     agent_id: a.daemon.peerHandle!,
-    payload: { to: '*', content: 'creator-ready' },
+    payload: { content: 'creator-ready' },
   })
   await waitForMessage(b.daemon, 'creator-ready', { timeout: 15000 })
 
@@ -31,7 +31,7 @@ test('creator admits B via invite; B appends; A sees B entry', async (t) => {
     type: 'message',
     timestamp: new Date().toISOString(),
     agent_id: b.daemon.peerHandle!,
-    payload: { to: '*', content: 'hello from B' },
+    payload: { content: 'hello from B' },
   })
 
   await waitForMessage(a.daemon, 'hello from B', { timeout: 15000 })
@@ -66,7 +66,7 @@ test('creator promotes an admitted member to indexer; B can append', async (t) =
     type: 'message',
     timestamp: new Date().toISOString(),
     agent_id: a.daemon.peerHandle!,
-    payload: { to: '*', content: 'ready-for-promotion' },
+    payload: { content: 'ready-for-promotion' },
   })
   await waitForMessage(b.daemon, 'ready-for-promotion', { timeout: 15000 })
 

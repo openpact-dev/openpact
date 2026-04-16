@@ -112,7 +112,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
   t.is(skillCreate.status, 200)
   const skillId: string = skillCreate.body.id
 
-  await call(base, 'POST', '/v1/pacts/default/messages', { to: '*', content: 'hi' })
+  await call(base, 'POST', '/v1/pacts/default/messages', { content: 'hi' })
 
   await waitFor(
     async () => (await call(base, 'GET', '/v1/pacts/default/tasks?status=open')).body,
@@ -146,7 +146,7 @@ test('every tool in tools.json hits a live daemon endpoint that exists', async (
       if (tool.name === 'record_knowledge') body = { topic: 'wiring', content: 'redo' }
       else if (tool.name === 'create_task') body = { title: 'redo' }
       else if (tool.name === 'complete_task') body = { result: 'done' }
-      else if (tool.name === 'send_message') body = { to: '*', content: 'redo' }
+      else if (tool.name === 'send_message') body = { content: 'redo' }
       else if (tool.name === 'install_skill') body = { confirm: true }
       else if (tool.name === 'share_skill') {
         const c = 'redo-content'

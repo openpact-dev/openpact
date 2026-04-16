@@ -5,24 +5,24 @@ import { HttpError } from '../errors'
 import { resolvePact } from '../pact-resolver'
 import { LIST_PAGE_QUERY, type ListPageQuery } from '../schemas'
 
-const PEER_HANDLE_RE = '^anon-[a-z]+-[0-9a-f]{8}$'
-
+// Messages are pact-wide broadcasts. There is no `to` field — everything
+// posted lands in the shared ledger and replicates to every member. The
+// previous schema accepted a `to` peer handle that suggested per-recipient
+// addressing, but the entries were never private (no encryption, no
+// per-pair core), only labelled. The label was confusing without delivering
+// any actual privacy, so the field is gone.
 const messagePayloadSchema = {
   type: 'object',
   properties: {
-    to: {
-      oneOf: [{ const: '*' }, { type: 'string', pattern: PEER_HANDLE_RE }],
-    },
     content: { type: 'string', minLength: 1 },
     priority: { enum: ['low', 'normal', 'high'] },
   },
-  required: ['to', 'content'],
-  additionalProperties: true,
+  required: ['content'],
+  additionalProperties: false,
 }
 
 interface ListQuery extends ListPageQuery {
   since?: string
-  to?: string
 }
 
 export default async function messagesRoute(
@@ -38,24 +38,22 @@ export default async function messagesRoute(
           properties: {
             ...LIST_PAGE_QUERY,
             since: { type: 'string', format: 'date-time' },
-            to: { type: 'string' },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { since, to, order, limit, cursor } = req.query
+      const { since, order, limit, cursor } = req.query
       try {
         return await listByType(pact.view, 'message', {
           order,
           limit,
           cursor: cursor ?? null,
           filter: (v: unknown) => {
-            const entry = v as { timestamp?: string; payload?: { to?: unknown } } | null
+            const entry = v as { timestamp?: string } | null
             if (since && typeof entry?.timestamp === 'string' && entry.timestamp <= since)
               return false
-            if (to && entry?.payload?.to !== to) return false
             return true
           },
         })

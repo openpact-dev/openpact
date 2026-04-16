@@ -324,8 +324,8 @@ This is the heart of the project. Get this right before touching anything else.
   GET  /v1/skills?format=X                     -> [entries]
   POST /v1/skills                              -> { id, timestamp }
   GET  /v1/skills/:id/content                  -> { id, name, version, format, checksum, content }
-  GET  /v1/messages?since=TS&to=X              -> [entries]
-  POST /v1/messages                            -> { id, timestamp }
+  GET  /v1/messages?since=TS                   -> [entries]
+  POST /v1/messages                            -> { id, timestamp }   (body { content, priority? }; pact-wide broadcast)
   ```
 - [x] Request validation via Fastify per-route JSON Schema (rejects with 400 `BAD_REQUEST`)
 - [x] Uniform error envelope `{error, message, status}` via `setErrorHandler`
@@ -341,7 +341,7 @@ This is the heart of the project. Get this right before touching anything else.
   - [x] `tasks.test.ts` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, skip-claim allowed, 404 cases)
   - [x] `tasks-state.test.ts` — pure reducer: race resolution, claimer-only transitions, deterministic order
   - [x] `skills.test.ts` — POST with each format; checksum required; `GET /:id/content` returns content with 404 on unknown
-  - [x] `messages.test.ts` — `since` filter; `to: '*'` broadcast; `to: <handle>` direct
+  - [x] `messages.test.ts` — `since` filter; broadcast send; rejects unknown payload fields (no per-recipient addressing)
   - [x] `errors.test.ts` — every error code returns the correct envelope shape
   - [x] `bind.test.ts` — refuses non-localhost; accepts 127.0.0.1 / localhost
 - [x] **Integration** (`packages/daemon/test/integration/api/`):
@@ -572,7 +572,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   await pact.tasks.complete(taskId, { result: 'Done. PR #42 merged.' })
 
   // Messages
-  await pact.messages.send({ to: '*', content: 'API endpoint changed' })
+  await pact.messages.send({ content: 'API endpoint changed' })
   const messages = await pact.messages.since(timestamp)
 
   // Status
@@ -613,7 +613,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
     `skills.test.ts` / `admin.test.ts` / `status.test.ts` — list/create
     build correct URLs + bodies; parse responses; surface errors as
     typed exceptions; full task lifecycle including 409 on double-claim
-    → `TaskNotOpenError`; messages `since` cursor; broadcast vs direct
+    → `TaskNotOpenError`; messages `since` cursor; broadcast send
   - [x] `client.test.ts` — error mapping (every daemon error code maps
     to the right SDK error class); `ECONNREFUSED` →
     `DaemonNotRunningError`; URL building

@@ -79,17 +79,19 @@ test('skill: unknown format rejects', (t) => {
 })
 
 test('message: broadcast passes', (t) => {
-  const r = validate(base('message', { to: '*', content: 'heads up' }))
+  const r = validate(base('message', { content: 'heads up' }))
   t.is(r.valid, true)
 })
 
-test('message: direct passes', (t) => {
-  const r = validate(base('message', { to: 'anon-cobra-3e910000', content: 'hi' }))
-  t.is(r.valid, true)
+test('message: empty content rejects', (t) => {
+  const r = validate(base('message', { content: '' }))
+  t.is(r.valid, false)
 })
 
-test('message: invalid handle rejects', (t) => {
-  const r = validate(base('message', { to: 'NotAHandle', content: 'hi' }))
+test('message: rejects unknown fields (no per-recipient addressing)', (t) => {
+  // The `to` field used to be addressed-but-not-private. It's gone now;
+  // the schema rejects it so callers can't accidentally rely on it.
+  const r = validate(base('message', { to: '*', content: 'hi' }))
   t.is(r.valid, false)
 })
 
@@ -204,10 +206,7 @@ test('display_name: applies on every entry type', (t) => {
     }).valid,
     true,
   )
-  t.is(
-    validate({ ...base('message', { to: '*', content: 'hi' }), display_name: 'Wyrm' }).valid,
-    true,
-  )
+  t.is(validate({ ...base('message', { content: 'hi' }), display_name: 'Wyrm' }).valid, true)
   t.is(
     validate({
       ...base('admin', { action: 'addWriter', key: 'a'.repeat(64), indexer: true }),

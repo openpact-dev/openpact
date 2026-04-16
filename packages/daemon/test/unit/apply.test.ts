@@ -466,7 +466,7 @@ test('all four user types append to view', async (t) => {
       node({
         writerKey: KEY_A,
         length: 3,
-        value: entry('message', { to: '*', content: 'hi' }),
+        value: entry('message', { content: 'hi' }),
       }),
     ],
     view,

@@ -215,7 +215,7 @@
     },
     {
       "name": "read_messages",
-      "description": "List messages, optionally since a timestamp or filtered by recipient. Response is a page envelope { entries, cursor, has_more }.",
+      "description": "List pact-wide broadcasts, optionally since a timestamp. Response is a page envelope { entries, cursor, has_more }.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/messages",
       "params": { "pactId": { "type": "string" } },
@@ -226,7 +226,6 @@
           "optional": true,
           "description": "semantic filter; distinct from the cursor"
         },
-        "to": { "type": "string", "optional": true },
         "order": {
           "enum": ["asc", "desc"],
           "optional": true,
@@ -242,12 +241,11 @@
     },
     {
       "name": "send_message",
-      "description": "Send a message to '*' (broadcast) or a specific peer handle.",
+      "description": "Broadcast a message to every member of the pact.",
       "method": "POST",
       "path": "/v1/pacts/:pactId/messages",
       "params": { "pactId": { "type": "string" } },
       "body": {
-        "to": { "type": "string", "description": "'*' or peer handle anon-foo-12345678" },
         "content": { "type": "string", "min_length": 1 },
         "priority": { "enum": ["low", "normal", "high"], "optional": true }
       }
