@@ -4,6 +4,8 @@ export interface QueryState<T> {
   data: T | undefined
   error: Error | undefined
   loading: boolean
+  /** True when the latest fetch failed but an older value is still available. */
+  stale: boolean
   refetch: () => void
 }
 
@@ -48,16 +50,21 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
   const refetch = () => setVersion((v) => v + 1)
 
   // Re-run when the cache key, the external trigger, or refetch counter changes.
-  const cacheKey = `${key}::${trigger}::${version}`
+  // Version is intentionally NOT part of the cache key — that way a refetch()
+  // sees the same entry (potentially holding a previous value) and can carry
+  // it forward as stale data while the new fetch resolves.
+  const cacheKey = `${key}::${trigger}`
 
   const [state, setState] = useState<{
     data: T | undefined
     error: Error | undefined
     loading: boolean
+    stale: boolean
   }>({
     data: undefined,
     error: undefined,
     loading: true,
+    stale: false,
   })
 
   useEffect(() => {
@@ -65,6 +72,7 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
 
     let entry = cache.get(cacheKey) as CacheEntry<T> | undefined
     const settled = !!entry && (entry.value !== undefined || entry.error !== undefined)
+    let justKicked = false
     if (!entry || settled) {
       // Miss, or cache hit with an already-resolved value — either way,
       // kick a fresh fetch. Stale-while-revalidate: we still paint the
@@ -83,15 +91,24 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
         .catch((e: unknown) => {
           entry!.error = e instanceof Error ? e : new Error(String(e))
         })
+      justKicked = true
     }
 
-    setState({ data: entry.value, error: entry.error, loading: entry.value === undefined })
+    // While a new fetch is in flight we're always loading. Previous
+    // value stays painted so refetches don't flash empty; error slot
+    // is cleared now and re-populated by .catch if the fetch fails.
+    setState({
+      data: entry.value,
+      error: justKicked ? undefined : entry.error,
+      loading: justKicked || entry.value === undefined,
+      stale: false,
+    })
 
     const pendingEntry = entry
     pendingEntry.promise
       .then((v) => {
         if (cancelled) return
-        setState({ data: v, error: undefined, loading: false })
+        setState({ data: v, error: undefined, loading: false, stale: false })
       })
       .catch((e: unknown) => {
         if (cancelled) return
@@ -99,13 +116,14 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
           data: pendingEntry.value,
           error: e instanceof Error ? e : new Error(String(e)),
           loading: false,
+          stale: pendingEntry.value !== undefined,
         })
       })
 
     return () => {
       cancelled = true
     }
-  }, [cacheKey])
+  }, [cacheKey, version])
 
   return useMemo(() => ({ ...state, refetch }), [state])
 }
