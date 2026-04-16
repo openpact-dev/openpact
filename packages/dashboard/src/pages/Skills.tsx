@@ -230,7 +230,7 @@ function SkillCard({
           type="button"
           onClick={onInstall}
           data-testid="skill-install"
-          class="rounded-sm border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ember)] transition-colors hover:bg-[var(--color-ember)] hover:text-[var(--color-paper)]"
+          class="rounded-sm border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ember)] transition-colors hover:bg-[var(--color-ember)] hover:text-white"
         >
           Install
         </button>

@@ -72,7 +72,7 @@ export function ConfirmDialog({
   }
 
   const confirmClass = destructive
-    ? 'border-[var(--color-ember)] bg-[var(--color-ember-soft)] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-[var(--color-paper)]'
+    ? 'border-[var(--color-ember)] bg-[var(--color-ember-soft)] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-white'
     : 'border-[var(--color-online)] text-[var(--color-online)] hover:bg-[var(--color-online)]/10'
 
   return (

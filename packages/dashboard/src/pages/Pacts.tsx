@@ -62,7 +62,7 @@ export function Pacts({ current, pacts, onChange }: Props) {
             type="button"
             data-testid="create-pact"
             onClick={() => setCreating(true)}
-            class="rounded-sm border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-[var(--color-paper)]"
+            class="rounded-sm border-[0.5px] border-[var(--color-ember)] bg-[var(--color-ember-soft)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ember)] hover:bg-[var(--color-ember)] hover:text-white"
           >
             New pact
           </button>
