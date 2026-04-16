@@ -130,7 +130,14 @@ function describe(
     const rawKind = data?.kind
     const kind = rawKind === 'entry' ? (entry?.type ?? null) : rawKind
     const author = entry?.agent_id ?? null
-    if (selfHandle && author === selfHandle) return null // skip our own writes
+    // Suppress every entry-applied toast until status has resolved and
+    // we know our own peer_handle. Otherwise the first batch of frames
+    // arriving before pact.status() lands all leak through the
+    // own-write guard and toast for entries we just authored. We only
+    // need the guard for entry-applied; presence frames below are
+    // identity-agnostic.
+    if (selfHandle === null) return null
+    if (author === selfHandle) return null
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
     // admin.addWriter is an implementation detail: the rename message
     // the joiner auto-heals with (prev=null) is the user-facing "joined"

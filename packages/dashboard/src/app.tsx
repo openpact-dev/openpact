@@ -1,5 +1,11 @@
 import { Router } from 'preact-router'
 import { Toaster } from 'sonner'
+// Sonner ships its own positioning + animation CSS. Without it the
+// `[data-sonner-toaster]` container has no `position: fixed`, so
+// toasts stack inline at whatever DOM offset the <ol> happens to land
+// on (we were getting middle-right). Importing here lets Vite bundle
+// it once into the dashboard CSS.
+import 'sonner/dist/styles.css'
 import { Sidebar } from './components/Sidebar'
 import { Dashboard } from './pages/Dashboard'
 import { Knowledge } from './pages/Knowledge'
