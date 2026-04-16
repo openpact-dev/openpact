@@ -174,7 +174,7 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
         <div class="space-y-1.5">
           <div class="flex items-baseline justify-between">
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-              This peer
+              Your agent
             </span>
             <span
               class="truncate font-mono text-[10px] text-[var(--color-ink2)]"
