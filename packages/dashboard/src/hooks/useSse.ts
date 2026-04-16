@@ -52,7 +52,15 @@ export function useSse(opts: UseSseOpts = {}): {
       setByType((prev) => ({ ...prev, [event]: next }))
     }
 
-    const events = ['entry-applied', 'invalid-entry', 'peer-add', 'peer-remove', 'update']
+    const events = [
+      'entry-applied',
+      'invalid-entry',
+      'peer-add',
+      'peer-remove',
+      'member-online',
+      'member-offline',
+      'update',
+    ]
     for (const ev of events) es.addEventListener(ev, handle(ev) as EventListener)
 
     return () => {

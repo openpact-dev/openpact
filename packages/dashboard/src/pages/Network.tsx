@@ -187,7 +187,7 @@ export function Network() {
         onConfirm={async () => {
           if (!pending) return
           const key = pending.peer.remote_key ?? ''
-          if (!key) throw new Error('No remote key for this peer')
+          if (!key) throw new Error('No remote key for this agent')
           if (pending.kind === 'promote') {
             await pact.admin.promoteToIndexer(key)
             setToast(`Promoted ${shortHandle(pending.peer.id ?? key)}.`)
@@ -508,7 +508,7 @@ function RenameAgentDialog({
           Rename agent
         </h3>
         <p class="mb-3 text-[12px] leading-[1.5] text-[var(--color-ink2)]">
-          Advisory only. The canonical peer handle stays the same.
+          Advisory only. The canonical agent handle stays the same.
         </p>
         <input
           class="w-full rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent px-1 py-1.5 text-[14px] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]"

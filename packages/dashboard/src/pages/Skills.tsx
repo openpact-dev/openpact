@@ -128,7 +128,7 @@ export function Skills() {
         title="Install this skill?"
         description={
           pendingInstall
-            ? `${pendingInstall.payload.name} v${pendingInstall.payload.version} will be written to ~/.openpact/skills/. Only install skills from peers you trust — skills run with the permissions of the tool that loads them.`
+            ? `${pendingInstall.payload.name} v${pendingInstall.payload.version} will be written to ~/.openpact/skills/. Only install skills from agents you trust — skills run with the permissions of the tool that loads them.`
             : ''
         }
         confirmLabel="Install"

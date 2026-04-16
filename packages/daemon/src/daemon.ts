@@ -402,6 +402,17 @@ export class Daemon extends EventEmitter {
         this._peerLinks.delete(link)
         for (const timer of link.revocationTimers.values()) clearTimeout(timer)
         link.revocationTimers.clear()
+        // Surface a member-offline for each pact this link was
+        // authenticated on; the dashboard uses this to flip online
+        // state without waiting for the next autobase tick.
+        for (const [pactId, memberKey] of link.authenticatedMembers) {
+          this.emit('member-offline', {
+            pactId,
+            alias: this._aliasForPactKey(pactId),
+            member_key: memberKey,
+          })
+        }
+        link.authenticatedMembers.clear()
         this.emit('peer-remove', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
       })
     })
@@ -616,8 +627,16 @@ export class Daemon extends EventEmitter {
     link.claimedMembers.set(pactId, memberKey)
     if (!(await pact.hasActiveMemberKey(memberKey))) return
     this._clearRevocationTimer(link, pactId)
+    const wasAuthed = link.authenticatedMembers.has(pactId)
     link.authenticatedMembers.set(pactId, memberKey)
     this._attachPactToLink(pact, link)
+    if (!wasAuthed) {
+      this.emit('member-online', {
+        pactId: pact.pactKey,
+        alias: this._aliasForPactKey(pact.pactKey),
+        member_key: memberKey,
+      })
+    }
   }
 
   private async _bootstrapReplicationForAdmission(
@@ -631,8 +650,16 @@ export class Daemon extends EventEmitter {
     const claimedKey = memberKey.toLowerCase()
     link.claimedMembers.set(pactKey, claimedKey)
     this._clearRevocationTimer(link, pactKey)
+    const wasAuthed = link.authenticatedMembers.has(pactKey)
     link.authenticatedMembers.set(pactKey, claimedKey)
     this._attachPactToLink(pact, link)
+    if (!wasAuthed) {
+      this.emit('member-online', {
+        pactId: pact.pactKey,
+        alias: this._aliasForPactKey(pact.pactKey),
+        member_key: claimedKey,
+      })
+    }
   }
 
   private _attachPactToLink(pact: Pact, link: PeerLink): void {
@@ -928,6 +955,32 @@ export class Daemon extends EventEmitter {
   }
   async update(): Promise<void> {
     if (this.current) await this.current.update()
+  }
+
+  /**
+   * Member keys currently authenticated over a live peer link for the
+   * given pact. Used by the /peers endpoint to report online status
+   * without relying on autobase's activeWriters — autobase may have
+   * GC'd a writer even while we hold an active, authenticated link to
+   * them. Keys are lowercase hex.
+   */
+  onlineMembers(pactId: string): Set<string> {
+    const out = new Set<string>()
+    const hex = pactId.toLowerCase()
+    for (const link of this._peerLinks) {
+      const member = link.authenticatedMembers.get(hex)
+      if (member) out.add(member.toLowerCase())
+    }
+    return out
+  }
+
+  private _aliasForPactKey(pactKey: string | null | undefined): string | undefined {
+    if (!pactKey) return undefined
+    const hex = pactKey.toLowerCase()
+    for (const [alias, pact] of this._pacts) {
+      if (pact.pactKey?.toLowerCase() === hex) return alias
+    }
+    return undefined
   }
 
   // ──────────────────────────────────────────────────────────────────

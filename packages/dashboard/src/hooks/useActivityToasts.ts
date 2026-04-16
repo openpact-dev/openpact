@@ -16,10 +16,10 @@ type EntryAppliedData = {
   alias?: string | null
 }
 
-type PeerData = {
-  id?: string
-  remote_key?: string
-  display_name?: string | null
+type MemberPresenceData = {
+  pact_id?: string
+  alias?: string
+  member_key?: string
 }
 
 const PUBLIC_KINDS = new Set(['knowledge', 'task', 'skill', 'message'])
@@ -67,14 +67,23 @@ function describe(
   if (ev.event === 'entry-applied') {
     const data = ev.data as EntryAppliedData
     const kind = data?.kind
-    if (!kind || !PUBLIC_KINDS.has(kind)) return null
     const entry = data?.entry ?? null
     const author = entry?.agent_id ?? null
     if (selfHandle && author === selfHandle) return null // skip our own writes
     const who = entry?.display_name?.trim() || (author ? shortHandle(author) : 'unknown')
+    // admin.addWriter entries surface a "new member admitted" toast —
+    // more useful than silence, and distinct from a raw swarm connect.
+    if (kind === 'admin') {
+      const action = (entry?.payload as { action?: string } | undefined)?.action
+      if (action === 'addWriter') {
+        return { title: `${who} admitted a new agent` }
+      }
+      return null
+    }
+    if (!kind || !PUBLIC_KINDS.has(kind)) return null
     // Status messages carry a payload.kind marker so the feed / toast
     // can distinguish them from chatter. `leave` fires on pact-remove,
-    // `rename` fires whenever a peer updates their display_name.
+    // `rename` fires whenever an agent updates their display_name.
     if (kind === 'message') {
       const payloadKind = (entry?.payload as { kind?: string } | undefined)?.kind
       if (payloadKind === 'leave') {
@@ -95,15 +104,20 @@ function describe(
       description: summary ?? undefined,
     }
   }
-  if (ev.event === 'peer-add') {
-    const data = ev.data as PeerData
-    const who = data?.display_name?.trim() || shortHandle(data?.id ?? data?.remote_key ?? '')
-    return { title: `${who || 'A peer'} joined` }
+  // Raw swarm peer-add/peer-remove events are intentionally silent:
+  // they fire on any hyperswarm connection churn, including between
+  // unrelated pacts on the same host, and can't distinguish "came
+  // online" from "joined the pact". The member-online/offline events
+  // below are the accurate presence signal for the current pact.
+  if (ev.event === 'member-online') {
+    // Silent for now — Network page flips the online indicator. If we
+    // want a chime here later, shortHandle(member_key) is the label.
+    void (ev.data as MemberPresenceData)
+    return null
   }
-  if (ev.event === 'peer-remove') {
-    const data = ev.data as PeerData
-    const who = data?.display_name?.trim() || shortHandle(data?.id ?? data?.remote_key ?? '')
-    return { title: `${who || 'A peer'} disconnected` }
+  if (ev.event === 'member-offline') {
+    void (ev.data as MemberPresenceData)
+    return null
   }
   return null
 }

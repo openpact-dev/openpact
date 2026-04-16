@@ -68,16 +68,14 @@ export default async function peersRoute(
     const selfKeyHex = pact.publicKey ?? ''
     const nameByAgent = await buildDisplayNameIndex(view)
 
-    // Snapshot the currently-tracked writers so we can cross-reference
-    // them by key. `activeWriters` is a live set; iterating it during
-    // async work risks tearing, and we only need it for presence.
-    const activeByKey = new Map<string, any>()
-    for (const writer of autobase.activeWriters) {
-      if (!writer || writer.isRemoved) continue
-      const core = writer.core
-      if (!core || !core.key) continue
-      activeByKey.set(b4a.toString(core.key, 'hex') as string, writer)
-    }
+    // Presence comes from the daemon's authenticated peer links rather
+    // than autobase.activeWriters: autobase can GC a writer even while
+    // we hold a live, authenticated link to them, and a writer can be
+    // in activeWriters with an empty core.peers array right after
+    // reconnect before hypercore finishes its handshake. Authenticated
+    // member-auth responses are the reliable "this agent is here now"
+    // signal.
+    const onlineSet = pact.pactKey ? daemon.onlineMembers(pact.pactKey) : new Set<string>()
 
     const peers: PeerInfo[] = []
     const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
@@ -87,9 +85,7 @@ export default async function peersRoute(
       const keyBuf = b4a.from(keyHex, 'hex') as Buffer
       const agentId = derive(keyBuf)
       const role: 'indexer' | 'member' = (await isIndexer(view, keyHex)) ? 'indexer' : 'member'
-      const writer = activeByKey.get(keyHex)
-      const core = writer?.core
-      const online = core && Array.isArray(core.peers) ? core.peers.length > 0 : false
+      const online = onlineSet.has(keyHex.toLowerCase())
       peers.push({
         id: agentId,
         remote_key: keyHex,

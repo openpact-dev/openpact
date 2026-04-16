@@ -125,7 +125,7 @@ export function Pacts({ current, pacts, onChange }: Props) {
         title={`Leave ${removingAlias ?? ''}?`}
         description={
           removingAlias
-            ? `This deletes the local data for "${removingAlias}". Other peers keep their copy of the pact; the agent can re-join later by re-entering the pact key.`
+            ? `This deletes the local data for "${removingAlias}". Other agents keep their copy of the pact; you can re-join later by redeeming a fresh invite.`
             : ''
         }
         confirmLabel="Leave + delete"

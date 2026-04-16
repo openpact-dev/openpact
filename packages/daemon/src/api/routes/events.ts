@@ -77,12 +77,24 @@ export default async function eventsRoute(
         event: 'update',
         data: { pact_id: info?.pactId, alias: info?.alias },
       })
+    const onMemberOnline = (info: { pactId?: string; alias?: string; member_key?: string }) =>
+      writeFrame(reply, {
+        event: 'member-online',
+        data: { pact_id: info?.pactId, alias: info?.alias, member_key: info?.member_key },
+      })
+    const onMemberOffline = (info: { pactId?: string; alias?: string; member_key?: string }) =>
+      writeFrame(reply, {
+        event: 'member-offline',
+        data: { pact_id: info?.pactId, alias: info?.alias, member_key: info?.member_key },
+      })
 
     daemon.on('entry-applied', onEntryApplied)
     daemon.on('invalid-entry', onInvalidEntry)
     daemon.on('peer-add', onPeerAdd)
     daemon.on('peer-remove', onPeerRemove)
     daemon.on('update', onUpdate)
+    daemon.on('member-online', onMemberOnline)
+    daemon.on('member-offline', onMemberOffline)
 
     const keepalive = setInterval(() => {
       reply.raw.write(`: keepalive ${Date.now()}\n\n`)
@@ -96,6 +108,8 @@ export default async function eventsRoute(
       daemon.off('peer-add', onPeerAdd)
       daemon.off('peer-remove', onPeerRemove)
       daemon.off('update', onUpdate)
+      daemon.off('member-online', onMemberOnline)
+      daemon.off('member-offline', onMemberOffline)
     }
 
     req.raw.on('close', cleanup)

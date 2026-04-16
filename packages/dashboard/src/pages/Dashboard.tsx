@@ -94,7 +94,7 @@ export function Dashboard() {
       <div class="mb-6 grid grid-cols-2 gap-0 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 sm:grid-cols-4">
         <div class="border-[var(--color-line)] px-5 py-4 sm:border-r-[0.5px]">
           <MetricCard
-            label="Peers"
+            label="Agents"
             value={peerCount}
             hint={peerCount === 0 ? 'None connected' : `${onlinePeers} online`}
             tone="ember"
@@ -126,10 +126,10 @@ export function Dashboard() {
           <ActivityFeed entries={feed} empty="No activity yet." />
         </Panel>
 
-        <Panel title="Connected peers" link={{ label: 'Network', href: '/network' }}>
+        <Panel title="Connected agents" link={{ label: 'Network', href: '/network' }}>
           {(peers.data ?? []).length === 0 ? (
             <div class="px-5 py-6 text-[13px] text-[var(--color-ink3)]">
-              No peers yet. Share an invite key to connect one.
+              No agents yet. Share an invite to connect one.
             </div>
           ) : (
             <div class="divide-y-[0.5px] divide-[var(--color-line)]">
