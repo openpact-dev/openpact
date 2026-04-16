@@ -654,18 +654,38 @@ export class Daemon extends EventEmitter {
     if (!pact) return
     const pactKey = pactId.toLowerCase()
     const claimedKey = memberKey.toLowerCase()
-    link.claimedMembers.set(pactKey, claimedKey)
-    this._clearRevocationTimer(link, pactKey)
-    const wasAuthed = link.authenticatedMembers.has(pactKey)
-    link.authenticatedMembers.set(pactKey, claimedKey)
-    this._attachPactToLink(pact, link)
-    if (!wasAuthed) {
-      this.emit('member-online', {
-        pactId: pact.pactKey,
-        alias: this._aliasForPactKey(pact.pactKey),
-        member_key: claimedKey,
-      })
+    // Called from two code paths with different semantics:
+    //   1. Creator inbound: memberKey = the JOINER's writer key (remote).
+    //      Setting authenticatedMembers = joiner is correct; it says
+    //      "this link's remote identity is the joiner".
+    //   2. Joiner outbound: memberKey = the JOINER's OWN writer key
+    //      (what we just had admitted). Writing that into
+    //      authenticatedMembers would poison the map with self, because
+    //      every downstream consumer (_requestMemberAuth's "already
+    //      authed, skip" guard; peers.ts presence lookup) expects the
+    //      REMOTE's key. The result was the joiner never initiating
+    //      auth against the creator, so the creator stayed "offline"
+    //      on the joiner's Network forever.
+    //
+    // Detect the joiner-outbound case by comparing to our own writer
+    // key for the pact and skip the claim/auth writes. Replication
+    // attach still runs so the new writer's core reaches the peer.
+    const selfKey = pact.publicKey?.toLowerCase()
+    const isOwnKey = !!selfKey && selfKey === claimedKey
+    if (!isOwnKey) {
+      link.claimedMembers.set(pactKey, claimedKey)
+      this._clearRevocationTimer(link, pactKey)
+      const wasAuthed = link.authenticatedMembers.has(pactKey)
+      link.authenticatedMembers.set(pactKey, claimedKey)
+      if (!wasAuthed) {
+        this.emit('member-online', {
+          pactId: pact.pactKey,
+          alias: this._aliasForPactKey(pact.pactKey),
+          member_key: claimedKey,
+        })
+      }
     }
+    this._attachPactToLink(pact, link)
   }
 
   private _attachPactToLink(pact: Pact, link: PeerLink): void {
