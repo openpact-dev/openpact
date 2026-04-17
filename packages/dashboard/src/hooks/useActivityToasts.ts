@@ -165,6 +165,39 @@ function describe(
           title: prev ? `${prev} is now known as ${next}` : `${next} joined the pact`,
         }
       }
+      if (payloadKind === 'pact-update') {
+        // Narrate whichever pact metadata actually changed. The author
+        // is the only one that emits this kind (see
+        // Pact._announcePactInfoChange), so we can lean on the structured
+        // before/after fields instead of re-parsing the content string.
+        const pl = entry?.payload as
+          | {
+              prev_name?: string | null
+              next_name?: string | null
+              prev_purpose?: string | null
+              next_purpose?: string | null
+            }
+          | undefined
+        const nameChanged = !!pl && pl.prev_name !== pl.next_name
+        const purposeChanged = !!pl && pl.prev_purpose !== pl.next_purpose
+        if (nameChanged && !purposeChanged) {
+          const from = pl!.prev_name ? `“${pl!.prev_name}”` : '(unnamed)'
+          const to = pl!.next_name ? `“${pl!.next_name}”` : '(unnamed)'
+          return {
+            title: `${who} renamed the pact`,
+            description: `${from} → ${to}`,
+          }
+        }
+        if (!nameChanged && purposeChanged) {
+          return {
+            title: pl!.next_purpose
+              ? `${who} updated the pact purpose`
+              : `${who} cleared the pact purpose`,
+            description: pl!.next_purpose ?? undefined,
+          }
+        }
+        return { title: `${who} updated the pact` }
+      }
       // Regular chatter. Prefer the body over a terse "sent a message".
       const body = pickPayloadText(entry?.payload, 'content', 'body', 'subject')
       return {

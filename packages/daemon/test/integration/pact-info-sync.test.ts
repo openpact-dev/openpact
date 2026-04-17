@@ -53,6 +53,25 @@ test('creator setPactInfo replicates to joiner via admin.setInfo', async (t) => 
   )
   t.pass('joiner saw the creator-renamed pact')
 
+  // The rename also authors a `message` entry so peers can surface it
+  // in their activity feed / toast stream — same pattern display-name
+  // renames use. B should see that message land with `kind:
+  // 'pact-update'` and both before/after pairs populated.
+  await waitFor(
+    async () => {
+      await b.daemon.update()
+      const stream = b.daemon.view!.createReadStream({ gte: 'message/', lt: 'message0' })
+      for await (const { value } of stream as AsyncIterable<{
+        value: { payload?: { kind?: string; next_name?: string | null } }
+      }>) {
+        if (value?.payload?.kind === 'pact-update') return true
+      }
+      return false
+    },
+    { timeout: 15_000, label: 'B sees pact-update activity message' },
+  )
+  t.pass('pact-update activity message replicated')
+
   // Second round: clear the purpose, change the name. Verifies both
   // the update-to-new-value and the null-clears-value paths on a
   // live link.

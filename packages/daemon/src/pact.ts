@@ -351,12 +351,36 @@ export class Pact extends EventEmitter {
       if (nextPurpose !== undefined) payload.purpose = nextPurpose
       // Nothing to do — caller passed neither field.
       if (!('name' in payload) && !('purpose' in payload)) return
+
+      // Capture the current (pre-change) values so the announce message
+      // below can narrate the transition. We deliberately skip the
+      // announce + admin append when nothing actually changed from the
+      // caller's POV — clicking Save with unchanged fields shouldn't
+      // spam the feed.
+      const prevName = this._pactName
+      const prevPurpose = this._pactPurpose
+      const nameChanged = 'name' in payload && (payload.name ?? null) !== prevName
+      const purposeChanged = 'purpose' in payload && (payload.purpose ?? null) !== prevPurpose
+      if (!nameChanged && !purposeChanged) return
+
       await this.append({
         type: 'admin',
         timestamp: new Date().toISOString(),
         agent_id: this.peerHandle as string,
         display_name: this._displayName,
         payload,
+      })
+      // Announce the update as a `message` so it lands in every peer's
+      // activity feed just like a display-name rename or a join. The
+      // message carries the structured before/after fields so a future
+      // dashboard affordance can render them without re-parsing content.
+      await this._announcePactInfoChange({
+        prevName,
+        nextName: nameChanged ? (payload.name ?? null) : prevName,
+        prevPurpose,
+        nextPurpose: purposeChanged ? (payload.purpose ?? null) : prevPurpose,
+        nameChanged,
+        purposeChanged,
       })
       // The entry-applied hook mirrors these writes back into our
       // local fields once apply() runs; a short race window may
@@ -446,6 +470,56 @@ export class Pact extends EventEmitter {
         kind: 'rename',
         prev,
         next,
+      },
+    })
+  }
+
+  /**
+   * Broadcast a pact-update message after a successful
+   * {@link setPactInfo}. Mirrors `_announceDisplayName` — a single
+   * `message` entry so the existing activity feed / toast plumbing on
+   * every peer picks it up without any special-casing. The structured
+   * payload fields (`kind`, `prev_name`, `next_name`, …) let a future
+   * UI render richer affordances without re-parsing the content string.
+   *
+   * Content is author-friendly first, English second:
+   *   - name-only change → "Salt renamed the pact from 'X' to 'Y'."
+   *   - purpose-only     → "Salt updated the pact purpose."
+   *   - both at once     → "Salt updated the pact."
+   */
+  private async _announcePactInfoChange(opts: {
+    prevName: string | null
+    nextName: string | null
+    prevPurpose: string | null
+    nextPurpose: string | null
+    nameChanged: boolean
+    purposeChanged: boolean
+  }): Promise<void> {
+    const actor = this._displayName ?? this.peerHandle ?? 'Someone'
+    let content: string
+    if (opts.nameChanged && !opts.purposeChanged) {
+      const from = opts.prevName ? `'${opts.prevName}'` : '(unnamed)'
+      const to = opts.nextName ? `'${opts.nextName}'` : '(unnamed)'
+      content = `${actor} renamed the pact from ${from} to ${to}.`
+    } else if (!opts.nameChanged && opts.purposeChanged) {
+      content = opts.nextPurpose
+        ? `${actor} updated the pact purpose.`
+        : `${actor} cleared the pact purpose.`
+    } else {
+      content = `${actor} updated the pact.`
+    }
+    await this.append({
+      type: 'message',
+      timestamp: new Date().toISOString(),
+      agent_id: this.peerHandle as string,
+      display_name: this._displayName,
+      payload: {
+        content,
+        kind: 'pact-update',
+        prev_name: opts.prevName,
+        next_name: opts.nextName,
+        prev_purpose: opts.prevPurpose,
+        next_purpose: opts.nextPurpose,
       },
     })
   }
