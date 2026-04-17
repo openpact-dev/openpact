@@ -182,6 +182,16 @@ test('requestMemberAuth: dropped reply does not block subsequent retries', async
   t.is(second, 'timeout', 'second attempt was not rejected as "pending"')
 })
 
+test('liveness: hasPonged defaults to false on a fresh link', (t) => {
+  const link = newPeerLink(fakeConn())
+  t.absent(
+    link.liveness.hasPonged,
+    'un-upgraded peers stay connected until they prove they can pong',
+  )
+  t.is(link.liveness.missed, 0)
+  t.is(link.liveness.pendingPings.size, 0)
+})
+
 test('backoffDelayMs: clamps to the schedule', (t) => {
   t.is(backoffDelayMs(1), AUTH_BACKOFF_MS[0])
   t.is(backoffDelayMs(2), AUTH_BACKOFF_MS[1])

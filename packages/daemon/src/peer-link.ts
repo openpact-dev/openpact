@@ -57,14 +57,23 @@ export interface PeerLink {
    * the moment the link opened, so a freshly-opened link doesn't
    * trip the dead-peer threshold immediately). `missed` counts the
    * consecutive ping windows that elapsed without a pong; once it
-   * reaches LIVENESS_MAX_MISSES the link is destroyed and
-   * Hyperswarm reconnect logic takes over.
+   * reaches LIVENESS_MAX_MISSES and {@link hasPonged} is true, the
+   * link is destroyed and Hyperswarm reconnect logic takes over.
+   *
+   * `hasPonged` exists so an un-upgraded peer — one that doesn't
+   * speak the ping/pong messages yet because it's running older
+   * code — doesn't get aggressively disconnected just because it
+   * can't answer. We only declare a peer dead via the app-level
+   * heartbeat once we've observed at least one successful pong;
+   * before that, Hyperswarm's noise-stream timeouts are still the
+   * fallback for truly dead transports.
    */
   liveness: {
     interval: ReturnType<typeof setInterval> | null
     lastPongAt: number
     missed: number
     pendingPings: Set<string>
+    hasPonged: boolean
   }
 }
 
@@ -89,6 +98,7 @@ export function newPeerLink(conn: any): PeerLink {
       lastPongAt: Date.now(),
       missed: 0,
       pendingPings: new Set(),
+      hasPonged: false,
     },
   }
 }

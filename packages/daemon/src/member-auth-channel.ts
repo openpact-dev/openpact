@@ -136,6 +136,10 @@ export function openMemberAuthChannel(
       link.liveness.lastPongAt = Date.now()
       const wasMissed = link.liveness.missed > 0
       link.liveness.missed = 0
+      // First successful pong unlocks the destroy-on-miss path below.
+      // Until then, we hold fire: an un-upgraded peer that doesn't
+      // implement ping/pong shouldn't get aggressively evicted.
+      link.liveness.hasPonged = true
       if (wasMissed) handlers.onLivenessRecover?.(link)
     },
   })
@@ -171,15 +175,22 @@ function startLiveness(link: PeerLink, handlers: MemberAuthChannelHandlers): voi
   link.liveness.lastPongAt = Date.now()
   link.liveness.missed = 0
   link.liveness.pendingPings.clear()
+  link.liveness.hasPonged = false
 
   const tick = () => {
     // Anything still in pendingPings has had at least
     // LIVENESS_PING_TIMEOUT_MS to come back; treat them as missed.
+    // We only declare the link dead once we've observed at least
+    // one successful pong — pre-ping/pong builds of openpact would
+    // otherwise get torn down every ~60s because their Protomux
+    // channel has no handler for the ping slot and silently drops
+    // the frame. Observers still see the miss counter tick so an
+    // operator can tell the difference from a fully-idle link.
     if (link.liveness.pendingPings.size > 0) {
       link.liveness.missed += 1
       link.liveness.pendingPings.clear()
       handlers.onLivenessMiss?.(link, link.liveness.missed)
-      if (link.liveness.missed >= LIVENESS_MAX_MISSES) {
+      if (link.liveness.hasPonged && link.liveness.missed >= LIVENESS_MAX_MISSES) {
         stopLiveness(link)
         handlers.onLivenessDead(link, link.liveness.missed)
         return
