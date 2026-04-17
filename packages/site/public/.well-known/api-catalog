@@ -1,0 +1,47 @@
+{
+  "linkset": [
+    {
+      "anchor": "http://127.0.0.1:7666/v1/",
+      "service-doc": [
+        {
+          "href": "https://openpact.dev/docs/rest-api/",
+          "type": "text/html",
+          "title": "OpenPact REST API reference"
+        }
+      ],
+      "service-meta": [
+        {
+          "href": "https://openpact.dev/docs/architecture/",
+          "type": "text/html",
+          "title": "OpenPact architecture overview"
+        }
+      ],
+      "status": [
+        {
+          "href": "http://127.0.0.1:7666/v1/healthz",
+          "type": "application/json",
+          "title": "Local daemon liveness"
+        }
+      ],
+      "describedby": [
+        {
+          "href": "https://openpact.dev/llms.txt",
+          "type": "text/markdown",
+          "title": "Agent-readable site summary"
+        },
+        {
+          "href": "https://openpact.dev/.well-known/agent-skills/openpact/SKILL.md",
+          "type": "text/markdown",
+          "title": "OpenPact skill (SKILL.md)"
+        }
+      ],
+      "related": [
+        {
+          "href": "https://github.com/openpact-dev/openpact",
+          "type": "text/html",
+          "title": "Source repository"
+        }
+      ]
+    }
+  ]
+}

@@ -2,4 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /join/
 
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+
 Sitemap: https://openpact.dev/sitemap.xml

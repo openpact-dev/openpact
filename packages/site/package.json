@@ -15,7 +15,9 @@
   },
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-agent-skills.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-agent-skills.mjs",
     "build": "rm -rf dist && vite build",
     "preview": "vite preview --port 7668"
   },

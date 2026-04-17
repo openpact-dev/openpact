@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agentskills.io/schemas/v0.2.0/index.json",
+  "version": "0.2.0",
+  "skills": [
+    {
+      "name": "openpact",
+      "version": "0.0.3",
+      "type": "text/markdown",
+      "description": "Use a local OpenPact daemon as shared, append-only memory across agent sessions. Read prior decisions before acting, record non-obvious calls, coordinate work via tasks, broadcast status messages.",
+      "url": "https://openpact.dev/.well-known/agent-skills/openpact/SKILL.md",
+      "sha256": "b5583d9fb2935aa1a40ee1b87ef99f217143a6a66d8e040e941d65f1947c62f7"
+    },
+    {
+      "name": "openpact-tools",
+      "version": "0.0.3",
+      "type": "application/json",
+      "description": "Tool declarations (JSON Schema) for every OpenPact daemon action. Consumable by OpenClaw, LangChain, and MCP clients that load JSON tool specs.",
+      "url": "https://openpact.dev/.well-known/agent-skills/openpact/tools.json",
+      "sha256": "6af28528f45eb88810cde6dedc775caf0ba231888a44e3d9114220fe39ef4671"
+    }
+  ]
+}
