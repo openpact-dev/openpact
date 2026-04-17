@@ -8,7 +8,15 @@ import crypto from 'hypercore-crypto'
 
 import { pactStorePath } from './data-dir'
 import { loadPactConfig, savePactConfig, type Role, type PactConfig } from './config'
-import { AGENT_NAME_PREFIX, INDEXER_PREFIX, makeApply, INVITE_PREFIX, MEMBER_PREFIX } from './apply'
+import {
+  AGENT_NAME_PREFIX,
+  INDEXER_PREFIX,
+  makeApply,
+  INVITE_PREFIX,
+  MEMBER_PREFIX,
+  PACT_NAME_KEY,
+  PACT_PURPOSE_KEY,
+} from './apply'
 import * as peerHandle from './peer-handle'
 import * as entryId from './entry-id'
 import * as invites from './invites'
@@ -122,6 +130,10 @@ export class Pact extends EventEmitter {
     p._pactName = opts.pactName ?? cfg.pactName ?? null
     p._pactPurpose = opts.pactPurpose ?? cfg.pactPurpose ?? null
     p._displayName = opts.displayName ?? cfg.displayName ?? null
+    // View-synced metadata wins over local config; for a pact that
+    // was offline while another peer renamed it, this is where we
+    // surface the update.
+    await p._seedPactMetaFromView()
     if (
       p._pactName !== cfg.pactName ||
       p._pactPurpose !== cfg.pactPurpose ||
@@ -146,8 +158,77 @@ export class Pact extends EventEmitter {
       },
       apply: makeApply({
         onInvalid: (info) => this.emit('invalid-entry', info),
-        onApplied: (info) => this.emit('entry-applied', info),
+        onApplied: (info) => {
+          this._onAppliedInternal(info)
+          this.emit('entry-applied', info)
+        },
       }),
+    }
+  }
+
+  /**
+   * Internal apply side-effects that belong to the Pact itself rather
+   * than to consumers. Today: keep `_pactName` / `_pactPurpose` in sync
+   * with any `admin.setInfo` entry that reaches the view, so every
+   * peer's getters reflect the ledger-synced value. We also persist
+   * to config.json so a restart without fresh replication still shows
+   * the last-known value.
+   */
+  private _onAppliedInternal(info: { kind: string; entry: unknown }): void {
+    if (info.kind !== 'admin') return
+    const e = info.entry as { payload?: { action?: string; name?: unknown; purpose?: unknown } }
+    if (e?.payload?.action !== 'setInfo') return
+    let changed = false
+    if ('name' in (e.payload as object)) {
+      const next =
+        typeof e.payload.name === 'string' ? e.payload.name : e.payload.name === null ? null : null
+      if (next !== this._pactName) {
+        this._pactName = next
+        changed = true
+      }
+    }
+    if ('purpose' in (e.payload as object)) {
+      const next =
+        typeof e.payload.purpose === 'string'
+          ? e.payload.purpose
+          : e.payload.purpose === null
+            ? null
+            : null
+      if (next !== this._pactPurpose) {
+        this._pactPurpose = next
+        changed = true
+      }
+    }
+    if (changed) void this._persistConfig()
+  }
+
+  /**
+   * Re-seed `_pactName` / `_pactPurpose` from the Hyperbee view.
+   * Called on Pact.load so a daemon that was offline while a peer
+   * renamed the pact surfaces the synced value on next boot.
+   */
+  private async _seedPactMetaFromView(): Promise<void> {
+    const v = this._base?.view
+    if (!v) return
+    try {
+      const [nameRow, purposeRow] = await Promise.all([
+        v.get(PACT_NAME_KEY),
+        v.get(PACT_PURPOSE_KEY),
+      ])
+      const nameVal = nameRow?.value
+      if (nameVal && typeof nameVal === 'object' && 'value' in nameVal) {
+        const n = (nameVal as { value: unknown }).value
+        if (typeof n === 'string' || n === null) this._pactName = n
+      }
+      const purposeVal = purposeRow?.value
+      if (purposeVal && typeof purposeVal === 'object' && 'value' in purposeVal) {
+        const p = (purposeVal as { value: unknown }).value
+        if (typeof p === 'string' || p === null) this._pactPurpose = p
+      }
+    } catch {
+      // View might not be ready yet on brand-new pacts or on join before
+      // the first admin entry lands. Local config stays authoritative
+      // until the next entry-applied event refreshes us.
     }
   }
 
@@ -230,6 +311,22 @@ export class Pact extends EventEmitter {
     return this._base && this._base.view ? (this._base.view.version as number) : 0
   }
 
+  /**
+   * Update pact name and/or purpose. On a writable pact this appends
+   * an `admin.setInfo` entry so every peer converges on the same
+   * value — the Pact's own `entry-applied` handler then writes the
+   * result back into `_pactName` / `_pactPurpose` and persists config.
+   *
+   * When the pact isn't writable yet (reader joining pre-admission),
+   * we fall back to updating local state only — an agent can't
+   * announce a name until they're an admitted writer, and apply.ts
+   * would reject the entry anyway because `admin` requires indexer
+   * authority. Local state keeps the dashboard responsive and is
+   * overwritten the moment a synced entry lands.
+   *
+   * Empty/whitespace input is normalised to null so "" and "   " and
+   * "clear it" all land as the same explicit clear.
+   */
   async setPactInfo({
     name,
     purpose,
@@ -237,8 +334,42 @@ export class Pact extends EventEmitter {
     name?: string | null
     purpose?: string | null
   }): Promise<void> {
-    if (name !== undefined) this._pactName = name || null
-    if (purpose !== undefined) this._pactPurpose = purpose || null
+    const norm = (v: string | null | undefined): string | null | undefined => {
+      if (v === undefined) return undefined
+      if (v === null) return null
+      const t = v.trim()
+      return t === '' ? null : t
+    }
+    const nextName = norm(name)
+    const nextPurpose = norm(purpose)
+
+    if (this._base?.writable) {
+      const payload: { action: 'setInfo'; name?: string | null; purpose?: string | null } = {
+        action: 'setInfo',
+      }
+      if (nextName !== undefined) payload.name = nextName
+      if (nextPurpose !== undefined) payload.purpose = nextPurpose
+      // Nothing to do — caller passed neither field.
+      if (!('name' in payload) && !('purpose' in payload)) return
+      await this.append({
+        type: 'admin',
+        timestamp: new Date().toISOString(),
+        agent_id: this.peerHandle as string,
+        display_name: this._displayName,
+        payload,
+      })
+      // The entry-applied hook mirrors these writes back into our
+      // local fields once apply() runs; a short race window may
+      // exist where a reader of `pact.pactName` sees the pre-append
+      // value. That's acceptable — the next event-applied event
+      // refreshes the getters.
+      return
+    }
+
+    // Pre-writable fallback. Local only. Will be overridden by the
+    // first admin.setInfo entry we apply from a peer.
+    if (nextName !== undefined) this._pactName = nextName
+    if (nextPurpose !== undefined) this._pactPurpose = nextPurpose
     await this._persistConfig()
   }
 

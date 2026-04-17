@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import { route } from 'preact-router'
 import { hostPact } from '../hooks/usePact'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PactEditDialog } from '../components/PactEditDialog'
 import { Sigil } from '../components/Sigil'
 
 interface PactSnapshot {
@@ -34,9 +35,10 @@ export function Pacts({ current, pacts, onChange }: Props) {
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [removingAlias, setRemovingAlias] = useState<string | null>(null)
-  const [renamingAlias, setRenamingAlias] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
+  const [editingAlias, setEditingAlias] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  const editing = editingAlias ? (pacts.find((p) => p.alias === editingAlias) ?? null) : null
 
   const popToast = (msg: string) => {
     setToast(msg)
@@ -93,10 +95,7 @@ export function Pacts({ current, pacts, onChange }: Props) {
                 onChange()
                 route('/')
               }}
-              onRename={() => {
-                setRenameDraft(p.alias)
-                setRenamingAlias(p.alias)
-              }}
+              onEdit={() => setEditingAlias(p.alias)}
               onRemove={() => setRemovingAlias(p.alias)}
             />
           ))}
@@ -143,20 +142,29 @@ export function Pacts({ current, pacts, onChange }: Props) {
         }}
       />
 
-      <RenameDialog
-        open={renamingAlias !== null}
-        oldAlias={renamingAlias}
-        draft={renameDraft}
-        setDraft={setRenameDraft}
-        onCancel={() => setRenamingAlias(null)}
-        onConfirm={async () => {
-          if (!renamingAlias) return
-          await host.pacts.rename(renamingAlias, renameDraft.trim())
-          popToast(`Renamed ${renamingAlias} → ${renameDraft.trim()}`)
-          setRenamingAlias(null)
-          onChange()
-        }}
-      />
+      {editing ? (
+        <PactEditDialog
+          alias={editing.alias}
+          pactName={editing.pact_name}
+          pactPurpose={editing.pact_purpose}
+          isCreator={editing.role === 'creator'}
+          onCancel={() => setEditingAlias(null)}
+          onSaved={({ newAlias, infoChanged }) => {
+            const parts: string[] = []
+            if (infoChanged) parts.push('Pact info updated')
+            if (newAlias) parts.push(`Alias → ${newAlias}`)
+            popToast(parts.join(' · ') || 'Saved')
+            // If the alias changed and this was the current pact,
+            // re-pin localStorage so the sidebar + next reload land
+            // on the new alias instead of falling back to daemon state.
+            if (newAlias && editing.alias === current && typeof localStorage !== 'undefined') {
+              localStorage.setItem('openpact:current-pact', newAlias)
+            }
+            setEditingAlias(null)
+            onChange()
+          }}
+        />
+      ) : null}
 
       {toast ? (
         <div
@@ -174,13 +182,13 @@ function PactCard({
   pact,
   isCurrent,
   onSwitch,
-  onRename,
+  onEdit,
   onRemove,
 }: {
   pact: PactSnapshot
   isCurrent: boolean
   onSwitch: () => void
-  onRename: () => void
+  onEdit: () => void
   onRemove: () => void
 }) {
   return (
@@ -232,11 +240,11 @@ function PactCard({
         ) : null}
         <button
           type="button"
-          data-testid={`rename-${pact.alias}`}
-          onClick={onRename}
+          data-testid={`edit-${pact.alias}`}
+          onClick={onEdit}
           class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
         >
-          Rename
+          Edit
         </button>
         <button
           type="button"
@@ -393,53 +401,6 @@ function JoinPactDialog({
         confirmLabel={saving ? 'Joining…' : 'Join'}
         disabled={saving}
         confirmTestid="join-pact-submit"
-      />
-    </Modal>
-  )
-}
-
-function RenameDialog({
-  open,
-  oldAlias,
-  draft,
-  setDraft,
-  onCancel,
-  onConfirm,
-}: {
-  open: boolean
-  oldAlias: string | null
-  draft: string
-  setDraft: (s: string) => void
-  onCancel: () => void
-  onConfirm: () => void | Promise<void>
-}) {
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  if (!open || !oldAlias) return null
-
-  const submit = async () => {
-    setSaving(true)
-    setError(null)
-    try {
-      await onConfirm()
-      setSaving(false)
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Modal title={`Rename ${oldAlias}`} onClose={onCancel}>
-      <Field label="New alias" value={draft} onInput={setDraft} max={48} />
-      {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
-      <ModalFooter
-        onCancel={onCancel}
-        onConfirm={submit}
-        confirmLabel={saving ? 'Renaming…' : 'Rename'}
-        disabled={saving || draft.trim() === oldAlias || draft.trim() === ''}
-        confirmTestid="rename-pact-submit"
       />
     </Modal>
   )

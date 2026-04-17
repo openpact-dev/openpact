@@ -19,6 +19,13 @@ export const INVITE_PREFIX = '_invites/'
 export const AGENT_NAME_PREFIX = '_agents/'
 export const AGENT_NAME_RANGE_END = '_agents0'
 
+// Canonical pact name + purpose, synced via admin.setInfo. Each row is
+// `{ value, ts }`; a later admin.setInfo entry only wins if its
+// timestamp strictly exceeds the stored `ts`, matching the _agents/
+// index semantics. Peers read these via `Pact.pactName` / `pactPurpose`.
+export const PACT_NAME_KEY = '_pact/name'
+export const PACT_PURPOSE_KEY = '_pact/purpose'
+
 export interface ApplyNode {
   value: unknown
   from?: { key?: Buffer | null } | null
@@ -244,10 +251,39 @@ async function upsertAgentName(entry: unknown, view: ApplyView): Promise<void> {
 }
 
 async function applyAdmin(
-  entry: { payload: { action?: string; key?: string; indexer?: boolean } },
+  entry: {
+    timestamp: string
+    payload: {
+      action?: string
+      key?: string
+      indexer?: boolean
+      name?: string | null
+      purpose?: string | null
+    }
+  },
   view: ApplyView,
   host: ApplyHost,
 ): Promise<void> {
+  if (entry.payload.action === 'setInfo') {
+    // Pact-metadata update: only write each field if it's present in
+    // the payload. `null` explicitly clears, `undefined` means the
+    // caller didn't touch it. Timestamp is authoritative — a later
+    // entry with an older ts is ignored so concurrent edits from
+    // different creators resolve deterministically.
+    if ('name' in entry.payload) {
+      await putPactMetaIfNewer(view, PACT_NAME_KEY, entry.payload.name ?? null, entry.timestamp)
+    }
+    if ('purpose' in entry.payload) {
+      await putPactMetaIfNewer(
+        view,
+        PACT_PURPOSE_KEY,
+        entry.payload.purpose ?? null,
+        entry.timestamp,
+      )
+    }
+    return
+  }
+
   const keyHex = entry.payload.key as string
   const keyBuf = b4a.from(keyHex, 'hex') as Buffer
   if (entry.payload.action === 'addWriter') {
@@ -262,6 +298,21 @@ async function applyAdmin(
     await view.del(`${MEMBER_PREFIX}${keyHex}`)
     await view.del(`${INDEXER_PREFIX}${keyHex}`)
   }
+}
+
+async function putPactMetaIfNewer(
+  view: ApplyView,
+  key: string,
+  value: string | null,
+  ts: string,
+): Promise<void> {
+  const existing = await view.get(key)
+  const prevTs =
+    existing && typeof existing.value === 'object' && existing.value
+      ? ((existing.value as { ts?: unknown }).ts as string | undefined)
+      : undefined
+  if (prevTs && ts <= prevTs) return
+  await view.put(key, { value, ts })
 }
 
 function noop(): void {}

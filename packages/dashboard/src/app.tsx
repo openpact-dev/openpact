@@ -80,7 +80,7 @@ function AppShell() {
               <Tasks path="/tasks" />
               <Messages path="/messages" />
               <Skills path="/skills" />
-              <Network path="/network" />
+              <Network path="/network" currentAlias={current} onPactChange={() => void refresh()} />
               <Pacts
                 path="/pacts"
                 current={current}

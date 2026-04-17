@@ -6,6 +6,8 @@ import {
   INDEXER_PREFIX,
   INVITE_PREFIX,
   MEMBER_PREFIX,
+  PACT_NAME_KEY,
+  PACT_PURPOSE_KEY,
   type ApplyView,
   type ApplyHost,
   type ApplyNode,
@@ -338,6 +340,158 @@ test('view key uses type/timestamp/id format', async (t) => {
   )
   const knowledgeKey = view._keys().find((k) => k.startsWith('knowledge/'))
   t.is(knowledgeKey, `knowledge/${TS}/aaaaaaaa-42`)
+})
+
+test('admin setInfo writes _pact/name + _pact/purpose to view', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  // Bootstrap KEY_A as implicit creator-indexer via a knowledge entry.
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: entry(
+          'admin',
+          { action: 'setInfo', name: 'The Obsidian Accord', purpose: 'a pact among daemons' },
+          { handle: HANDLE_A, ts: '2026-04-17T10:00:00.000Z' },
+        ),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const nameRow = (await view.get(PACT_NAME_KEY)) as {
+    value: { value: string; ts: string }
+  } | null
+  const purposeRow = (await view.get(PACT_PURPOSE_KEY)) as {
+    value: { value: string; ts: string }
+  } | null
+  t.is(nameRow?.value.value, 'The Obsidian Accord')
+  t.is(purposeRow?.value.value, 'a pact among daemons')
+  t.is(nameRow?.value.ts, '2026-04-17T10:00:00.000Z')
+})
+
+test('admin setInfo from non-indexer is rejected', async (t) => {
+  const view = fakeView()
+  const invalid: InvalidInfo[] = []
+  const apply = makeApply({ onInvalid: (info) => invalid.push(info) })
+  // Seed KEY_A as creator, then try setInfo from KEY_C (never an indexer).
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_C,
+        value: entry(
+          'admin',
+          { action: 'setInfo', name: 'Hostile Rename' },
+          { handle: HANDLE_C, ts: '2026-04-17T10:00:00.000Z' },
+        ),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  t.absent(await view.get(PACT_NAME_KEY), 'non-indexer setInfo left the view untouched')
+  t.ok(
+    invalid.some((i) => i.reason === 'admin-from-non-indexer'),
+    'apply surfaced the rejection reason',
+  )
+})
+
+test('admin setInfo: older timestamp does not clobber newer row', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  const older = '2026-04-15T00:00:00.000Z'
+  const newer = '2026-04-16T00:00:00.000Z'
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: entry('admin', { action: 'setInfo', name: 'New' }, { handle: HANDLE_A, ts: newer }),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 2,
+        value: entry('admin', { action: 'setInfo', name: 'Old' }, { handle: HANDLE_A, ts: older }),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const nameRow = (await view.get(PACT_NAME_KEY)) as {
+    value: { value: string; ts: string }
+  } | null
+  t.is(nameRow?.value.value, 'New', 'older-ts entry did not clobber newer-ts value')
+})
+
+test('admin setInfo: null value explicitly clears', async (t) => {
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [node({ writerKey: KEY_A, value: entry('knowledge', { topic: 'x', content: 'y' }) })],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 1,
+        value: entry(
+          'admin',
+          { action: 'setInfo', name: 'Temp', purpose: 'also temp' },
+          { handle: HANDLE_A, ts: '2026-04-15T00:00:00.000Z' },
+        ),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 2,
+        value: entry(
+          'admin',
+          { action: 'setInfo', name: null, purpose: null },
+          { handle: HANDLE_A, ts: '2026-04-16T00:00:00.000Z' },
+        ),
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const nameRow = (await view.get(PACT_NAME_KEY)) as {
+    value: { value: string | null; ts: string }
+  } | null
+  t.is(nameRow?.value.value, null, 'name cleared to null')
+  const purposeRow = (await view.get(PACT_PURPOSE_KEY)) as {
+    value: { value: string | null; ts: string }
+  } | null
+  t.is(purposeRow?.value.value, null, 'purpose cleared to null')
 })
 
 test('stored entry includes derived id field', async (t) => {

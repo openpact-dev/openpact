@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
+import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useDashboardConnection } from '../hooks/useDashboardConnection'
 import { useSharedSse } from '../hooks/useSse'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { InviteDialog } from '../components/InviteDialog'
+import { PactEditDialog } from '../components/PactEditDialog'
 import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
@@ -30,7 +32,14 @@ interface UnifiedRow {
   isSelf: boolean
 }
 
-export function Network() {
+export interface NetworkProps {
+  /** Local alias of the current pact, threaded through from App. */
+  currentAlias?: string | null
+  /** Fires after the pact registry changes (e.g. local alias renamed). */
+  onPactChange?: () => void
+}
+
+export function Network({ currentAlias = null, onPactChange }: NetworkProps) {
   const pact = usePact()
   if (!pact.pactId) {
     return (
@@ -40,10 +49,16 @@ export function Network() {
       />
     )
   }
-  return <NetworkPage />
+  return <NetworkPage currentAlias={currentAlias} onPactChange={onPactChange} />
 }
 
-function NetworkPage() {
+function NetworkPage({
+  currentAlias,
+  onPactChange,
+}: {
+  currentAlias: string | null
+  onPactChange?: () => void
+}) {
   const pact = usePact()
   const sse = useSharedSse()
   const connection = useDashboardConnection()
@@ -122,14 +137,8 @@ function NetworkPage() {
           pactName={pactName}
           pactPurpose={pactPurpose}
           pactId={pactId}
-          editing={editing === 'pact'}
-          canEdit={isCreator}
+          canEdit={!!currentAlias}
           onStartEdit={() => setEditing('pact')}
-          onCancel={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null)
-            status.refetch()
-          }}
         />
       </section>
 
@@ -188,6 +197,33 @@ function NetworkPage() {
           onSaved={() => {
             setEditing(null)
             status.refetch()
+          }}
+        />
+      ) : null}
+
+      {editing === 'pact' && currentAlias ? (
+        <PactEditDialog
+          alias={currentAlias}
+          pactName={pactName}
+          pactPurpose={pactPurpose}
+          isCreator={isCreator}
+          onCancel={() => setEditing(null)}
+          onSaved={({ newAlias, infoChanged }) => {
+            setEditing(null)
+            if (infoChanged) status.refetch()
+            if (newAlias) {
+              // Pin the new alias locally so the switcher and a
+              // page reload both land on it, then nudge the app
+              // to refresh the pact registry + route back to the
+              // network page (which will re-mount with the new
+              // current). The old alias is gone; staying on its
+              // client would 404 on the next fetch.
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('openpact:current-pact', newAlias)
+              }
+              onPactChange?.()
+              route('/network')
+            }
           }}
         />
       ) : null}
@@ -352,142 +388,58 @@ function describeRights(role: string): string {
 
 /* -------------------------- pact info card ----------------------------- */
 
+/**
+ * Read-only summary of the current pact's name + purpose. The "Edit
+ * pact" button opens {@link PactEditDialog} — the same dialog the
+ * /pacts page uses, so name/purpose changes (synced) and local alias
+ * changes (per-host) share one surface.
+ */
 function PactInfoCard({
   pactName,
   pactPurpose,
   pactId,
-  editing,
   canEdit,
   onStartEdit,
-  onCancel,
-  onSaved,
 }: {
   pactName: string | null
   pactPurpose: string | null
   pactId: string
-  editing: boolean
   canEdit: boolean
   onStartEdit: () => void
-  onCancel: () => void
-  onSaved: () => void
 }) {
-  const pact = usePact()
-  const [nameDraft, setNameDraft] = useState(pactName ?? '')
-  const [purposeDraft, setPurposeDraft] = useState(pactPurpose ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Re-seed the drafts whenever we enter edit mode so the form shows the
-  // current values, not whatever was last typed.
-  useEffect(() => {
-    if (editing) {
-      setNameDraft(pactName ?? '')
-      setPurposeDraft(pactPurpose ?? '')
-      setError(null)
-    }
-  }, [editing, pactName, pactPurpose])
-
-  const save = async () => {
-    setSaving(true)
-    setError(null)
-    try {
-      await pact.admin.setPactInfo({
-        name: nameDraft.trim() || null,
-        purpose: purposeDraft.trim() || null,
-      })
-      onSaved()
-    } catch (e: any) {
-      setError(e?.message ?? String(e))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const INPUT =
-    'w-full rounded-none border-0 border-b-[0.5px] border-[var(--color-line)] bg-transparent px-1 py-1.5 text-[14px] text-[var(--color-ink)] outline-none focus:border-[var(--color-ember)]'
-
   return (
     <div
       class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 px-5 py-4"
       data-testid="pact-info"
     >
-      {editing ? (
-        <div class="space-y-3">
-          <label class="block">
-            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-              Pact name
-            </span>
-            <input
-              class={`${INPUT} mt-1`}
-              value={nameDraft}
-              maxLength={64}
-              onInput={(e) => setNameDraft((e.target as HTMLInputElement).value)}
-              data-testid="pact-name-input"
-            />
-          </label>
-          <label class="block">
-            <span class="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-              Purpose
-            </span>
-            <input
-              class={`${INPUT} mt-1`}
-              value={purposeDraft}
-              maxLength={200}
-              onInput={(e) => setPurposeDraft((e.target as HTMLInputElement).value)}
-              data-testid="pact-purpose-input"
-            />
-          </label>
-          {error ? <div class="text-[12px] text-[var(--color-ember)]">{error}</div> : null}
-          <div class="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink2)] hover:text-[var(--color-ink)]"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              data-testid="pact-save"
-              class="rounded-sm border-[0.5px] border-[var(--color-online)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-online)] hover:bg-[var(--color-online)]/10"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+        <div class="min-w-0">
+          <div class="font-display text-[18px] leading-tight text-[var(--color-ink)]">
+            {pactName ?? <span class="italic text-[var(--color-ink3)]">Unnamed pact</span>}
+          </div>
+          <div class="mt-1 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
+            {pactPurpose ?? <span class="italic text-[var(--color-ink3)]">No purpose set.</span>}
+          </div>
+          <div
+            class="mt-2 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]"
+            title={pactId}
+          >
+            ID: {pactId.slice(0, 16)}…
           </div>
         </div>
-      ) : (
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
-          <div class="min-w-0">
-            <div class="font-display text-[18px] leading-tight text-[var(--color-ink)]">
-              {pactName ?? <span class="italic text-[var(--color-ink3)]">Unnamed pact</span>}
-            </div>
-            <div class="mt-1 text-[13px] leading-[1.5] text-[var(--color-ink2)]">
-              {pactPurpose ?? <span class="italic text-[var(--color-ink3)]">No purpose set.</span>}
-            </div>
-            <div
-              class="mt-2 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]"
-              title={pactId}
+        {canEdit ? (
+          <div class="flex items-start">
+            <button
+              type="button"
+              onClick={onStartEdit}
+              data-testid="pact-edit"
+              class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
             >
-              ID: {pactId.slice(0, 16)}…
-            </div>
+              Edit pact
+            </button>
           </div>
-          {canEdit ? (
-            <div class="flex items-start">
-              <button
-                type="button"
-                onClick={onStartEdit}
-                data-testid="pact-edit"
-                class="rounded-sm border-[0.5px] border-[var(--color-line)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink2)] hover:border-[var(--color-ember)] hover:text-[var(--color-ember)]"
-              >
-                Edit pact
-              </button>
-            </div>
-          ) : null}
-        </div>
-      )}
+        ) : null}
+      </div>
     </div>
   )
 }

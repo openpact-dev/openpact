@@ -252,10 +252,17 @@ const base = new Autobase(store, bootstrapKey, {
           indexer: entry.payload.indexer || false
         })
       }
+      if (entry.type === 'admin' && entry.payload.action === 'setInfo') {
+        // Sync pact name + purpose to every peer via the ledger.
+        // Last-writer-wins by timestamp; null clears.
+        await applyPactMeta(view, entry)
+      }
     }
   }
 })
 ```
+
+Admin actions: `addWriter`, `removeWriter`, `setInfo`. The `setInfo` action carries optional `name` and `purpose` fields (both nullable to explicitly clear) and is the only way the creator's pact-metadata edits reach other peers — a local-only setter would leave every peer on its own stale name. Apply writes the result to the `_pact/name` and `_pact/purpose` view keys; peers read those via `Pact.pactName` / `Pact.pactPurpose`, falling back to local config pre-first-sync.
 
 ### 5.4 Peer roles
 
