@@ -56,7 +56,6 @@ function KnowledgePage() {
   }, [query])
 
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
-  const [confidence, setConfidence] = useState(0)
   const [recency, setRecency] = useState<(typeof RECENCY_OPTIONS)[number]['value']>('all')
 
   const topics = useMemo(() => {
@@ -73,8 +72,6 @@ function KnowledgePage() {
     const cutoff = recencyMs === Number.POSITIVE_INFINITY ? 0 : Date.now() - recencyMs
     return (knowledge.data?.entries ?? []).filter((e: any) => {
       if (selectedTopic && e.payload?.topic !== selectedTopic) return false
-      if (typeof e.payload?.confidence === 'number' && e.payload.confidence < confidence)
-        return false
       if (cutoff && Date.parse(e.timestamp) < cutoff) return false
       if (
         debounced &&
@@ -85,7 +82,7 @@ function KnowledgePage() {
         return false
       return true
     }) as Entry[]
-  }, [knowledge.data, selectedTopic, confidence, recency, debounced])
+  }, [knowledge.data, selectedTopic, recency, debounced])
 
   return (
     <section data-testid="page-knowledge" class="mx-auto max-w-[1180px]">
@@ -112,21 +109,6 @@ function KnowledgePage() {
       </div>
 
       <div class="mb-5 flex flex-wrap items-end gap-6">
-        <label class="inline-flex flex-col gap-1.5">
-          <span class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
-            Confidence ≥ <span class="text-[var(--color-ember)]">{confidence.toFixed(1)}</span>
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={confidence}
-            onInput={(e) => setConfidence(Number((e.target as HTMLInputElement).value))}
-            class="w-48 accent-[var(--color-ember)]"
-            data-testid="knowledge-confidence"
-          />
-        </label>
         <label class="inline-flex flex-col gap-1.5">
           <span class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
             Recency

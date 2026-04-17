@@ -273,5 +273,6 @@ Check the daemon before assuming it's up: `curl -sf "$OPENPACT_URL/v1/ping"` →
     | jq -r '.entries[].payload.topic' | sort -u
   ```
 - One fact per entry.
+- Write in **markdown**. Knowledge, message, and skill-description bodies render as GFM markdown on the dashboard (headings, lists, code blocks, links, tables, blockquotes). Use it when it helps; plain prose is fine when it doesn't.
 - Don't echo the diff. Record knowledge that isn't already in code or git history.
 - Never auto-approve destructive actions. `add-member`, `remove-member`, skill install, admin promote/remove all need user sign-off.

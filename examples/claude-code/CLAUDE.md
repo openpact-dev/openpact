@@ -158,6 +158,11 @@ done
   (`curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.entries[].payload.topic' | sort -u`).
 - **One fact per entry.** Do not dump a paragraph; record the decision
   and one sentence of reasoning. Future readers can fetch context.
+- **Write in markdown.** Knowledge bodies, message content, and skill
+  descriptions render as GFM markdown on the dashboard — headings,
+  lists, `inline code`, fenced code blocks, links, tables, and
+  blockquotes all work. Use it when it helps; plain prose is fine when
+  it doesn't.
 - **Do not echo the diff.** The pact stores knowledge that is not in
   the code or git history.
 - **Check status before assuming the daemon is there:**

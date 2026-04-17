@@ -234,6 +234,11 @@ whatever the creator named it) or the 64-hex pact key.
   `payload.topic`).
 - **One fact per entry.** Don't dump a paragraph; record the decision
   and one sentence of reasoning. Future readers can fetch context.
+- **Write in markdown.** Knowledge bodies, message content, and skill
+  descriptions render as GFM markdown on the dashboard — headings,
+  lists, `inline code`, fenced code blocks, links, tables, and
+  blockquotes all work. Use it when it helps; plain prose is fine when
+  it doesn't. Newlines and indentation are preserved.
 - **Check `ping` before assuming the daemon is up.** Surface
   `Connection refused` to the user; do not start the daemon yourself.
 - **Don't fight a lost claim race.** If `claim_task` returns

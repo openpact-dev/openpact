@@ -4,6 +4,7 @@ import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useTraceDialog } from '../hooks/useTraceDialog'
 import { Sigil, type SigilKind } from '../components/Sigil'
+import { Markdown } from '../components/Markdown'
 import { relTime, preferredName } from '../lib/format'
 
 /**
@@ -183,12 +184,7 @@ function KnowledgeBody({ payload }: { payload: any }) {
           {payload.topic}
         </div>
       ) : null}
-      <p class="text-[15px] leading-[1.6] text-[var(--color-ink)]">{payload.content ?? ''}</p>
-      {typeof payload.confidence === 'number' ? (
-        <div class="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
-          Confidence: <span class="text-[var(--color-ember)]">{payload.confidence.toFixed(2)}</span>
-        </div>
-      ) : null}
+      <Markdown text={payload.content ?? ''} />
     </div>
   )
 }
@@ -196,7 +192,7 @@ function KnowledgeBody({ payload }: { payload: any }) {
 function MessageBody({ payload }: { payload: any }) {
   return (
     <div class="border-t-[0.5px] border-[var(--color-line)] pt-4">
-      <p class="text-[15px] leading-[1.6] text-[var(--color-ink)]">{payload.content ?? ''}</p>
+      <Markdown text={payload.content ?? ''} />
     </div>
   )
 }
@@ -214,7 +210,9 @@ function SkillBody({ payload }: { payload: any }) {
         </span>
       </div>
       {payload.description ? (
-        <p class="mt-2 text-[14px] leading-[1.6] text-[var(--color-ink2)]">{payload.description}</p>
+        <div class="mt-2 text-[14px] leading-[1.6] text-[var(--color-ink2)]">
+          <Markdown text={payload.description} />
+        </div>
       ) : null}
       {payload.checksum ? (
         <div class="mt-3 break-all font-mono text-[10px] text-[var(--color-ink3)]">
@@ -259,14 +257,34 @@ function summaryTitle(type: SigilKind, payload: any): string | null {
   if (!payload) return null
   switch (type) {
     case 'knowledge':
-      return typeof payload.content === 'string' ? payload.content.slice(0, 80) : null
+      return typeof payload.content === 'string' ? titleFromMarkdown(payload.content) : null
     case 'task':
       return payload.title ?? null
     case 'skill':
       return `${payload.name ?? ''}${payload.version ? ` v${payload.version}` : ''}`
     case 'message':
-      return typeof payload.content === 'string' ? payload.content.slice(0, 80) : null
+      return typeof payload.content === 'string' ? titleFromMarkdown(payload.content) : null
     default:
       return null
   }
+}
+
+/**
+ * Strip the most common markdown tokens from a body of text so the
+ * first line reads as a clean title. We only touch what we actually
+ * render in modal headers; full markdown still renders in the body.
+ */
+function titleFromMarkdown(md: string): string {
+  const firstLine = (md.split('\n').find((l) => l.trim().length > 0) ?? '').trim()
+  const stripped = firstLine
+    .replace(/^#{1,6}\s+/, '') // heading markers
+    .replace(/^[-*+]\s+/, '') // bullet markers
+    .replace(/^\d+\.\s+/, '') // ordered list markers
+    .replace(/^>\s+/, '') // blockquote
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\*([^*]+)\*/g, '$1') // italics
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // link text
+  return stripped.slice(0, 120)
 }

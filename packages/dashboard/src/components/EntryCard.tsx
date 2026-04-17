@@ -1,4 +1,5 @@
 import { Sigil, type SigilKind } from './Sigil'
+import { Markdown } from './Markdown'
 import { useTraceDialog } from '../hooks/useTraceDialog'
 import { relTime, preferredName } from '../lib/format'
 
@@ -34,6 +35,27 @@ function summary(entry: Entry): string {
     default:
       return ''
   }
+}
+
+/**
+ * Preview renderer tuned for the two card variants.
+ *
+ * - `inline` (FeedRow, line-clamped to 2 lines): run through
+ *   `parseInline` so we still get emphasis / code / links but no
+ *   block spacing blows the row height up.
+ * - `block` (Knowledge grid EntryCard): full markdown — headings,
+ *   lists, fenced code. Cards become variable-height; acceptable on
+ *   a 2-up grid that already scrolls vertically.
+ *
+ * Task + skill cards render synthesised labels, not authored prose,
+ * so they pass through as plain text in both modes.
+ */
+function EntrySummary({ entry, inline = false }: { entry: Entry; inline?: boolean }) {
+  const text = summary(entry)
+  if (entry.type === 'knowledge' || entry.type === 'message') {
+    return <Markdown text={text} inline={inline} />
+  }
+  return <>{text}</>
 }
 
 /**
@@ -79,7 +101,7 @@ export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) 
             {'.'}
           </div>
           <div class="mt-0.5 line-clamp-2 text-[14px] leading-[1.5] text-[var(--color-ink)]">
-            {summary(entry)}
+            <EntrySummary entry={entry} inline />
           </div>
         </div>
       </div>
@@ -113,7 +135,9 @@ export function EntryCard({ entry, index = 0 }: { entry: Entry; index?: number }
             {entry.payload.topic}
           </div>
         ) : null}
-        <p class="mt-1.5 text-[14px] leading-[1.5] text-[var(--color-ink)]">{summary(entry)}</p>
+        <div class="mt-1.5 text-[14px] leading-[1.5] text-[var(--color-ink)]">
+          <EntrySummary entry={entry} />
+        </div>
         <div class="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
           <span class="text-[var(--color-ember)]" title={entry.agent_id}>
             {preferredName(entry)}

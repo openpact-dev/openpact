@@ -15,6 +15,7 @@ import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSharedSse } from '../hooks/useSse'
 import { useTraceDialog } from '../hooks/useTraceDialog'
+import { Markdown } from '../components/Markdown'
 import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
 import { relTime, preferredName } from '../lib/format'
@@ -295,6 +296,7 @@ function Composer({
           >
             {trimmed.length}/{CHAR_MAX}
             <span class="ml-3 text-[var(--color-ink3)]">⌘↵ to send</span>
+            <span class="ml-3 text-[var(--color-ink3)]">Markdown supported</span>
           </span>
           {error ? (
             <span class="mr-auto ml-4 font-mono text-[10px] text-[var(--color-ember)]">
@@ -515,9 +517,10 @@ function DispatchRow({
                 </button>
               ) : null}
             </header>
-            <p class="whitespace-pre-wrap font-display text-[16px] leading-[1.55] text-[var(--color-ink)]">
-              {msg.payload.content}
-            </p>
+            <Markdown
+              text={msg.payload.content}
+              class="font-display text-[16px] leading-[1.55] text-[var(--color-ink)]"
+            />
           </div>
         </article>
       </li>

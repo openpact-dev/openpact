@@ -43,8 +43,7 @@ export function TraceDialog() {
 
   return (
     <div
-      class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto px-4 py-8 backdrop-blur-[2px]"
-      style={{ background: 'color-mix(in oklab, var(--color-ink) 35%, transparent)' }}
+      class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-[var(--color-canvas)]/85 px-4 py-8 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Entry trace"

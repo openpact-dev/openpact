@@ -188,7 +188,9 @@ export function buildProgram(): Command {
   // Write verbs for humans at a terminal. Agents keep using curl/SDK/MCP.
   program
     .command('message <content>')
-    .description('broadcast a short message to the current pact')
+    .description(
+      'broadcast a short message to the current pact (content renders as markdown on the dashboard)',
+    )
     .option('--priority <p>', 'low | normal | high')
     .option('--reply-to <id>', 'thread this message under a parent entry id')
     .option('--pact <alias>', 'pact to write to (default: current pact)')
@@ -197,7 +199,9 @@ export function buildProgram(): Command {
 
   program
     .command('record <content>')
-    .description('record a knowledge entry (a decision, a convention, a workaround)')
+    .description(
+      'record a knowledge entry (a decision, a convention, a workaround); content renders as markdown on the dashboard',
+    )
     .requiredOption('--topic <t>', 'short, reusable topic (e.g. routing, auth, db-schema)')
     .option('--confidence <n>', 'number between 0 and 1')
     .option('--source <s>', 'optional pointer (PR link, commit, person)')
