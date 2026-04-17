@@ -29,7 +29,11 @@ async function currentPactKey(hostDir: string): Promise<string | null> {
 
 test('initCmd creates a pact and adds it to the registry', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({ interactive: false }, ctx(dir))
+  // `start: false` is load-bearing: initCmd auto-starts the daemon
+  // when `interactive` is unset *and* stdin is a TTY. Without this
+  // flag the test passes from a piped shell (CI, tool runners) but
+  // fails from a real terminal where init tries to bind :7666.
+  await initCmd({ interactive: false, start: false }, ctx(dir))
   const cfg = await daemonConfig.loadDaemonConfig(dir)
   t.is(cfg.pacts.length, 1)
   t.ok(cfg.currentAlias, 'has a current alias')
@@ -40,7 +44,7 @@ test('initCmd creates a pact and adds it to the registry', async (t) => {
 
 test('initCmd: refuses second init at the same alias without --force', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({ interactive: false, alias: 'iron' }, ctx(dir))
+  await initCmd({ interactive: false, start: false, alias: 'iron' }, ctx(dir))
   await t.exception(
     () => initCmd({ interactive: false, alias: 'iron' }, ctx(dir)),
     /already exists/,
@@ -49,9 +53,9 @@ test('initCmd: refuses second init at the same alias without --force', async (t)
 
 test('initCmd: --force replaces the pact at the same alias', async (t) => {
   const dir = await tmpHome(t)
-  await initCmd({ interactive: false, alias: 'iron' }, ctx(dir))
+  await initCmd({ interactive: false, start: false, alias: 'iron' }, ctx(dir))
   const before = await currentPactKey(dir)
-  await initCmd({ interactive: false, alias: 'iron', force: true }, ctx(dir))
+  await initCmd({ interactive: false, start: false, alias: 'iron', force: true }, ctx(dir))
   const after = await currentPactKey(dir)
   t.not(before, after, 'new pact key after --force')
 })
