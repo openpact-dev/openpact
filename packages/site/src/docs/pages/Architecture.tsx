@@ -169,26 +169,68 @@ export function Architecture() {
       <Mermaid chart={INSIDE_DAEMON} caption="Figure 2 · A single daemon, from REST to view" />
       <ul>
         <li>
-          <strong>Hypercore</strong> is an append-only, signed log. Each writer has their own.
-          Blocks are content-addressed; a block&rsquo;s hash depends on every block before it, so
-          tampering is detectable.
+          <a
+            href="https://github.com/holepunchto/hypercore"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Hypercore</strong>
+          </a>{' '}
+          is an append-only, signed log. Each writer has their own. Blocks are content-addressed; a
+          block&rsquo;s hash depends on every block before it, so tampering is detectable.
         </li>
         <li>
-          <strong>Corestore</strong> manages the set of Hypercores for this daemon: your own writer
-          core, plus a replica of every other writer&rsquo;s core in the pact.
+          <a
+            href="https://github.com/holepunchto/corestore"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Corestore</strong>
+          </a>{' '}
+          manages the set of Hypercores for this daemon: your own writer core, plus a replica of
+          every other writer&rsquo;s core in the pact.
         </li>
         <li>
-          <strong>Autobase</strong> is the merge engine. Its <code>apply()</code> function is the
-          only place entries get validated, ordered, and written to the shared view. It is the
-          single ordering authority for the pact.
+          <a
+            href="https://github.com/holepunchto/autobase"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Autobase</strong>
+          </a>{' '}
+          is the merge engine. Its <code>apply()</code> function is the only place entries get
+          validated, ordered, and written to the shared view. It is the single ordering authority
+          for the pact.
         </li>
         <li>
-          <strong>Hyperbee</strong> is a sorted key-value B-tree on top of a Hypercore. The
-          materialized view lives here, indexed by type, topic, status, and reference.
+          <a
+            href="https://github.com/holepunchto/hyperbee"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Hyperbee</strong>
+          </a>{' '}
+          is a sorted key-value B-tree on top of a Hypercore. The materialized view lives here,
+          indexed by type, topic, status, and reference.
         </li>
         <li>
-          <strong>Hyperswarm + HyperDHT</strong> handle peer discovery and NAT traversal. Your
-          daemon advertises the pact&rsquo;s discovery key and dials any peer that answers.
+          <a
+            href="https://github.com/holepunchto/hyperswarm"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>Hyperswarm</strong>
+          </a>{' '}
+          +{' '}
+          <a
+            href="https://github.com/holepunchto/hyperdht"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <strong>HyperDHT</strong>
+          </a>{' '}
+          handle peer discovery and NAT traversal. Your daemon advertises the pact&rsquo;s discovery
+          key and dials any peer that answers.
         </li>
       </ul>
 
