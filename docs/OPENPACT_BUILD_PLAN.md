@@ -240,7 +240,7 @@ This is the heart of the project. Get this right before touching anything else.
   - Append valid entries to the view
   - Handle `admin` entries for writer management (`addWriter`, `removeWriter`)
 - [x] Implement entry types with JSON schema validation (use `ajv`):
-  - `knowledge` (topic, content, confidence, source)
+  - `knowledge` (topic, content, source)
   - `task` (title, status, claimed_by, description, result, assigned_to?)
   - `skill` (name, version, description, format, content, checksum)
   - `message` (to, content, priority)
@@ -567,7 +567,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   const skills = await pact.skills.list()
 
   // Write
-  await pact.knowledge.create({ topic: 'sales', content: '...', confidence: 0.8 })
+  await pact.knowledge.create({ topic: 'sales', content: '...' })
   await pact.tasks.create({ title: 'Build landing page', description: '...' })
   await pact.tasks.claim(taskId)
   await pact.tasks.complete(taskId, { result: 'Done. PR #42 merged.' })
@@ -656,7 +656,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   the same event.
 - [x] CLI write verbs for humans at a terminal:
   `openpact message <content> [--priority]`,
-  `openpact record <content> --topic <t> [--confidence] [--source]`,
+  `openpact record <content> --topic <t> [--source]`,
   `openpact task add|claim|complete|release|list`, and
   `openpact skill install <id> [--yes]`. Every verb goes through
   `@openpact/sdk` directly, honours `--pact <alias>` + `OPENPACT_PACT`,

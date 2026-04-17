@@ -36,19 +36,6 @@ test('POST /v1/knowledge: missing topic returns 400 BAD_REQUEST', async (t) => {
   t.is(JSON.parse(res.body).error, 'BAD_REQUEST')
 })
 
-test('POST /v1/knowledge: confidence out of range returns 400', async (t) => {
-  const { daemon } = await tmpDaemon(t, { start: false })
-  const app = createApi(daemon)
-  t.teardown(() => app.close())
-
-  const res = await app.inject({
-    method: 'POST',
-    url: '/v1/pacts/default/knowledge',
-    payload: { topic: 'x', content: 'y', confidence: 2 },
-  })
-  t.is(res.statusCode, 400)
-})
-
 test('GET /v1/knowledge: filters by topic', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)

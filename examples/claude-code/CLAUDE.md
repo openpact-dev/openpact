@@ -64,7 +64,7 @@ curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=rou
 ```bash
 curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
   -H "content-type: application/json" \
-  -d '{"topic":"routing","content":"Use the resolver factory in src/router.ts. The legacy switch in legacy/route-map.ts is deprecated.","confidence":0.9}'
+  -d '{"topic":"routing","content":"Use the resolver factory in src/router.ts. The legacy switch in legacy/route-map.ts is deprecated."}'
 ```
 
 **List open tasks:**

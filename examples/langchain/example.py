@@ -15,7 +15,6 @@ def main() -> None:
         "record_knowledge",
         topic="wiring",
         content="langchain demo: this entry came from python",
-        confidence=0.9,
     )
     print(f"Recorded knowledge entry {created['id']} at {created['timestamp']}.")
 

@@ -22,10 +22,10 @@ test('record_knowledge: forwards full payload and prefixes a summary', async (t)
   const r = await handler({
     topic: 'routing',
     content: 'Use the resolver factory.',
-    confidence: 0.9,
+    source: 'src/router.ts',
   })
   t.alike(pact.knowledge.create.calls[0].args, [
-    { topic: 'routing', content: 'Use the resolver factory.', confidence: 0.9 },
+    { topic: 'routing', content: 'Use the resolver factory.', source: 'src/router.ts' },
   ])
   t.ok(
     r.content[0].text.startsWith('Recorded knowledge entry a7f2bcde-412 at 2026-04-15T19:30:00Z.'),

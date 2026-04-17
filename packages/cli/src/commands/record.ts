@@ -6,7 +6,6 @@ import { c, emoji } from '../lib/theme'
 
 export interface RecordOpts {
   topic?: string
-  confidence?: string
   source?: string
   pact?: string
   port?: string | number
@@ -21,15 +20,6 @@ export async function recordCmd(
   if (!trimmed) throw new Error('knowledge content must not be empty')
   const topic = opts.topic?.trim()
   if (!topic) throw new Error('--topic is required (e.g. routing, auth, db-schema)')
-
-  let confidence: number | undefined
-  if (opts.confidence !== undefined) {
-    const n = Number(opts.confidence)
-    if (!Number.isFinite(n) || n < 0 || n > 1) {
-      throw new Error('--confidence must be a number between 0 and 1')
-    }
-    confidence = n
-  }
 
   const hostDir = resolveDataDir(cmd.optsWithGlobals())
   let pactId: string
@@ -46,7 +36,6 @@ export async function recordCmd(
 
   try {
     const payload: KnowledgePayload = { topic, content: trimmed }
-    if (confidence !== undefined) payload.confidence = confidence
     if (opts.source) payload.source = opts.source
     const res = await client.knowledge.create(payload)
     console.log(`  ${emoji.brand} ${c.brandBold('Recorded')} ${c.bone(topic)} ${c.ash(res.id)}`)

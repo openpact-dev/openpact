@@ -48,7 +48,6 @@ tools:
     body:
       topic: { type: string, min_length: 1, max_length: 200 }
       content: { type: string, min_length: 1 }
-      confidence: { type: number, optional: true, min: 0, max: 1 }
       source: { type: string, optional: true }
   - name: list_tasks
     description: List tasks, optionally filtered by status. Response is a page envelope { entries, cursor, has_more }.
@@ -256,7 +255,7 @@ GET    /v1/status                                       # host summary
 GET    /v1/pacts                                        # list pacts
 GET    /v1/pacts/<pactId>/status
 GET    /v1/pacts/<pactId>/knowledge?topic=routing
-POST   /v1/pacts/<pactId>/knowledge   { topic, content, confidence?, source? }
+POST   /v1/pacts/<pactId>/knowledge   { topic, content, source? }
 GET    /v1/pacts/<pactId>/tasks?status=open
 POST   /v1/pacts/<pactId>/tasks       { title, description?, assigned_to? }
 PUT    /v1/pacts/<pactId>/tasks/<id>/claim

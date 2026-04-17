@@ -39,9 +39,7 @@ def test_ping(client: OpenPactClient) -> None:
 
 
 def test_record_then_recall(client: OpenPactClient) -> None:
-    created = client.call(
-        "record_knowledge", topic="pytest", content="from python", confidence=0.7
-    )
+    created = client.call("record_knowledge", topic="pytest", content="from python")
     assert created["id"]
 
     listed: list = []

@@ -74,10 +74,14 @@ test('knowledge.create: POSTs payload', async (t) => {
     body: { id: 'aaaaaaaa-1', timestamp: '2026-04-15T00:00:00Z' },
   })
   const r = knowledgeResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  const res = await r.create({ topic: 'sales', content: 'hi', confidence: 0.8 })
+  const res = await r.create({ topic: 'sales', content: 'hi', source: 'notes.md' })
   t.is(res.id, 'aaaaaaaa-1')
   t.is(m.calls[0].method, 'POST')
-  t.alike(JSON.parse(m.calls[0].body!), { topic: 'sales', content: 'hi', confidence: 0.8 })
+  t.alike(JSON.parse(m.calls[0].body!), {
+    topic: 'sales',
+    content: 'hi',
+    source: 'notes.md',
+  })
 })
 
 test('knowledge.create: 400 → BadRequestError', async (t) => {

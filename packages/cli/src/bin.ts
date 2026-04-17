@@ -203,7 +203,6 @@ export function buildProgram(): Command {
       'record a knowledge entry (a decision, a convention, a workaround); content renders as markdown on the dashboard',
     )
     .requiredOption('--topic <t>', 'short, reusable topic (e.g. routing, auth, db-schema)')
-    .option('--confidence <n>', 'number between 0 and 1')
     .option('--source <s>', 'optional pointer (PR link, commit, person)')
     .option('--pact <alias>', 'pact to write to (default: current pact)')
     .option('--port <n>', 'daemon port', '7666')

@@ -52,7 +52,6 @@ test('SDK end-to-end: knowledge create + list', async (t) => {
   const { id } = await pact.knowledge.create({
     topic: 'sales',
     content: 'Tuesdays convert better',
-    confidence: 0.8,
   })
   t.ok(/^[0-9a-f]{8}-\d+$/.test(id))
 

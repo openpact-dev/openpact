@@ -50,13 +50,10 @@ export function registerKnowledgeTools(server: McpServer, pact: OpenPact): void 
           .min(1)
           .max(200)
           .describe('Short topic slug, e.g. "routing" or "db-schema".'),
-        content: z.string().min(1).describe('One-sentence statement of the fact or decision.'),
-        confidence: z
-          .number()
-          .min(0)
-          .max(1)
-          .optional()
-          .describe('Optional 0-1 confidence score for the entry.'),
+        content: z
+          .string()
+          .min(1)
+          .describe('Statement of the fact or decision. Renders as markdown on the dashboard.'),
         source: z
           .string()
           .optional()

@@ -176,7 +176,6 @@ receivers render it purely as a friendly label with a fallback to
   "payload": {
     "topic": "sales",
     "content": "LinkedIn prospects convert 3x better when contacted on Tuesday mornings",
-    "confidence": 0.85,
     "source": "analysis of 200 outreach emails over 4 weeks"
   }
 }

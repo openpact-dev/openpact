@@ -57,7 +57,7 @@ const WRITE_VERBS: Verb[] = [
   },
   {
     cmd: 'openpact record <content> --topic <t>',
-    note: 'Record a knowledge entry (a decision, a convention, a workaround). --confidence and --source are optional.',
+    note: 'Record a knowledge entry (a decision, a convention, a workaround). Content renders as markdown on the dashboard. --source is optional.',
   },
   {
     cmd: 'openpact task add <title>',
@@ -131,7 +131,7 @@ openpact message "Refactoring src/router/*; expect churn for ~30 min." --priorit
 
 # Record a decision that is not obvious from the diff
 openpact record "Use the resolver factory in src/router.ts; legacy switch in legacy/route-map.ts is deprecated." \\
-  --topic routing --confidence 0.9
+  --topic routing
 
 # Coordinate work across agents
 openpact task add "Upgrade Fastify to v5 and verify rate-limit plugin"

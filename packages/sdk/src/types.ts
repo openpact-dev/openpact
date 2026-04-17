@@ -25,7 +25,6 @@ export interface BaseEntry<T extends EntryType = EntryType, P = unknown> {
 export interface KnowledgePayload {
   topic: string
   content: string
-  confidence?: number
   source?: string
   [key: string]: unknown
 }

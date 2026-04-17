@@ -24,11 +24,6 @@ test('knowledge: missing content rejects', (t) => {
   t.is(r.valid, false)
 })
 
-test('knowledge: confidence out of range rejects', (t) => {
-  const r = validate(base('knowledge', { topic: 'sales', content: 'x', confidence: 1.5 }))
-  t.is(r.valid, false)
-})
-
 test('task: valid open task passes', (t) => {
   const r = validate(base('task', { title: 'Build it', status: 'open' }))
   t.is(r.valid, true)

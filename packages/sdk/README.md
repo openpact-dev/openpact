@@ -37,7 +37,6 @@ const tasks = await pact.tasks.list({ status: 'open' })
 const { id } = await pact.knowledge.create({
   topic: 'sales',
   content: 'Tuesdays convert better',
-  confidence: 0.8,
 })
 
 // Tasks

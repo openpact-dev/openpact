@@ -71,7 +71,6 @@
       "body": {
         "topic": { "type": "string", "min_length": 1, "max_length": 200 },
         "content": { "type": "string", "min_length": 1 },
-        "confidence": { "type": "number", "optional": true, "min": 0, "max": 1 },
         "source": { "type": "string", "optional": true }
       }
     },
