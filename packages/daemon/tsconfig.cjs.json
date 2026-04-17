@@ -9,7 +9,9 @@
     "declaration": true,
     "noEmit": false,
     "sourceMap": true,
-    "removeComments": false
+    "removeComments": false,
+    "incremental": true,
+    "tsBuildInfoFile": "dist/cjs/.tsbuildinfo"
   },
   "include": ["src/**/*"],
   "exclude": ["test/**/*", "node_modules", "dist"]

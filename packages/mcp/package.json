@@ -32,9 +32,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.cjs.json",
+    "build": "tsc -p tsconfig.cjs.json",
+    "build:clean": "rm -rf dist && npm run build",
     "validate": "publint --strict",
-    "prepublishOnly": "npm run build && npm run validate",
+    "prepublishOnly": "npm run build:clean && npm run validate",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'"
   },
   "dependencies": {

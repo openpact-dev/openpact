@@ -129,28 +129,15 @@ test('record: persists knowledge with topic and prints id', async (t) => {
   )
   t.is(know.entries.length, 1)
   t.is(know.entries[0].payload.content, 'Use the resolver factory in src/router.ts')
-  t.is(know.entries[0].payload.confidence, 0.9)
+  t.is(know.entries[0].payload.source, 'src/router.ts')
 })
 
-test('record: requires --topic and rejects bad confidence', async (t) => {
+test('record: requires --topic', async (t) => {
   const { home, port } = await bootPact(t)
   const missingTopic = await runWithDir(home, ['record', 'something', '--port', String(port)])
   t.not(missingTopic.exitCode, 0)
   // Commander's `requiredOption` emits a "required option" error.
   t.ok(/required option|--topic/.test(missingTopic.stderr))
-
-  const badConf = await runWithDir(home, [
-    'record',
-    'x',
-    '--topic',
-    't',
-    '--confidence',
-    '2',
-    '--port',
-    String(port),
-  ])
-  t.not(badConf.exitCode, 0)
-  t.ok(badConf.stderr.includes('--confidence'))
 })
 
 test('task: add → list → claim → complete lifecycle', async (t) => {
