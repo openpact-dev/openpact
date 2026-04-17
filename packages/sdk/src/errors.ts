@@ -81,6 +81,13 @@ export class NotClaimedError extends OpenPactError {
   }
 }
 
+export class NotAssigneeError extends OpenPactError {
+  constructor(message: string) {
+    super(message, { status: 409, code: 'NOT_ASSIGNEE' })
+    this.name = 'NotAssigneeError'
+  }
+}
+
 export class NotAMemberError extends OpenPactError {
   constructor(message: string) {
     super(message, { status: 409, code: 'NOT_A_MEMBER' })
@@ -285,6 +292,8 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new NotClaimerError(message)
     case ERROR_CODES.NOT_CLAIMED:
       return new NotClaimedError(message)
+    case ERROR_CODES.NOT_ASSIGNEE:
+      return new NotAssigneeError(message)
     case ERROR_CODES.NOT_A_MEMBER:
       return new NotAMemberError(message)
     case ERROR_CODES.SKILL_CHECKSUM_MISMATCH:

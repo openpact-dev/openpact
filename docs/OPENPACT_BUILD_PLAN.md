@@ -241,7 +241,7 @@ This is the heart of the project. Get this right before touching anything else.
   - Handle `admin` entries for writer management (`addWriter`, `removeWriter`)
 - [x] Implement entry types with JSON schema validation (use `ajv`):
   - `knowledge` (topic, content, confidence, source)
-  - `task` (title, status, claimed_by, description, result)
+  - `task` (title, status, claimed_by, description, result, assigned_to?)
   - `skill` (name, version, description, format, content, checksum)
   - `message` (to, content, priority)
 - [x] Write the Hyperswarm connection handler:

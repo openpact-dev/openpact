@@ -14,7 +14,13 @@ const fixedClock = { clockMs: () => Date.parse(TS) + 1_000 }
 function task(
   id: string,
   status: 'open' | 'claimed' | 'complete',
-  opts: { agent?: string; refs?: string[]; claimed_by?: string; result?: string } = {},
+  opts: {
+    agent?: string
+    refs?: string[]
+    claimed_by?: string
+    result?: string
+    assigned_to?: string
+  } = {},
 ): TaskEntry {
   return {
     id,
@@ -27,6 +33,7 @@ function task(
       status,
       claimed_by: opts.claimed_by,
       result: opts.result,
+      assigned_to: opts.assigned_to,
     },
   }
 }
@@ -161,4 +168,64 @@ test('reduce: deterministic across equivalent histories with different append or
   const b = reduceTaskHistory([events[2], events[0], events[1]])!
   t.is(a.status, b.status)
   t.is(a.claimed_by, b.claimed_by)
+})
+
+test('reduce: assigned_to surfaces on the reduced state', (t) => {
+  const state = reduceTaskHistory([task('aaaaaaaa-1', 'open', { assigned_to: 'anon-b' })])!
+  t.is(state.assigned_to, 'anon-b')
+  t.is(state.status, 'open')
+})
+
+test('reduce: non-assignee claim attempt is ignored', (t) => {
+  const state = reduceTaskHistory(
+    [
+      task('aaaaaaaa-1', 'open', { assigned_to: 'anon-b' }),
+      task('cccccccc-2', 'claimed', {
+        refs: ['aaaaaaaa-1'],
+        agent: 'anon-c',
+        claimed_by: 'anon-c',
+      }),
+    ],
+    fixedClock,
+  )!
+  t.is(state.status, 'open', 'impersonated claim does not transition state')
+  t.is(state.claimed_by, null)
+})
+
+test('reduce: assignee claim succeeds', (t) => {
+  const state = reduceTaskHistory(
+    [
+      task('aaaaaaaa-1', 'open', { assigned_to: 'anon-b' }),
+      task('bbbbbbbb-2', 'claimed', {
+        refs: ['aaaaaaaa-1'],
+        agent: 'anon-b',
+        claimed_by: 'anon-b',
+      }),
+    ],
+    fixedClock,
+  )!
+  t.is(state.status, 'claimed')
+  t.is(state.claimed_by, 'anon-b')
+})
+
+test('reduce: non-assignee claim followed by assignee claim lets the assignee win', (t) => {
+  // Lexicographic first-come rule would ordinarily pick aaaaaaaa-2,
+  // but the assigned_to filter removes it — bbbbbbbb-3 then takes it.
+  const state = reduceTaskHistory(
+    [
+      task('aaaaaaaa-1', 'open', { assigned_to: 'anon-b' }),
+      task('aaaaaaaa-2', 'claimed', {
+        refs: ['aaaaaaaa-1'],
+        agent: 'anon-c',
+        claimed_by: 'anon-c',
+      }),
+      task('bbbbbbbb-3', 'claimed', {
+        refs: ['aaaaaaaa-1'],
+        agent: 'anon-b',
+        claimed_by: 'anon-b',
+      }),
+    ],
+    fixedClock,
+  )!
+  t.is(state.claimed_by, 'anon-b')
 })

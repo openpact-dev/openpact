@@ -35,6 +35,12 @@ export type KnowledgeEntry = BaseEntry<'knowledge', KnowledgePayload>
 export interface MessagePayload {
   content: string
   priority?: 'low' | 'normal' | 'high'
+  /**
+   * Entry id of the message this one replies to. The daemon hoists it
+   * onto `refs`, so a thread is just the reverse-ref lookup
+   * `GET /v1/pacts/:pactId/entries/:id/referenced-by`.
+   */
+  reply_to?: string
   [key: string]: unknown
 }
 
@@ -63,6 +69,12 @@ export interface TaskPayload {
   status: TaskStatus
   claimed_by?: string | null
   result?: string | null
+  /**
+   * Peer handle the task is reserved for. Only that peer can claim;
+   * everyone else receives `NOT_ASSIGNEE` from the claim endpoint and
+   * the reducer discards any claim entry they write.
+   */
+  assigned_to?: string | null
   [key: string]: unknown
 }
 
@@ -74,6 +86,8 @@ export interface TaskState {
   description?: string
   status: TaskStatus
   claimed_by: string | null
+  /** Peer handle the task is reserved for, if any. */
+  assigned_to: string | null
   /**
    * ISO timestamp of the original task-create entry. Stable across
    * the task's lifetime — treat as `created_at`.

@@ -143,6 +143,16 @@ test('tasks.release: 409 NOT_CLAIMED → NotClaimedError', async (t) => {
   await t.exception(() => r.release('aaaaaaaa-1'), NotClaimedError)
 })
 
+test('tasks.claim: 409 NOT_ASSIGNEE → NotAssigneeError', async (t) => {
+  const { NotAssigneeError } = await import('../../src/errors')
+  const m = mockFetch({
+    status: 409,
+    body: { error: 'NOT_ASSIGNEE', message: 'task reserved for another peer' },
+  })
+  const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
+  await t.exception(() => r.claim('aaaaaaaa-1'), NotAssigneeError)
+})
+
 test('tasks.claim: 504 VIEW_TIMEOUT → ViewTimeoutError', async (t) => {
   const m = mockFetch({
     status: 504,

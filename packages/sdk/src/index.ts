@@ -113,6 +113,7 @@ export {
   TaskAlreadyCompleteError,
   NotClaimerError,
   NotClaimedError,
+  NotAssigneeError,
   NotAMemberError,
   SkillChecksumMismatchError,
   NotIndexerError,

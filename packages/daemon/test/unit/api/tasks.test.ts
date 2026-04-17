@@ -152,6 +152,63 @@ test('PUT /v1/tasks/:id/release: claimer reverts to open', async (t) => {
   t.is(JSON.parse(res.body).status, 'open')
 })
 
+test('POST /v1/tasks: assigned_to surfaces on the created task', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/tasks',
+    payload: { title: 'for rat', assigned_to: 'anon-rat-12345678' },
+  })
+  t.is(res.statusCode, 200)
+  const body = JSON.parse(res.body)
+  t.is(body.assigned_to, 'anon-rat-12345678')
+  t.is(body.status, 'open')
+})
+
+test('POST /v1/tasks: malformed assigned_to returns 400', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/tasks',
+    payload: { title: 'x', assigned_to: 'not-a-handle' },
+  })
+  t.is(res.statusCode, 400)
+})
+
+test('PUT /v1/tasks/:id/claim: non-assignee gets 409 NOT_ASSIGNEE', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  // Assign to a handle that isn't this peer.
+  const otherHandle = 'anon-falcon-deadbeef'
+  t.not(otherHandle, daemon.peerHandle)
+  const { id } = await postTask(app, { title: 'Reserved', assigned_to: otherHandle })
+
+  const res = await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
+  t.is(res.statusCode, 409)
+  t.is(JSON.parse(res.body).error, 'NOT_ASSIGNEE')
+})
+
+test('PUT /v1/tasks/:id/claim: assignee can claim their own task', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const { id } = await postTask(app, { title: 'mine', assigned_to: daemon.peerHandle! })
+  const res = await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
+  t.is(res.statusCode, 200)
+  const body = JSON.parse(res.body)
+  t.is(body.status, 'claimed')
+  t.is(body.claimed_by, daemon.peerHandle)
+})
+
 test('PUT /v1/tasks/:id/release: 409 NOT_CLAIMED on open task', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)

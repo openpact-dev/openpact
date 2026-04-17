@@ -36,6 +36,8 @@ export const ERROR_CODES = {
   TASK_ALREADY_COMPLETE: 'TASK_ALREADY_COMPLETE',
   NOT_CLAIMER: 'NOT_CLAIMER',
   NOT_CLAIMED: 'NOT_CLAIMED',
+  /** Task carries an `assigned_to` and the caller isn't that peer. */
+  NOT_ASSIGNEE: 'NOT_ASSIGNEE',
   NOT_A_MEMBER: 'NOT_A_MEMBER',
   NOT_INDEXER: 'NOT_INDEXER',
   NOT_CREATOR: 'NOT_CREATOR',

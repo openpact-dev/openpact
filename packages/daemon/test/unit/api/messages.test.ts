@@ -60,6 +60,54 @@ test('POST /v1/messages: empty content returns 400', async (t) => {
   t.is(res.statusCode, 400)
 })
 
+test('POST /v1/messages: reply_to hoists onto refs + reverse-ref index', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const parent = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/messages',
+    payload: { content: 'original' },
+  })
+  const parentId = JSON.parse(parent.body).id
+
+  const reply = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/messages',
+    payload: { content: 'reply', reply_to: parentId },
+  })
+  t.is(reply.statusCode, 200)
+  const replyBody = JSON.parse(reply.body)
+  t.alike(replyBody.refs, [parentId])
+  t.is(replyBody.payload.reply_to, undefined, 'reply_to hoisted, not persisted in payload')
+
+  await daemon.update()
+  await daemon.waitForViewVersion(2, { timeout: 2000 })
+
+  const threads = await app.inject({
+    method: 'GET',
+    url: `/v1/pacts/default/entries/${parentId}/referenced-by`,
+  })
+  const threadBody = JSON.parse(threads.body)
+  t.is(threadBody.length, 1)
+  t.is(threadBody[0].payload.content, 'reply')
+})
+
+test('POST /v1/messages: malformed reply_to returns 400', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/messages',
+    payload: { content: 'reply', reply_to: 'not-an-id' },
+  })
+  t.is(res.statusCode, 400)
+  t.is(JSON.parse(res.body).error, 'BAD_REQUEST')
+})
+
 test('GET /v1/messages: since cursor filters', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)

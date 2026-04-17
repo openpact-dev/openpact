@@ -9,6 +9,11 @@ export interface TasksListOpts extends ListOpts {
 export interface CreateTaskBody {
   title: string
   description?: string
+  /**
+   * Peer handle the task is reserved for. When set, only that peer
+   * may claim. Omit for an open-to-anyone task (the previous default).
+   */
+  assigned_to?: string
 }
 
 export interface CompleteTaskBody {

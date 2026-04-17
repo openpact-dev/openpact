@@ -19,6 +19,10 @@ const taskCreateSchema = {
   properties: {
     title: { type: 'string', minLength: 1, maxLength: 200 },
     description: { type: 'string' },
+    // Optional peer handle the task is reserved for. Only that peer
+    // can claim; everyone else gets 409 NOT_ASSIGNEE at the claim
+    // endpoint, and the reducer drops their claim entry anyway.
+    assigned_to: { type: 'string', pattern: '^anon-[a-z]+-[0-9a-f]{8}$' },
   },
   required: ['title'],
   additionalProperties: true,
@@ -103,7 +107,11 @@ export default async function tasksRoute(
     { schema: { body: taskCreateSchema } },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const payload = req.body as { title: string; description?: string }
+      const payload = req.body as {
+        title: string
+        description?: string
+        assigned_to?: string
+      }
       const timestamp = new Date().toISOString()
       const result = await pact.append({
         type: 'task',
@@ -133,6 +141,13 @@ export default async function tasksRoute(
     if (!before) throw new HttpError(404, 'NOT_FOUND', `task ${taskId} not found`)
     if (before.status !== 'open') {
       throw new HttpError(409, 'TASK_NOT_OPEN', `task ${taskId} is ${before.status}`)
+    }
+    if (before.assigned_to && before.assigned_to !== pact.peerHandle) {
+      throw new HttpError(
+        409,
+        'NOT_ASSIGNEE',
+        `task ${taskId} is assigned to ${before.assigned_to}, not ${pact.peerHandle}`,
+      )
     }
     const append = await pact.append({
       type: 'task',

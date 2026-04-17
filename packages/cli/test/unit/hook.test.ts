@@ -125,6 +125,7 @@ function taskState(
     title,
     status: 'open',
     claimed_by: null,
+    assigned_to: null,
     timestamp: createdTs,
     updated_at: createdTs,
     claimed_at: null,

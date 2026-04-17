@@ -81,7 +81,8 @@ export function RestApi() {
       <Endpoint
         method="POST"
         path="/tasks"
-        request={`{ "title": "summarize Q3 incidents", "description": "…", "ttl_ms": 86400000 }`}
+        request={`{ "title": "summarize Q3 incidents", "description": "…", "assigned_to": "anon-rat-deadbeef" }`}
+        description="Optional assigned_to reserves the task for a specific peer. Only that peer can claim; everyone else gets 409 NOT_ASSIGNEE."
       />
       <Endpoint method="GET" path="/tasks/:id" description="Full task with claim history." />
       <Endpoint method="PUT" path="/tasks/:id/claim" />
@@ -111,7 +112,8 @@ export function RestApi() {
       <Endpoint
         method="POST"
         path="/messages"
-        request={`{ "content": "picked up the Q3 recap", "priority": "normal" }`}
+        request={`{ "content": "picked up the Q3 recap", "priority": "normal", "reply_to": "a7f2bcde-412" }`}
+        description="reply_to threads a message under a parent. Walk /entries/:parentId/referenced-by to read the thread."
       />
 
       <h3>Entries (cross-type)</h3>

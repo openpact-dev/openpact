@@ -14,6 +14,12 @@ export interface TaskEntry {
     status: TaskStatus
     claimed_by?: string | null
     result?: string | null
+    /**
+     * Peer handle the task is reserved for. Set on the original
+     * create entry; the reducer ignores claim entries from anyone
+     * else, keeping the assignment deterministic across peers.
+     */
+    assigned_to?: string | null
   }
 }
 
@@ -23,6 +29,8 @@ export interface TaskState {
   description?: string
   status: TaskStatus
   claimed_by: string | null
+  /** Peer handle the task is reserved for, if any. Never mutates after create. */
+  assigned_to: string | null
   result: string | null
   /**
    * ISO timestamp of the original task-create entry. Stable across the
@@ -101,6 +109,7 @@ export function reduceTaskHistory(entries: TaskEntry[], opts: ReduceOpts = {}): 
     description: original.payload.description,
     status: original.payload.status,
     claimed_by: original.payload.claimed_by ?? null,
+    assigned_to: original.payload.assigned_to ?? null,
     result: original.payload.result ?? null,
     // `timestamp` / `updated_at` mirror the rest of the list-endpoint
     // contract (knowledge/skill/message). updated_at picks the max
@@ -156,7 +165,16 @@ function applyTaskUpdate(state: TaskState, update: TaskEntry, ttlMs: number): Ta
     // guarantees agent_id matches the writer key, so a peer cannot
     // claim a task on someone else's behalf. `update.payload.claimed_by`
     // is informational only; the authoritative value is `update.agent_id`.
+    //
+    // If the task is `assigned_to` a specific peer, claims from anyone
+    // else are dropped here (deterministic across replicas) — the HTTP
+    // layer rejects the same attempt with 409 NOT_ASSIGNEE first, but
+    // apply-level enforcement is what makes the assignment tamper-
+    // resistant against a misbehaving writer.
     if (state.status === 'open' || claimExpiredByEntry) {
+      if (state.assigned_to && update.agent_id !== state.assigned_to) {
+        return state
+      }
       return {
         ...state,
         status: 'claimed',
