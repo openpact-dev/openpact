@@ -17,7 +17,7 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "npm run -w @openpact/daemon build && npm run -w @openpact/sdk build && npm run -w @openpact/mcp build",
+    "build": "npm run -w @openpact/sdk build && npm run -w @openpact/daemon build && npm run -w @openpact/mcp build && npm run -w @openpact/dashboard build",
     "pretest": "npm run -w @openpact/daemon build",
     "test": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/{unit,integration}/**/*.test.ts'",
     "test:unit": "NODE_OPTIONS='--import tsx' brittle 'packages/*/test/unit/**/*.test.ts'",
