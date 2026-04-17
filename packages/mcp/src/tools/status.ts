@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { OpenPact } from '@openpact/sdk'
+import { z } from 'zod'
 import { jsonContent, registerTool, safeHandler } from '../format'
 
 export function registerStatusTools(server: McpServer, pact: OpenPact): void {
@@ -30,9 +31,16 @@ export function registerStatusTools(server: McpServer, pact: OpenPact): void {
     'list_agents',
     {
       description:
-        'List agents currently connected to the pact. Returns an array of {id, remote_key, online}. Useful before sending a direct message to confirm the agent handle.',
-      inputSchema: {},
+        'List agents in this pact. Each row is {id, remote_key, role, display_name, online, is_self}. Pass online=true to restrict to live peers — handy as a cheap precheck before posting a claimable task or an assigned_to task.',
+      inputSchema: {
+        online: z
+          .boolean()
+          .optional()
+          .describe(
+            'Liveness filter. true → only authenticated peers on this host. false → only offline members. Omit for everyone.',
+          ),
+      },
     },
-    async () => safeHandler(async () => jsonContent(await pact.agents())),
+    async ({ online }) => safeHandler(async () => jsonContent(await pact.agents({ online }))),
   )
 }

@@ -62,53 +62,77 @@ export default async function agentsRoute(
   // while we hold a live authenticated link to them, and a writer can
   // sit in activeWriters with an empty core.peers array right after
   // reconnect before hypercore finishes its handshake.
-  app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/agents', async (req) => {
-    const pact = await resolvePact(daemon, req)
-    const view = pact.view
-    const autobase = pact.autobase
-    const selfKeyHex = pact.publicKey ?? ''
+  app.get<{ Params: { pactId: string }; Querystring: { online?: 'true' | 'false' } }>(
+    '/v1/pacts/:pactId/agents',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            // Liveness filter so a caller can short-circuit on
+            // "is anyone even here?" before posting a claimable task or
+            // sending a message that expects a quick reply. The daemon
+            // tracks online state via authenticated member-auth links;
+            // see the block comment below.
+            online: { enum: ['true', 'false'] },
+          },
+        },
+      },
+    },
+    async (req) => {
+      const pact = await resolvePact(daemon, req)
+      const view = pact.view
+      const autobase = pact.autobase
+      const selfKeyHex = pact.publicKey ?? ''
+      const onlineFilter: boolean | undefined =
+        req.query.online === 'true' ? true : req.query.online === 'false' ? false : undefined
 
-    // Self is emitted first and does not depend on the view being up:
-    // we know our own role/handle/display name from the pact instance.
-    // Emitting it here means consumers see a stable "self row" from the
-    // moment the pact is resolved, even before autobase/hypercore have
-    // finished bootstrap.
-    const agents: AgentInfo[] = []
-    if (pact.isMember && selfKeyHex) {
-      const selfRole: 'creator' | 'indexer' | 'member' =
-        pact.role === 'creator' ? 'creator' : pact.isIndexer ? 'indexer' : 'member'
-      agents.push({
-        id: pact.peerHandle ?? derive(b4a.from(selfKeyHex, 'hex') as Buffer),
-        remote_key: selfKeyHex,
-        role: selfRole,
-        display_name: pact.displayName ?? null,
-        online: true,
-        is_self: true,
-      })
-    }
+      // Self is emitted first and does not depend on the view being up:
+      // we know our own role/handle/display name from the pact instance.
+      // Emitting it here means consumers see a stable "self row" from the
+      // moment the pact is resolved, even before autobase/hypercore have
+      // finished bootstrap.
+      const agents: AgentInfo[] = []
+      if (pact.isMember && selfKeyHex) {
+        const selfRole: 'creator' | 'indexer' | 'member' =
+          pact.role === 'creator' ? 'creator' : pact.isIndexer ? 'indexer' : 'member'
+        agents.push({
+          id: pact.peerHandle ?? derive(b4a.from(selfKeyHex, 'hex') as Buffer),
+          remote_key: selfKeyHex,
+          role: selfRole,
+          display_name: pact.displayName ?? null,
+          online: true,
+          is_self: true,
+        })
+      }
 
-    if (!autobase || !view) return agents
+      if (autobase && view) {
+        const nameByAgent = await buildDisplayNameIndex(view)
+        const onlineSet = pact.pactKey ? daemon.onlineMembers(pact.pactKey) : new Set<string>()
+        const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
+        for await (const row of view.createReadStream(range)) {
+          const keyHex = typeof row?.key === 'string' ? row.key.slice(MEMBER_PREFIX.length) : ''
+          if (!keyHex || keyHex === selfKeyHex) continue
+          const keyBuf = b4a.from(keyHex, 'hex') as Buffer
+          const agentId = derive(keyBuf)
+          const role: 'indexer' | 'member' = (await isIndexer(view, keyHex)) ? 'indexer' : 'member'
+          const online = onlineSet.has(keyHex.toLowerCase())
+          agents.push({
+            id: agentId,
+            remote_key: keyHex,
+            role,
+            display_name: nameByAgent.get(agentId) ?? null,
+            online,
+            is_self: false,
+          })
+        }
+      }
 
-    const nameByAgent = await buildDisplayNameIndex(view)
-    const onlineSet = pact.pactKey ? daemon.onlineMembers(pact.pactKey) : new Set<string>()
-
-    const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
-    for await (const row of view.createReadStream(range)) {
-      const keyHex = typeof row?.key === 'string' ? row.key.slice(MEMBER_PREFIX.length) : ''
-      if (!keyHex || keyHex === selfKeyHex) continue
-      const keyBuf = b4a.from(keyHex, 'hex') as Buffer
-      const agentId = derive(keyBuf)
-      const role: 'indexer' | 'member' = (await isIndexer(view, keyHex)) ? 'indexer' : 'member'
-      const online = onlineSet.has(keyHex.toLowerCase())
-      agents.push({
-        id: agentId,
-        remote_key: keyHex,
-        role,
-        display_name: nameByAgent.get(agentId) ?? null,
-        online,
-        is_self: false,
-      })
-    }
-    return agents
-  })
+      // Apply the liveness filter last so the self-row is considered
+      // alongside remotes. Self is always online while the dashboard is
+      // talking to the daemon, so `?online=false` correctly excludes it.
+      if (onlineFilter === undefined) return agents
+      return agents.filter((a) => a.online === onlineFilter)
+    },
+  )
 }

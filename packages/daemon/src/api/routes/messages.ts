@@ -33,6 +33,7 @@ const messagePayloadSchema = {
 
 interface ListQuery extends ListPageQuery {
   since?: string
+  agent_id?: string
 }
 
 export default async function messagesRoute(
@@ -48,22 +49,28 @@ export default async function messagesRoute(
           properties: {
             ...LIST_PAGE_QUERY,
             since: { type: 'string', format: 'date-time' },
+            // Canonical peer handles from apply.ts. Clients that pass a
+            // short handle (e.g. the display-name suffix) get zero results
+            // rather than fuzzy matches — the handle is the authoritative
+            // identity on the pact.
+            agent_id: { type: 'string', pattern: '^anon-[a-z]+-[0-9a-f]{8}$' },
           },
         },
       },
     },
     async (req) => {
       const pact = await resolvePact(daemon, req)
-      const { since, order, limit, cursor } = req.query
+      const { since, agent_id: agentId, order, limit, cursor } = req.query
       try {
         return await listByType(pact.view, 'message', {
           order,
           limit,
           cursor: cursor ?? null,
           filter: (v: unknown) => {
-            const entry = v as { timestamp?: string } | null
+            const entry = v as { timestamp?: string; agent_id?: string } | null
             if (since && typeof entry?.timestamp === 'string' && entry.timestamp <= since)
               return false
+            if (agentId && entry?.agent_id !== agentId) return false
             return true
           },
         })

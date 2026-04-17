@@ -5,6 +5,12 @@ import { paginate } from './paginate'
 export interface MessagesListOpts extends ListOpts {
   /** ISO timestamp; only entries with timestamp > since are returned. */
   since?: string
+  /**
+   * Filter to messages authored by this canonical peer handle. Use with
+   * `since` to find "what did peer X say recently" without scanning the
+   * full tail of the pact.
+   */
+  agent_id?: string
 }
 
 export function messagesResource(client: OpenPactClient) {

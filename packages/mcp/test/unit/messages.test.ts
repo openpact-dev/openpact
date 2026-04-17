@@ -9,7 +9,30 @@ test('read_messages: forwards since + limit', async (t) => {
   const { handler } = getRegisteredTool(server, 'read_messages')
   await handler({ since: '2026-04-01T00:00:00Z', limit: 50 })
   t.alike(pact.messages.list.calls[0].args, [
-    { since: '2026-04-01T00:00:00Z', order: undefined, limit: 50, cursor: undefined },
+    {
+      since: '2026-04-01T00:00:00Z',
+      agent_id: undefined,
+      order: undefined,
+      limit: 50,
+      cursor: undefined,
+    },
+  ])
+})
+
+test('read_messages: forwards agent_id filter', async (t) => {
+  const pact = fakePact()
+  pact.messages.list.resolveWith([])
+  const server = buildServer(pact as any)
+  const { handler } = getRegisteredTool(server, 'read_messages')
+  await handler({ agent_id: 'anon-rat-12345678' })
+  t.alike(pact.messages.list.calls[0].args, [
+    {
+      since: undefined,
+      agent_id: 'anon-rat-12345678',
+      order: undefined,
+      limit: undefined,
+      cursor: undefined,
+    },
   ])
 })
 

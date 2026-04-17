@@ -108,6 +108,49 @@ test('POST /v1/messages: malformed reply_to returns 400', async (t) => {
   t.is(JSON.parse(res.body).error, 'BAD_REQUEST')
 })
 
+test('GET /v1/messages: agent_id filter returns only that authors messages', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  await app.inject({
+    method: 'POST',
+    url: '/v1/pacts/default/messages',
+    payload: { content: 'self only' },
+  })
+  await daemon.update()
+  await daemon.waitForViewVersion(1, { timeout: 2000 })
+
+  const self = daemon.peerHandle!
+  const mine = await app.inject({
+    method: 'GET',
+    url: `/v1/pacts/default/messages?agent_id=${encodeURIComponent(self)}`,
+  })
+  t.is(mine.statusCode, 200)
+  const mineBody = JSON.parse(mine.body)
+  t.is(mineBody.entries.length, 1)
+  t.is(mineBody.entries[0].agent_id, self)
+
+  const other = await app.inject({
+    method: 'GET',
+    url: '/v1/pacts/default/messages?agent_id=anon-ghost-00000000',
+  })
+  t.is(other.statusCode, 200)
+  t.is(JSON.parse(other.body).entries.length, 0)
+})
+
+test('GET /v1/messages: malformed agent_id returns 400', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/v1/pacts/default/messages?agent_id=not-a-handle',
+  })
+  t.is(res.statusCode, 400)
+})
+
 test('GET /v1/messages: since cursor filters', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)

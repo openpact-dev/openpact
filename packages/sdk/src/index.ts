@@ -61,9 +61,9 @@ export class OpenPact {
     return this._status.host()
   }
 
-  /** Currently connected agents for this pact. */
-  agents(): Promise<AgentPayload[]> {
-    return this._status.agents()
+  /** Agents in this pact. Pass `{ online: true }` to restrict to live peers. */
+  agents(opts: { online?: boolean } = {}): Promise<AgentPayload[]> {
+    return this._status.agents(opts)
   }
 
   /** Base URL the client is talking to (useful for diagnostics). */

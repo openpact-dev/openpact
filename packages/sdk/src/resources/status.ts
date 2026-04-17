@@ -1,4 +1,4 @@
-import type { OpenPactClient } from '../client'
+import { buildQuery, type OpenPactClient } from '../client'
 import type { StatusPayload, AgentPayload } from '../types'
 
 export interface HostStatus {
@@ -6,6 +6,15 @@ export interface HostStatus {
   /** Host-wide swarm connection count across every pact on this daemon. */
   agents: number
   pact_count: number
+}
+
+export interface AgentsOpts {
+  /**
+   * Liveness filter. `true` → only agents currently authenticated on
+   * this host (cheap pre-check before posting a claimable task).
+   * `false` → only offline members. Omit for "everyone".
+   */
+  online?: boolean
 }
 
 export function statusResource(client: OpenPactClient) {
@@ -26,10 +35,14 @@ export function statusResource(client: OpenPactClient) {
      * GET /v1/pacts/:pactId/agents — agents in this pact. Includes the
      * local peer (pinned to the first row with `is_self: true`) when we
      * are an admitted member, so the array length matches
-     * `status.agents`.
+     * `status.agents`. Pass `{ online: true }` to restrict to live
+     * peers — handy before posting a task that expects a quick claim.
      */
-    agents(): Promise<AgentPayload[]> {
-      return client.req<AgentPayload[]>(client.pactPath('/agents'))
+    agents(opts: AgentsOpts = {}): Promise<AgentPayload[]> {
+      const qs = buildQuery({
+        online: opts.online === undefined ? undefined : opts.online ? 'true' : 'false',
+      })
+      return client.req<AgentPayload[]>(client.pactPath(`/agents${qs}`))
     },
   }
 }

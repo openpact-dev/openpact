@@ -9,12 +9,17 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
     'read_messages',
     {
       description:
-        'Read pact-wide messages. Every message is broadcast to all members; use the since cursor to fetch only messages newer than the agent’s last check.',
+        'Read pact-wide messages. Every message is broadcast to all members; use the since cursor to fetch only messages newer than the agent’s last check. Combine with agent_id to scope to one author.',
       inputSchema: {
         since: z
           .string()
           .optional()
           .describe('ISO timestamp; only entries with timestamp > since are returned.'),
+        agent_id: z
+          .string()
+          .regex(/^anon-[a-z]+-[0-9a-f]{8}$/)
+          .optional()
+          .describe('Filter to messages from this canonical peer handle.'),
         order: z
           .enum(['asc', 'desc'])
           .optional()
@@ -26,9 +31,9 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
           .describe('Opaque cursor from a previous call to continue paging.'),
       },
     },
-    async ({ since, order, limit, cursor }) =>
+    async ({ since, agent_id, order, limit, cursor }) =>
       safeHandler(async () =>
-        jsonContent(await pact.messages.list({ since, order, limit, cursor })),
+        jsonContent(await pact.messages.list({ since, agent_id, order, limit, cursor })),
       ),
   )
 
