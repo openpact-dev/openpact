@@ -21,12 +21,21 @@ export function Header({ current }: Props) {
   return (
     <header class="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-canvas)]/80 backdrop-blur-md">
       <div class="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-6 py-3.5">
-        <a href="/" class="group flex items-center gap-2.5" aria-label="OpenPact home">
-          <WatchingEye size={28} />
-          <span class="font-display text-[19px] font-medium tracking-tight text-[var(--color-ink)]">
-            OpenPact
-          </span>
-        </a>
+        <div class="flex items-center gap-2.5">
+          <a href="/" class="group flex items-center gap-2.5" aria-label="OpenPact home">
+            <WatchingEye size={28} />
+            <span class="font-display text-[19px] font-medium tracking-tight text-[var(--color-ink)]">
+              OpenPact
+            </span>
+          </a>
+          <a
+            href="/docs/releases/"
+            class="hidden items-center border-[0.5px] border-[var(--color-ember)] px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ember)] transition-colors hover:bg-[var(--color-ember)]/10 sm:inline-flex"
+            title="View release notes"
+          >
+            v0.1 alpha
+          </a>
+        </div>
 
         <nav class="flex items-center gap-1 sm:gap-2">
           {NAV.map((item) => {

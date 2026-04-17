@@ -55,6 +55,11 @@ export const DOC_NAV: DocMeta[] = [
     title: 'Release notes',
     description: 'An append-only log of what shipped, when. Newest first.',
   },
+  {
+    slug: '/docs/roadmap/',
+    title: 'Roadmap',
+    description: 'What shipped in v0.1, what we are building next, and the longer arc.',
+  },
 ]
 
 interface Props {

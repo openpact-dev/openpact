@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f3eee2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0a09" media="(prefers-color-scheme: dark)" />
+    <!-- Apply persisted theme synchronously, before paint, to avoid FOUC. -->
+    <script>
+      ;(function () {
+        try {
+          var p = localStorage.getItem('openpact:theme')
+          var r =
+            p === 'dark' || p === 'light'
+              ? p
+              : matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.classList.add(r)
+          document.documentElement.style.colorScheme = r
+        } catch (e) {}
+      })()
+    </script>
+
+    <title>Roadmap — OpenPact</title>
+    <meta
+      name="description"
+      content="Where OpenPact is going. What shipped in v0.1, what we're working on next, and the longer arc through v1.0 and v2.0."
+    />
+    <link rel="canonical" href="https://openpact.dev/docs/roadmap/" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Roadmap — OpenPact" />
+    <meta
+      property="og:description"
+      content="Where OpenPact is going. What shipped in v0.1, what we're working on next, and the longer arc through v1.0 and v2.0."
+    />
+    <meta property="og:image" content="https://openpact.dev/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="../../entries/docs-roadmap.tsx"></script>
+  </body>
+</html>

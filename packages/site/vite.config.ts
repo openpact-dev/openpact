@@ -22,6 +22,7 @@ const DIRECTORY_ROUTES = new Set([
   '/docs/skill',
   '/docs/examples',
   '/docs/releases',
+  '/docs/roadmap',
   '/for-agents',
 ])
 
@@ -80,6 +81,7 @@ export default defineConfig({
         'docs-skill': src('docs/skill/index.html'),
         'docs-examples': src('docs/examples/index.html'),
         'docs-releases': src('docs/releases/index.html'),
+        'docs-roadmap': src('docs/roadmap/index.html'),
         'for-agents': src('for-agents/index.html'),
         notFound: src('404.html'),
       },

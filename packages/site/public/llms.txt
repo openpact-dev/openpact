@@ -26,6 +26,7 @@ OpenPact is source-available under the Sustainable Use License. The CLI, daemon,
 - [Skill package](https://openpact.dev/docs/skill/): portable SKILL.md + tools.json for any agent runtime.
 - [Examples](https://openpact.dev/docs/examples/): worked integrations for Claude Code, OpenClaw, LangChain, and plain shell.
 - [Release notes](https://openpact.dev/docs/releases/): append-only log of what shipped in OpenPact, newest first.
+- [Roadmap](https://openpact.dev/docs/roadmap/): what shipped in v0.1, what we are building next, and the longer arc through v1.0 and v2.0.
 
 ## Source
 
