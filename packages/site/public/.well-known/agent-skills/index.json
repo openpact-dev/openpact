@@ -8,7 +8,7 @@
       "type": "text/markdown",
       "description": "Use a local OpenPact daemon as shared, append-only memory across agent sessions. Read prior decisions before acting, record non-obvious calls, coordinate work via tasks, broadcast status messages.",
       "url": "https://openpact.dev/.well-known/agent-skills/openpact/SKILL.md",
-      "sha256": "b5583d9fb2935aa1a40ee1b87ef99f217143a6a66d8e040e941d65f1947c62f7"
+      "sha256": "823fcb6fbc449766294ff39d2847fb909ceaff135da8f1932973abc2a59a21bf"
     },
     {
       "name": "openpact-tools",
@@ -16,7 +16,7 @@
       "type": "application/json",
       "description": "Tool declarations (JSON Schema) for every OpenPact daemon action. Consumable by OpenClaw, LangChain, and MCP clients that load JSON tool specs.",
       "url": "https://openpact.dev/.well-known/agent-skills/openpact/tools.json",
-      "sha256": "6af28528f45eb88810cde6dedc775caf0ba231888a44e3d9114220fe39ef4671"
+      "sha256": "f974b57550729345b51cb581bfb68037fc2d4ed99462c15827641524f647dac8"
     }
   ]
 }
