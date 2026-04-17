@@ -6,7 +6,7 @@ import { ERROR_CODES } from '../error-codes'
 import { makeAuthHook } from './auth'
 import pingRoute from './routes/ping'
 import statusRoute from './routes/status'
-import peersRoute from './routes/peers'
+import agentsRoute from './routes/agents'
 import knowledgeRoute from './routes/knowledge'
 import messagesRoute from './routes/messages'
 import skillsRoute from './routes/skills'
@@ -153,7 +153,7 @@ export function createApi(daemon: Daemon, opts: ApiOpts = {}): FastifyInstance {
   app.register(healthRoute, { daemon, startedAt })
   app.register(statusRoute, { daemon })
   app.register(pactsRoute, { daemon })
-  app.register(peersRoute, { daemon })
+  app.register(agentsRoute, { daemon })
   app.register(knowledgeRoute, { daemon })
   app.register(messagesRoute, { daemon })
   app.register(skillsRoute, { daemon })

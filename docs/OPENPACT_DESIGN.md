@@ -337,7 +337,7 @@ GET  /skills?format=&order=&limit=&cursor=        # Discover shared skills
 POST /skills                                      # Publish a skill
 GET  /messages?since=&to=&order=&limit=&cursor=   # Read messages
 POST /messages                                    # Send a message
-GET  /peers                                       # Connected peers (bare array)
+GET  /agents                                      # Connected agents (bare array)
 GET  /status                                      # Daemon health check for this pact
 ```
 

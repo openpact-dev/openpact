@@ -14,7 +14,7 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 - Autobase + Hyperswarm daemon with P2P replication ✅
 - Entry types: knowledge, task, skill, message (plus internal `admin`) ✅
 - REST API on localhost:7666 (Fastify; full v1 surface incl. task state machine + admin writer mgmt) ✅
-- CLI: init, join, invite, start, stop, status, peers, log, add-writer, remove-writer ✅
+- CLI: init, join, invite, start, stop, status, agents, log, add-writer, remove-writer ✅
 - `--bootstrap` flag + `OPENPACT_BOOTSTRAP` env var for private DHT ✅
 - Data directory at ~/.openpact/ ✅
 - Sustainable Use License, README ✅

@@ -11,7 +11,7 @@ import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
 import { shortHandle } from '../lib/format'
 
-interface PeerRow {
+interface AgentRow {
   id?: string
   remote_key?: string
   role?: string
@@ -20,7 +20,7 @@ interface PeerRow {
   display_name?: string | null
 }
 
-type AdminAction = { kind: 'promote' | 'remove'; peer: PeerRow }
+type AdminAction = { kind: 'promote' | 'remove'; agent: AgentRow }
 
 /** One unified row type covering the self-agent and every remote peer. */
 interface UnifiedRow {
@@ -45,7 +45,7 @@ export function Network({ currentAlias = null, onPactChange }: NetworkProps) {
     return (
       <PactlessState
         page="Network"
-        action="The agent roster populates once a pact exists. Create or join one to see peers light up."
+        action="The agent roster populates once a pact exists. Create or join one to see agents light up."
       />
     )
   }
@@ -70,7 +70,7 @@ function NetworkPage({
   ])
 
   const status = useQuery(() => pact.status(), { key: `net:status:${pact.pactId}`, trigger })
-  const peers = useQuery(() => pact.peers(), { key: `net:peers:${pact.pactId}`, trigger })
+  const agents = useQuery(() => pact.agents(), { key: `net:agents:${pact.pactId}`, trigger })
 
   const [pending, setPending] = useState<AdminAction | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -88,8 +88,9 @@ function NetworkPage({
   const isCreator = selfRole === 'creator'
   const selfOnline = !!s && connection.daemonReachable !== false
 
-  // Fold self + remote peers into one list so the self-agent sits in the
-  // table like any other row. The self-row is always pinned to the top.
+  // Fold self + remote agents into one list so the self-agent sits in
+  // the table like any other row. The self-row is always pinned to the
+  // top.
   const rows: UnifiedRow[] = useMemo(() => {
     if (!s) return []
     const self: UnifiedRow = {
@@ -100,16 +101,16 @@ function NetworkPage({
       online: selfOnline,
       isSelf: true,
     }
-    const others: UnifiedRow[] = (peers.data ?? []).map((p: PeerRow) => ({
-      handle: p.id ?? p.remote_key ?? '',
-      displayName: p.display_name ?? null,
-      publicKey: p.remote_key ?? null,
-      role: p.role ?? 'member',
-      online: !!p.online,
+    const others: UnifiedRow[] = (agents.data ?? []).map((a: AgentRow) => ({
+      handle: a.id ?? a.remote_key ?? '',
+      displayName: a.display_name ?? null,
+      publicKey: a.remote_key ?? null,
+      role: a.role ?? 'member',
+      online: !!a.online,
       isSelf: false,
     }))
     return [self, ...others]
-  }, [peers.data, s, selfHandle, selfDisplay, selfPublicKey, selfRole, selfOnline])
+  }, [agents.data, s, selfHandle, selfDisplay, selfPublicKey, selfRole, selfOnline])
 
   return (
     <section data-testid="page-network" class="mx-auto max-w-[1180px]">
@@ -174,13 +175,13 @@ function NetworkPage({
                   onPromote={() =>
                     setPending({
                       kind: 'promote',
-                      peer: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                      agent: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
                     })
                   }
                   onRemove={() =>
                     setPending({
                       kind: 'remove',
-                      peer: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                      agent: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
                     })
                   }
                 />
@@ -235,32 +236,32 @@ function NetworkPage({
         title={pending?.kind === 'promote' ? 'Promote to indexer?' : 'Remove this agent?'}
         description={
           pending?.kind === 'promote'
-            ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will be allowed to confirm the frontier. They can be demoted again later.`
+            ? `${shortHandle(pending.agent.id ?? pending.agent.remote_key ?? '')} will be allowed to confirm the frontier. They can be demoted again later.`
             : pending
-              ? `${shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')} will lose future pact access. Existing entries remain in the ledger.`
+              ? `${shortHandle(pending.agent.id ?? pending.agent.remote_key ?? '')} will lose future pact access. Existing entries remain in the ledger.`
               : ''
         }
         confirmLabel={pending?.kind === 'promote' ? 'Promote' : 'Remove'}
         destructive={pending?.kind === 'remove'}
         requireTyping={
           pending?.kind === 'remove'
-            ? shortHandle(pending.peer.id ?? pending.peer.remote_key ?? '')
+            ? shortHandle(pending.agent.id ?? pending.agent.remote_key ?? '')
             : undefined
         }
         onCancel={() => setPending(null)}
         onConfirm={async () => {
           if (!pending) return
-          const key = pending.peer.remote_key ?? ''
+          const key = pending.agent.remote_key ?? ''
           if (!key) throw new Error('No remote key for this agent')
           if (pending.kind === 'promote') {
             await pact.admin.promoteToIndexer(key)
-            setToast(`Promoted ${shortHandle(pending.peer.id ?? key)}.`)
+            setToast(`Promoted ${shortHandle(pending.agent.id ?? key)}.`)
           } else {
             await pact.admin.removeMemberAsCreator(key)
-            setToast(`Removed ${shortHandle(pending.peer.id ?? key)}.`)
+            setToast(`Removed ${shortHandle(pending.agent.id ?? key)}.`)
           }
           setPending(null)
-          peers.refetch()
+          agents.refetch()
           setTimeout(() => setToast(null), 3000)
         }}
       />

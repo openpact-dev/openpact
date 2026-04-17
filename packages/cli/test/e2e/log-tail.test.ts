@@ -79,9 +79,9 @@ test('status: errors when daemon not running', async (t) => {
   t.ok(res.stderr.includes('not running'))
 })
 
-test('peers: errors when daemon not running', async (t) => {
+test('agents: errors when daemon not running', async (t) => {
   const port = nextPort++
-  const res = await runWithDir(await tmpHome(t), ['peers', '--port', String(port)])
+  const res = await runWithDir(await tmpHome(t), ['agents', '--port', String(port)])
   t.not(res.exitCode, 0)
 })
 

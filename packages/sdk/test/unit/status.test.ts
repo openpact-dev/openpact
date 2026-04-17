@@ -17,7 +17,7 @@ test('status.get returns full status payload', async (t) => {
     peer_handle: 'anon-fox-12345678',
     role: 'creator',
     public_key: 'def',
-    peers: 2,
+    agents: 2,
     entries: 14,
     is_member: true,
     is_indexer: true,
@@ -28,9 +28,9 @@ test('status.get returns full status payload', async (t) => {
   t.alike(await r.get(), payload)
 })
 
-test('status.peers returns array', async (t) => {
+test('status.agents returns array', async (t) => {
   const m = mockFetch({ status: 200, body: [{ id: 'x', remote_key: 'y', online: true }] })
   const r = statusResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  const peers = await r.peers()
-  t.is(peers.length, 1)
+  const agents = await r.agents()
+  t.is(agents.length, 1)
 })

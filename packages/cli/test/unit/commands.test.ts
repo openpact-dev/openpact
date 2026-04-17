@@ -82,12 +82,12 @@ test('joinCmd: rejects an expired token before contacting the daemon', async (t)
   await t.exception(() => joinCmd(expired, { interactive: false }, ctx(dir)), /expired/)
 })
 
-test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeout', async (t) => {
-  // The pre-fix CLI gated the redeem on `status.peers > 0` and never
-  // attempted it when the joiner had no authenticated peers — which
+test('joinCmd: retries redeem on NO_AGENTS and surfaces the daemon error on timeout', async (t) => {
+  // The pre-fix CLI gated the redeem on `status.agents > 0` and never
+  // attempted it when the joiner had no authenticated agents — which
   // was every fresh joiner, since member-auth requires being a member
   // first. The fix lets the daemon's own retry semantics drive the
-  // loop: it returns NO_PEERS instantly when the swarm is empty, and
+  // loop: it returns NO_AGENTS instantly when the swarm is empty, and
   // the CLI loops until the outer deadline.
   const dir = await tmpHome(t)
   const future = new Date(Date.now() + 60_000).toISOString()
@@ -97,7 +97,7 @@ test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeo
       pactId: 'a'.repeat(64),
       nonce: 'b'.repeat(48),
       expiresAt: future,
-      pactName: 'No peers yet',
+      pactName: 'No agents yet',
     }),
     'utf8',
   ).toString('base64url')
@@ -121,7 +121,7 @@ test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeo
           pact_id: 'a'.repeat(64),
           peer_handle: 'anon-krait-7f2d',
           public_key: 'c'.repeat(64),
-          peers: 0,
+          agents: 0,
           is_member: false,
         }),
         { status: 200 },
@@ -130,7 +130,7 @@ test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeo
     if (url.endsWith('/v1/pacts/joined/invites/redeem')) {
       redeemCalls++
       return new Response(
-        JSON.stringify({ error: 'NO_PEERS', message: 'no peers connected', status: 503 }),
+        JSON.stringify({ error: 'NO_AGENTS', message: 'no agents connected', status: 503 }),
         { status: 503 },
       )
     }
@@ -147,9 +147,9 @@ test('joinCmd: retries redeem on NO_PEERS and surfaces the daemon error on timeo
         { interactive: false, displayName: 'tester', port: 19999, timeout: '1' },
         ctx(dir),
       ),
-    /no peers connected|NO_PEERS|reach an indexer/i,
+    /no agents connected|NO_AGENTS|reach an indexer/i,
   )
-  t.ok(redeemCalls >= 1, 'redeem is attempted even when status.peers is 0')
+  t.ok(redeemCalls >= 1, 'redeem is attempted even when status.agents is 0')
 })
 
 // Happy-path invite / join live in

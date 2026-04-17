@@ -46,7 +46,7 @@ export default async function healthRoute(
       ok: ready,
       status: ready ? 'ready' : 'not-ready',
       pact_count: pacts.length,
-      peers: daemon.connections,
+      agents: daemon.connections,
     }
   })
 
@@ -86,8 +86,8 @@ export default async function healthRoute(
     )
     lines.push(`openpact_pacts_open ${openPacts.length}`)
 
-    helpType('openpact_peers_connected', 'Currently connected Hyperswarm peers.', 'gauge')
-    lines.push(`openpact_peers_connected ${daemon.connections}`)
+    helpType('openpact_agents_connected', 'Currently connected Hyperswarm agents.', 'gauge')
+    lines.push(`openpact_agents_connected ${daemon.connections}`)
 
     helpType(
       'openpact_sse_backpressure_closes_total',

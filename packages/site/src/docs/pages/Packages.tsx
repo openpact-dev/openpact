@@ -33,7 +33,7 @@ const PACKAGES: Pkg[] = [
         Commander-based <code>openpact &lt;verb&gt;</code>. Handles lifecycle (
         <code>init / join / start / stop</code>), multi-pact management (
         <code>list / switch / rename / remove</code>), per-pact queries (
-        <code>status / peers / log / invite</code>), and member admin (
+        <code>status / agents / log / invite</code>), and member admin (
         <code>add-member / remove-member</code>). Interactive by default, fully scriptable with{' '}
         <code>--no-interactive</code>.
       </>

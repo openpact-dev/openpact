@@ -115,19 +115,19 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
     key: `sidebar:status:${current ?? 'none'}`,
     trigger,
   })
-  const peers = useQuery(() => (pact.pactId ? pact.peers() : Promise.resolve([] as unknown[])), {
-    key: `sidebar:peers:${current ?? 'none'}`,
+  const agents = useQuery(() => (pact.pactId ? pact.agents() : Promise.resolve([] as unknown[])), {
+    key: `sidebar:agents:${current ?? 'none'}`,
     trigger,
   })
   const peerHandle = status.data?.peer_handle ?? null
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
-  const peerList = (Array.isArray(peers.data) ? peers.data : []) as Array<{ online?: boolean }>
-  // Self is always online from our own vantage; add it when a pact is
-  // loaded. For remotes we count only those the daemon is currently
-  // authenticated to (onlineMembers-derived).
-  const selfOnline = !!status.data && connection.daemonReachable !== false
-  const onlineCount = (selfOnline ? 1 : 0) + peerList.filter((p) => p.online === true).length
+  const agentList = (Array.isArray(agents.data) ? agents.data : []) as Array<{ online?: boolean }>
+  // Count only remote agents the daemon is currently authenticated to
+  // (onlineMembers-derived). Self is excluded so the number matches what
+  // `openpact status` reports on the CLI.
+  const hasPact = !!status.data
+  const onlineCount = agentList.filter((a) => a.online === true).length
   // Reflect the active pact name in the browser tab so multiple
   // dashboards open against different pacts are distinguishable.
   useEffect(() => {
@@ -205,11 +205,13 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
             <span class="text-[13px] text-[var(--color-ink2)]">
               {connection.daemonReachable === false
                 ? 'Daemon offline'
-                : onlineCount === 0
+                : !hasPact
                   ? 'No pact selected'
-                  : onlineCount === 1
+                  : onlineCount === 0
                     ? 'Just you online'
-                    : `${onlineCount} agents online`}
+                    : onlineCount === 1
+                      ? '1 agent online'
+                      : `${onlineCount} agents online`}
             </span>
           </div>
         </div>

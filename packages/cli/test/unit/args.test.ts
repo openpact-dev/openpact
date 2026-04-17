@@ -12,7 +12,7 @@ test('buildProgram: registers all expected commands', (t) => {
     'start-foreground',
     'stop',
     'status',
-    'peers',
+    'agents',
     'log',
   ]) {
     t.ok(commandNames.includes(verb), `command ${verb} registered`)

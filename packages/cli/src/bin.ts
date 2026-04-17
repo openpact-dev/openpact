@@ -7,7 +7,7 @@ import { startCmd } from './commands/start'
 import { startForegroundCmd } from './commands/start-foreground'
 import { stopCmd } from './commands/stop'
 import { statusCmd } from './commands/status'
-import { peersCmd } from './commands/peers'
+import { agentsCmd } from './commands/agents'
 import { logCmd } from './commands/log'
 import { addMemberCmd } from './commands/add-writer'
 import { removeMemberCmd } from './commands/remove-writer'
@@ -118,15 +118,15 @@ export function buildProgram(): Command {
     .action(statusCmd)
 
   program
-    .command('peers')
-    .description('list peers bound to the pact')
+    .command('agents')
+    .description('list agents bound to the pact')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')
-    .action(peersCmd)
+    .action(agentsCmd)
 
   program
     .command('add-member <key>')
-    .description('bind a peer (by hex public key) as a member or indexer')
+    .description('bind an agent (by hex public key) as a member or indexer')
     .option('--indexer', 'bind as indexer (participates in consensus)')
     .option('--port <n>', '', '7666')
     .option('--pact <alias>', 'operate on a specific pact (default: current)')

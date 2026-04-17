@@ -1,24 +1,24 @@
 import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
-import { formatPeers } from '../lib/format'
+import { formatAgents } from '../lib/format'
 import { c, emoji } from '../lib/theme'
 
-export interface PeersOpts {
+export interface AgentsOpts {
   port?: string | number
   pact?: string
 }
 
-export async function peersCmd(
-  opts: PeersOpts,
+export async function agentsCmd(
+  opts: AgentsOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pactId = await resolveCurrentPact(dir, opts.pact)
   const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
   try {
-    const peers = await client.peers()
-    console.log(formatPeers(peers, { alias: pactId }))
+    const agents = await client.agents()
+    console.log(formatAgents(agents, { alias: pactId }))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
       console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)

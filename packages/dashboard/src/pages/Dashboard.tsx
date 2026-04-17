@@ -31,7 +31,7 @@ function DashboardPage() {
   ])
 
   const status = useQuery(() => pact.status(), { key: `status:${pact.pactId}`, trigger })
-  const peers = useQuery(() => pact.peers(), { key: `peers:${pact.pactId}`, trigger })
+  const agents = useQuery(() => pact.agents(), { key: `agents:${pact.pactId}`, trigger })
   const knowledge = useQuery(() => pact.knowledge.list({ limit: 20 }), {
     key: `k:20:${pact.pactId}`,
     trigger,
@@ -71,8 +71,9 @@ function DashboardPage() {
       .slice(0, 5)
   }, [knowledgeEntries, taskEntries, messageEntries])
 
-  const peerCount = peers.data?.length ?? 0
-  const onlinePeers = (peers.data ?? []).filter((p: any) => p.online).length
+  const agentCount = agents.data?.length ?? 0
+  const onlineAgentList = (agents.data ?? []).filter((a: any) => a.online)
+  const onlineAgents = onlineAgentList.length
   const knowledgeCount = knowledgeEntries.length
   const taskCount = taskEntries.length
   const messageCount = messageEntries.length
@@ -101,14 +102,14 @@ function DashboardPage() {
         </div>
       </header>
 
-      {/* Four equal metrics in one strip — peers carries the ember tone
+      {/* Four equal metrics in one strip — agents carries the ember tone
           to give it a subtle hierarchy without a dedicated hero block. */}
       <div class="mb-6 grid grid-cols-2 gap-0 border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 sm:grid-cols-4">
         <div class="border-[var(--color-line)] px-5 py-4 sm:border-r-[0.5px]">
           <MetricCard
             label="Agents"
-            value={peerCount}
-            hint={peerCount === 0 ? 'None connected' : `${onlinePeers} online`}
+            value={agentCount}
+            hint={agentCount === 0 ? 'None connected' : `${onlineAgents} online`}
             tone="ember"
           />
         </div>
@@ -139,14 +140,16 @@ function DashboardPage() {
         </Panel>
 
         <Panel title="Connected agents" link={{ label: 'Network', href: '/network' }}>
-          {(peers.data ?? []).length === 0 ? (
+          {onlineAgentList.length === 0 ? (
             <div class="px-5 py-6 text-[13px] text-[var(--color-ink3)]">
-              No agents yet. Share an invite to connect one.
+              {agentCount === 0
+                ? 'No agents yet. Share an invite to connect one.'
+                : 'No agents online right now.'}
             </div>
           ) : (
             <div class="divide-y-[0.5px] divide-[var(--color-line)]">
-              {(peers.data ?? []).map((p: any) => (
-                <PeerRow peer={p} key={p.id ?? p.remote_key} />
+              {onlineAgentList.map((a: any) => (
+                <AgentRow agent={a} key={a.id ?? a.remote_key} />
               ))}
             </div>
           )}
@@ -170,21 +173,21 @@ function DashboardPage() {
   )
 }
 
-function PeerRow({ peer }: { peer: any }) {
-  const handle = peer.id || peer.remote_key || '?'
+function AgentRow({ agent }: { agent: any }) {
+  const handle = agent.id || agent.remote_key || '?'
   const short = shortHandle(handle)
-  const name = (typeof peer.display_name === 'string' && peer.display_name) || short
+  const name = (typeof agent.display_name === 'string' && agent.display_name) || short
   return (
     <div class="flex items-center gap-3 px-5 py-2.5">
       <span
         class={
-          peer.online
+          agent.online
             ? 'relative inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-online)]'
             : 'inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-offline)]'
         }
         aria-hidden="true"
       >
-        {peer.online ? <span class="absolute inset-0 animate-ember-pulse rounded-full" /> : null}
+        {agent.online ? <span class="absolute inset-0 animate-ember-pulse rounded-full" /> : null}
       </span>
       <div class="min-w-0 flex-1">
         <div class="truncate text-[13px] text-[var(--color-ink)]">{name}</div>
@@ -194,10 +197,10 @@ function PeerRow({ peer }: { peer: any }) {
       </div>
       <span
         class={`font-mono text-[10px] uppercase tracking-[0.18em] ${
-          peer.online ? 'text-[var(--color-online)]' : 'text-[var(--color-ink3)]'
+          agent.online ? 'text-[var(--color-online)]' : 'text-[var(--color-ink3)]'
         }`}
       >
-        {peer.online ? 'Online' : 'Offline'}
+        {agent.online ? 'Online' : 'Offline'}
       </span>
     </div>
   )

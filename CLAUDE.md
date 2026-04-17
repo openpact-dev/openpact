@@ -220,8 +220,8 @@ Paginated list endpoints share a common contract:
 - Pass `cursor` back unmodified on the next call to continue paging. `has_more === false` means the walk is complete.
 
 ```
-GET  /status                                  -> { pact_id, pact_name, pact_purpose, display_name, peers, entries, synced }
-GET  /peers                                   -> [{ id, role, display_name, entries, online }]  (bare array)
+GET  /status                                  -> { pact_id, pact_name, pact_purpose, display_name, agents, entries, synced }
+GET  /agents                                  -> [{ id, role, display_name, entries, online }]  (bare array)
 
 GET  /knowledge?topic=&order=&limit=&cursor=  -> ListPage<Entry>
 POST /knowledge
@@ -266,7 +266,7 @@ Codes: `400` malformed, `404` missing, `409` conflict, `500` daemon error.
 New codes from §3: `NOT_INDEXER` (409), `BAD_SKILL_NAME` (400), `NOT_CONFIRMED` (400), `SKILL_CHECKSUM_MISMATCH` (409).
 New codes from §4b: `UNKNOWN_PACT` (404), `PACT_ALIAS_TAKEN` (409), `NO_CURRENT_PACT` (409).
 New code from list-envelope refactor: `BAD_CURSOR` (400).
-New codes from invite tokens: `INVITE_BAD_SHAPE` (400), `INVITE_WRONG_PACT` (400), `UNKNOWN_INVITE` (404), `INVITE_REVOKED` (409), `INVITE_SPENT` (409), `INVITE_NOT_INDEXER` (409), `INVITE_EXPIRED` (410), `NO_PEERS` / `NO_INDEXER_REACHABLE` / `PEER_DISCONNECTED` (503), `NOT_CREATOR` (409).
+New codes from invite tokens: `INVITE_BAD_SHAPE` (400), `INVITE_WRONG_PACT` (400), `UNKNOWN_INVITE` (404), `INVITE_REVOKED` (409), `INVITE_SPENT` (409), `INVITE_NOT_INDEXER` (409), `INVITE_EXPIRED` (410), `NO_AGENTS` / `NO_INDEXER_REACHABLE` / `AGENT_DISCONNECTED` (503), `NOT_CREATOR` (409).
 
 The web dashboard runs on `:7667` by default (localhost only). The
 SPA at `/` talks to the daemon through a Fastify proxy at `/api/*`.
@@ -300,13 +300,13 @@ openpact switch <alias>          # set currentAlias (default pact for other verb
 openpact rename <alias> <new>    # rename alias locally; pact_id unchanged
 openpact remove <alias> --yes    # destructive: tear down a pact + its data
 
-openpact status [--pact <alias>] # pact info, peers, entry counts (formatted)
-openpact peers  [--pact <alias>] # connected peers + roles
+openpact status [--pact <alias>] # pact info, agents, entry counts (formatted)
+openpact agents [--pact <alias>] # connected agents + roles
 openpact log    [--pact <alias>] [--type <type>]   # tail recent entries
 openpact dashboard               # open the dashboard URL in the default browser
 ```
 
-Per-pact verbs (`status / peers / log / invite / add-member / remove-member`)
+Per-pact verbs (`status / agents / log / invite / add-member / remove-member`)
 default to `currentAlias` from `daemon.json`. Override with `--pact <alias>`
 or `OPENPACT_PACT=<alias>`. If the env var and the flag disagree, the flag
 wins. If neither is set and `currentAlias` is missing, commands fall back

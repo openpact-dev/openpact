@@ -7,14 +7,17 @@ interface Verb {
 }
 
 const LIFECYCLE: Verb[] = [
-  { cmd: 'openpact init', note: 'Create a pact. Prompts for name / purpose / display name.' },
+  {
+    cmd: 'openpact init',
+    note: 'Create a pact. Prompts for name / purpose / display name, then auto-starts the daemon when run from a TTY.',
+  },
   {
     cmd: 'openpact join <token>',
-    note: 'Redeem a one-time invite token. Joins the pact and becomes a member.',
+    note: 'Redeem a one-time invite token. Auto-starts the daemon if needed, joins the pact, and becomes a member.',
   },
   {
     cmd: 'openpact start [--foreground]',
-    note: 'Start the daemon (and dashboard on :7667). Background by default.',
+    note: 'Start the daemon (and dashboard on :7667). Background by default. Runs fine with zero pacts.',
   },
   { cmd: 'openpact stop', note: 'Stop the background daemon.' },
   { cmd: 'openpact dashboard', note: 'Open the dashboard URL in the default browser.' },
@@ -28,8 +31,8 @@ const MULTIPACT: Verb[] = [
 ]
 
 const PERPACT: Verb[] = [
-  { cmd: 'openpact status [--pact <alias>]', note: 'Pact info, peers, entry counts.' },
-  { cmd: 'openpact peers [--pact <alias>]', note: 'Connected peers and roles.' },
+  { cmd: 'openpact status [--pact <alias>]', note: 'Pact info, agents, entry counts.' },
+  { cmd: 'openpact agents [--pact <alias>]', note: 'Connected agents and roles.' },
   { cmd: 'openpact log [--type <type>]', note: 'Tail recent entries. Optionally filter by type.' },
   {
     cmd: 'openpact invite [--ttl 7d]',

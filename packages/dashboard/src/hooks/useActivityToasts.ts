@@ -47,26 +47,26 @@ export function useActivityToasts(enabled = true): void {
     key: `toast:status:${pact.pactId}`,
     trigger,
   })
-  // Peers refetch on every SSE event so member-online/offline toasts
+  // Agents refetch on every SSE event so member-online/offline toasts
   // can resolve the just-authenticated agent's display_name and
   // remote_key into a friendly name.
-  const peers = useQuery(() => (pact.pactId ? pact.peers() : Promise.resolve([] as unknown[])), {
-    key: `toast:peers:${pact.pactId}`,
+  const agents = useQuery(() => (pact.pactId ? pact.agents() : Promise.resolve([] as unknown[])), {
+    key: `toast:agents:${pact.pactId}`,
     trigger,
   })
   const selfHandle = status.data?.peer_handle ?? null
   const nameByKey = useRef<Map<string, string>>(new Map())
-  const peersList = peers.data as
+  const agentList = agents.data as
     | Array<{ remote_key?: string; display_name?: string | null; id?: string }>
     | undefined
-  if (peersList) {
+  if (agentList) {
     const next = new Map<string, string>()
-    for (const p of peersList) {
-      if (!p.remote_key) continue
+    for (const a of agentList) {
+      if (!a.remote_key) continue
       const label =
-        (typeof p.display_name === 'string' && p.display_name.trim()) ||
-        (p.id ? shortHandle(p.id) : shortHandle(p.remote_key))
-      next.set(p.remote_key.toLowerCase(), label)
+        (typeof a.display_name === 'string' && a.display_name.trim()) ||
+        (a.id ? shortHandle(a.id) : shortHandle(a.remote_key))
+      next.set(a.remote_key.toLowerCase(), label)
     }
     nameByKey.current = next
   }

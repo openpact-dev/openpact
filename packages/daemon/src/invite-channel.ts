@@ -38,8 +38,8 @@ export function openInviteChannel(link: PeerLink, mux: any, handlers: InviteChan
         resolve({
           corr: Buffer.alloc(0),
           ok: false,
-          code: 'PEER_DISCONNECTED',
-          message: 'peer disconnected before responding',
+          code: 'AGENT_DISCONNECTED',
+          message: 'agent disconnected before responding',
         })
       }
       link.pending.clear()
@@ -50,8 +50,8 @@ export function openInviteChannel(link: PeerLink, mux: any, handlers: InviteChan
         resolve({
           corr: Buffer.alloc(0),
           ok: false,
-          code: 'PEER_DISCONNECTED',
-          message: 'peer disconnected before responding',
+          code: 'AGENT_DISCONNECTED',
+          message: 'agent disconnected before responding',
         })
       }
       link.pendingAuth.clear()

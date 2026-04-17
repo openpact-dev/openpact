@@ -128,20 +128,20 @@ test(
     t.ok(/^[0-9a-f]{64}$/.test(bStatus.public_key), 'B reports a 64-hex public key')
 
     // The redeem path should have already formed the live swarm connection.
-    const peersDeadline = Date.now() + 15_000
-    let aPeers: number = 0
+    const agentsDeadline = Date.now() + 15_000
+    let aAgents: number = 0
     const headersA = await authHeaders(homeA)
-    while (Date.now() < peersDeadline) {
+    while (Date.now() < agentsDeadline) {
       const aStatus = (await (
         await fetch(`http://127.0.0.1:${portA}/v1/pacts/default/status`, { headers: headersA })
       ).json()) as {
-        peers: number
+        agents: number
       }
-      aPeers = aStatus.peers
-      if (aPeers >= 1) break
+      aAgents = aStatus.agents
+      if (aAgents >= 1) break
       await new Promise((r) => setTimeout(r, 200))
     }
-    t.ok(aPeers >= 1, 'A sees B as a peer')
+    t.ok(aAgents >= 1, 'A sees B as an agent')
 
     // Join already redeemed the invite, so B should be writable without a
     // second manual admission step.

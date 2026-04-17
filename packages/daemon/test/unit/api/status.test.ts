@@ -13,7 +13,7 @@ test('GET /v1/status returns the host-level summary', async (t) => {
 
   t.is(body.current, 'default', 'currentAlias is the default pact')
   t.is(body.pact_count, 1)
-  t.is(typeof body.peers, 'number')
+  t.is(typeof body.agents, 'number')
 })
 
 test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) => {
@@ -28,12 +28,12 @@ test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) 
   t.ok(typeof body.pact_id === 'string')
   t.ok(/^anon-[a-z]+-[0-9a-f]{8}$/.test(body.peer_handle))
   t.is(body.role, 'creator')
-  t.is(body.peers, 0)
+  t.is(body.agents, 0)
   t.is(typeof body.entries, 'number')
   t.is(body.is_member, true)
 })
 
-test('GET /v1/pacts/:pactId/status peers is pact-scoped, not host-wide', async (t) => {
+test('GET /v1/pacts/:pactId/status agents is pact-scoped, not host-wide', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
@@ -45,8 +45,8 @@ test('GET /v1/pacts/:pactId/status peers is pact-scoped, not host-wide', async (
     (await app.inject({ method: 'GET', url: '/v1/pacts/default/status' })).body,
   )
 
-  t.is(host.peers, 3, 'host status reports all swarm connections')
-  t.is(pact.peers, 1, 'pact status reports only authenticated members for that pact')
+  t.is(host.agents, 3, 'host status reports all swarm connections')
+  t.is(pact.agents, 1, 'pact status reports only authenticated members for that pact')
 })
 
 test('GET /v1/pacts/:pactId/status entries reflects appends', async (t) => {

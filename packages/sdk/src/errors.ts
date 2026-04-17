@@ -173,7 +173,10 @@ export class InviteExpiredError extends OpenPactError {
 }
 
 export class NoIndexerReachableError extends OpenPactError {
-  constructor(message: string, code: 'NO_PEERS' | 'NO_INDEXER_REACHABLE' = 'NO_INDEXER_REACHABLE') {
+  constructor(
+    message: string,
+    code: 'NO_AGENTS' | 'NO_INDEXER_REACHABLE' = 'NO_INDEXER_REACHABLE',
+  ) {
     super(message, { status: 503, code })
     this.name = 'NoIndexerReachableError'
   }
@@ -308,10 +311,10 @@ export function mapHttpError(status: number, body: unknown): OpenPactError {
       return new InviteNotIndexerError(message)
     case ERROR_CODES.INVITE_EXPIRED:
       return new InviteExpiredError(message)
-    case ERROR_CODES.NO_PEERS:
-      return new NoIndexerReachableError(message, 'NO_PEERS')
+    case ERROR_CODES.NO_AGENTS:
+      return new NoIndexerReachableError(message, 'NO_AGENTS')
     case ERROR_CODES.NO_INDEXER_REACHABLE:
-    case ERROR_CODES.PEER_DISCONNECTED:
+    case ERROR_CODES.AGENT_DISCONNECTED:
       return new NoIndexerReachableError(message)
     case ERROR_CODES.VIEW_TIMEOUT:
       return new ViewTimeoutError(message)

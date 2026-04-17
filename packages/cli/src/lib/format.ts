@@ -11,7 +11,7 @@ export interface StatusPayload {
   display_name?: string | null
   role: string | null
   public_key: string | null
-  peers: number
+  agents: number
   entries: number
   is_member: boolean
   is_indexer: boolean
@@ -20,7 +20,7 @@ export interface StatusPayload {
 
 export interface HostStatusPayload {
   current: string | null
-  peers: number
+  agents: number
   pact_count: number
 }
 
@@ -34,7 +34,7 @@ export interface StatusContext {
   pid?: number | null
 }
 
-export interface PeerPayload {
+export interface AgentPayload {
   id: string
   remote_key: string
   online: boolean
@@ -287,7 +287,7 @@ export function formatStatus(s: StatusPayload, ctx?: StatusContext): string {
 
   const presence: Array<readonly [string, string]> = [
     ['Agent', `${agent}  ${c.ash('· ' + role)}`],
-    ['Peers', String(s.peers)],
+    ['Agents', String(s.agents)],
     ['Entries', `${s.entries}  ${c.ash('·')} ${synced}`],
   ]
 
@@ -326,7 +326,7 @@ export function formatHostStatus(s: HostStatusPayload, ctx: Omit<StatusContext, 
       {
         rows: [
           ['Pacts', pactSummary],
-          ['Peers', String(s.peers)],
+          ['Agents', String(s.agents)],
         ],
       },
       {
@@ -341,30 +341,30 @@ export function formatHostStatus(s: HostStatusPayload, ctx: Omit<StatusContext, 
   })
 }
 
-// ─── Peers ──────────────────────────────────────────────────────────────────
+// ─── Agents ─────────────────────────────────────────────────────────────────
 
-export function formatPeers(peers: PeerPayload[], opts: { alias?: string } = {}): string {
+export function formatAgents(agents: AgentPayload[], opts: { alias?: string } = {}): string {
   return table({
-    title: 'Peers',
+    title: 'Agents',
     subtitle: opts.alias ?? null,
     columns: [
       {
         header: 'Handle',
-        value: (p: PeerPayload) => c.bone(p.id),
+        value: (a: AgentPayload) => c.bone(a.id),
         minWidth: 22,
       },
       {
         header: 'Remote key',
-        value: (p: PeerPayload) => c.ash(short(p.remote_key, 16)),
+        value: (a: AgentPayload) => c.ash(short(a.remote_key, 16)),
         minWidth: 16,
       },
       {
         header: 'Status',
-        value: (p: PeerPayload) => (p.online ? `${c.brand('●')} online` : `${c.ash('○')} offline`),
+        value: (a: AgentPayload) => (a.online ? `${c.brand('●')} online` : `${c.ash('○')} offline`),
       },
     ],
-    rows: peers,
-    empty: 'No peers bound to this pact yet.',
+    rows: agents,
+    empty: 'No agents bound to this pact yet.',
   })
 }
 

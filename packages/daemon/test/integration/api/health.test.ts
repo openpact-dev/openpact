@@ -78,7 +78,7 @@ test('GET /v1/metrics returns Prometheus text with core gauges', async (t) => {
     'openpact_process_uptime_seconds',
     'openpact_process_resident_memory_bytes',
     'openpact_pacts_total',
-    'openpact_peers_connected',
+    'openpact_agents_connected',
     'openpact_sse_backpressure_closes_total',
     'openpact_pact_view_version',
     'openpact_pact_is_indexer',

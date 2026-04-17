@@ -42,7 +42,7 @@ export async function joinCmd(
   opts: JoinOpts,
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
-  const transientRedeemCodes = new Set(['NO_PEERS', 'NO_INDEXER_REACHABLE', 'PEER_DISCONNECTED'])
+  const transientRedeemCodes = new Set(['NO_AGENTS', 'NO_INDEXER_REACHABLE', 'AGENT_DISCONNECTED'])
   const terminalRedeemCodes = new Set([
     'INVITE_SPENT',
     'INVITE_EXPIRED',
@@ -134,10 +134,10 @@ export async function joinCmd(
   const memberKey = status.public_key as string
 
   // 3. Drive the redeem in a retry loop. The daemon's redeemThroughPeers
-  // already returns NO_PEERS instantly when no swarm links exist and
-  // NO_INDEXER_REACHABLE when peers are present but no indexer answered;
-  // both are classified as transient below. Earlier this code gated on
-  // `status.peers > 0`, but `peers` is now pact-scoped to authenticated
+  // returns NO_AGENTS instantly when no swarm links exist and
+  // NO_INDEXER_REACHABLE when agents are present but no indexer answered.
+  // Both are classified as transient below. Earlier this code gated on
+  // `status.agents > 0`, but `agents` is now pact-scoped to authenticated
   // remote members, and a fresh joiner can't authenticate until after
   // admission — so the gate stayed false forever and the loop never
   // attempted the redeem.

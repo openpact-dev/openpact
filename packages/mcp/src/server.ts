@@ -38,7 +38,7 @@ export function buildServer(pact: OpenPact, opts: BuildServerOpts = {}): McpServ
 export const TOOL_NAMES = [
   'ping',
   'pact_status',
-  'list_peers',
+  'list_agents',
   'recall_knowledge',
   'record_knowledge',
   'list_tasks',

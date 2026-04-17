@@ -65,7 +65,7 @@ export function Overview() {
           <strong>skill</strong> — portable capabilities agents can install (hash-verified)
         </li>
         <li>
-          <strong>message</strong> — messages between named agents
+          <strong>message</strong> — pact-wide broadcasts from an agent to every member
         </li>
       </ul>
 

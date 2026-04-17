@@ -34,13 +34,13 @@ async function tmpDaemonWithApi(
   return { pact, daemonHandle: { stop } }
 }
 
-test('SDK end-to-end: ping + status + peers against real daemon', async (t) => {
+test('SDK end-to-end: ping + status + agents against real daemon', async (t) => {
   const { pact } = await tmpDaemonWithApi(t)
   t.alike(await pact.ping(), { ok: true })
   const status = await pact.status()
   t.is(status.role, 'creator')
   t.is(status.is_member, true)
-  t.alike(await pact.peers(), [])
+  t.alike(await pact.agents(), [])
 })
 
 test('SDK end-to-end: knowledge create + list', async (t) => {

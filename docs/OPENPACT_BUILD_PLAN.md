@@ -311,8 +311,8 @@ This is the heart of the project. Get this right before touching anything else.
 - [x] Implement endpoints:
   ```
   GET  /v1/ping                                -> { ok: true }
-  GET  /v1/status                              -> { pact_id, peer_handle, role, public_key, peers, entries, is_member, is_indexer, synced }
-  GET  /v1/peers                               -> [{ id, remote_key, online }]
+  GET  /v1/status                              -> { pact_id, peer_handle, role, public_key, agents, entries, is_member, is_indexer, synced }
+  GET  /v1/agents                              -> [{ id, remote_key, online }]
   GET  /v1/knowledge?topic=X&limit=N           -> [entries]
   POST /v1/knowledge                           -> { id, timestamp }
   GET  /v1/tasks?status=open|claimed|complete  -> [reduced TaskState]
@@ -336,7 +336,7 @@ This is the heart of the project. Get this right before touching anything else.
 - [x] **Unit** (`packages/daemon/test/unit/api/`) — use `fastify.inject()`, no real port:
   - [x] `ping.test.ts` — returns `{ ok: true }`
   - [x] `status.test.ts` — shape; reflects entry counts after appends
-  - [x] `peers.test.ts` — empty initially (no real swarm in unit tests)
+  - [x] `agents.test.ts` — empty initially (no real swarm in unit tests)
   - [x] `knowledge.test.ts` — POST happy path; missing topic → 400; query filter by topic + limit
   - [x] `tasks.test.ts` — full state machine (open→claimed→complete, claimer-only release, double-claim → 409, skip-claim allowed, 404 cases)
   - [x] `tasks-state.test.ts` — pure reducer: race resolution, claimer-only transitions, deterministic order
@@ -395,8 +395,8 @@ This is the heart of the project. Get this right before touching anything else.
   openpact start               -> Start the daemon in the background (default)
   openpact start --foreground  -> Start in the foreground (do not detach)
   openpact stop                -> Stop the background daemon
-  openpact status              -> Print pact info, peers, entry counts
-  openpact peers               -> List connected peers with roles
+  openpact status              -> Print pact info, agents, entry counts
+  openpact agents              -> List connected agents with roles
   openpact log                 -> Print recent entries (tail style)
   openpact log --type knowledge -> Filter by type
   ```
@@ -406,7 +406,7 @@ This is the heart of the project. Get this right before touching anything else.
   `process.kill(pid, 0)`); double-start refused with clear error
 - [x] **(beyond plan)** `--data-dir <path>` global flag + `OPENPACT_DATA_DIR`
   env var for isolated test runs and multiple pacts on one host
-- [x] **(beyond plan)** `--port <n>` flag on `start / status / peers / log` for
+- [x] **(beyond plan)** `--port <n>` flag on `start / status / agents / log` for
   non-default port (also allows running multiple daemons on one host)
 - [x] **(beyond plan)** Hidden `start-foreground` subcommand — used by the
   detached path so we can spawn ourselves cleanly
@@ -415,7 +415,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 - [x] **Unit** (`packages/cli/test/unit/`):
   - [x] `args.test.ts` — every verb is registered; --data-dir is global; start/log carry expected flags; start-foreground is hidden from help
-  - [x] `format.test.ts` — formatStatus / formatPeers / formatLogLine for each entry type; colour codes asserted by stripping them
+  - [x] `format.test.ts` — formatStatus / formatAgents / formatLogLine for each entry type; colour codes asserted by stripping them
   - [x] `pid.test.ts` — write/read round-trip; stale PID detected; missing file → null
   - [x] `commands.test.ts` — in-process tests for init / join / invite / stop (the commands that don't need a running daemon)
 - [x] **End-to-end** (`packages/cli/test/e2e/`) — `execa` with isolated tmp dirs:
@@ -454,7 +454,7 @@ This is the heart of the project. Get this right before touching anything else.
    wraps `npm run test:all` (unit + integration + e2e) so subprocess
    coverage from spawned CLI / daemon processes accumulates via
    `NODE_V8_COVERAGE`. Without this, e2e-only paths in
-   `commands/{start,stop,status,peers,log}.ts` showed near-zero coverage
+   `commands/{start,stop,status,agents,log}.ts` showed near-zero coverage
    even though they were exercised end-to-end.
 7. **`.github/workflows/ci.yml` e2e fallback removed** — the `|| echo "no
    e2e tests yet"` from Phase 1.1 is gone now that real e2e tests exist.
@@ -577,7 +577,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 
   // Status
   const status = await pact.status()
-  const peers = await pact.peers()
+  const agents = await pact.agents()
   ```
 - [x] Lightweight: just wraps `fetch` calls, no heavy dependencies
 - [x] **Build step**: SDK is the first package we publish. CJS-only build
@@ -1098,9 +1098,9 @@ All screens follow the existing HTML mockups in `docs/01-dashboard.html`, `docs/
 
 #### 3.3.1 Dashboard (route: `/`)
 
-- Metric cards: peers (online/total), knowledge count (+delta this week), task count (open/in-progress), skill count (new from network)
-- Recent activity feed: last 20 entries across all types, colour-coded dots by type, relative timestamps ("2m ago"), peer handle attribution
-- Peer list sidebar: avatar with initials, name, role badge, online/offline status
+- Metric cards: agents (online/total), knowledge count (+delta this week), task count (open/in-progress), skill count (new from network)
+- Recent activity feed: last 20 entries across all types, colour-coded dots by type, relative timestamps ("2m ago"), agent handle attribution
+- Agent list sidebar: avatar with initials, name, role badge, online/offline status
 - Open tasks summary: title, status badge, assigned agent, age
 
 Data source: `GET /api/status` for metrics, `GET /api/knowledge?limit=20` + `GET /api/tasks` + `GET /api/messages?limit=20` merged and sorted for the feed. SSE keeps it live.
@@ -1157,7 +1157,7 @@ daemon owns this file; the dashboard reads it via
 
 Note on "creator only": there is no per-user auth between the browser and the daemon. The daemon binds to `127.0.0.1` and trusts every local request — the trust boundary is the loopback interface, not the dashboard UI. "Creator only" is shorthand for "the daemon's own role is creator." The route checks `daemon.role` and returns `409 NOT_INDEXER` (admin entries from non-indexer writers are silently dropped by the apply layer anyway, but the route fails fast with a clean error code so the dashboard can disable the button instead of letting the click no-op). A future multi-user scenario would need a real auth layer; that's out of v0.1 scope.
 
-Data source: `GET /api/peers` for the list. `GET /api/status` for the join key. SSE for online/offline transitions.
+Data source: `GET /api/agents` for the list. `GET /api/status` for the join key. SSE for online/offline transitions.
 
 #### 3.3.6 Entry trace (route: `/trace/:id`)
 
@@ -1319,7 +1319,7 @@ matrix; one slot is enough for the v0.1 surface.
 ### 4b.4 CLI multi-pact surface
 
 - [x] New verbs: `openpact list` (table or `--json`), `openpact switch <alias>`, `openpact rename <alias> <new>`, `openpact remove <alias> --yes` (destructive; requires `--yes` or type-to-confirm).
-- [x] Every per-pact verb (`status / peers / log / invite / add-writer / remove-writer / skill-install`) accepts `--pact <alias>`. Resolution precedence in `packages/cli/src/lib/pact-select.ts`: flag → `OPENPACT_PACT` env → `daemon.json.currentAlias` → `default`.
+- [x] Every per-pact verb (`status / agents / log / invite / add-writer / remove-writer / skill-install`) accepts `--pact <alias>`. Resolution precedence in `packages/cli/src/lib/pact-select.ts`: flag → `OPENPACT_PACT` env → `daemon.json.currentAlias` → `default`.
 - [x] `openpact init` writes to `daemon.json.pacts` with a user-picked alias (defaulting to `slugify(pact_name)`). `openpact invite` prints the current pact's key by default or the specified `--pact`'s.
 - [x] `openpact start` registry-aware check reads `daemon.json.currentAlias` so a running daemon holding a different pact doesn't masquerade as the target pact.
 
@@ -1532,8 +1532,8 @@ matrix; one slot is enough for the v0.1 surface.
 
 ### Naming conventions
 
-- CLI commands: `openpact <verb>` (init, join, start, stop, status, invite, peers, log, list, switch, rename, remove, dashboard). Per-pact verbs accept `--pact <alias>`.
-- API routes: host-level `/v1/<resource>` (ping, events, pacts); per-pact `/v1/pacts/:pactId/<resource>` (knowledge, tasks, skills, messages, peers, status, entries, admin, pact, me)
+- CLI commands: `openpact <verb>` (init, join, start, stop, status, invite, agents, log, list, switch, rename, remove, dashboard). Per-pact verbs accept `--pact <alias>`.
+- API routes: host-level `/v1/<resource>` (ping, events, pacts); per-pact `/v1/pacts/:pactId/<resource>` (knowledge, tasks, skills, messages, agents, status, entries, admin, pact, me)
 - Entry IDs: `<core_short_id>-<sequence_number>` (e.g. `a7f2bcde-412`)
 - Peer handles: `anon-<word>-<8hex>` derived from public key (e.g. `anon-krait-7f2d9999`)
 - Test files: `*.test.ts` (or `*.spec.ts` for Playwright UI tests)

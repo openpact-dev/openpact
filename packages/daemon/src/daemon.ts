@@ -767,7 +767,7 @@ export class Daemon extends EventEmitter {
     { timeoutMs = 15_000 }: { timeoutMs?: number } = {},
   ): Promise<{ ok: true; nonce: string } | { ok: false; code: ErrorCode; message: string }> {
     if (this._peerLinks.size === 0) {
-      return { ok: false, code: ERROR_CODES.NO_PEERS, message: 'no peers connected' }
+      return { ok: false, code: ERROR_CODES.NO_AGENTS, message: 'no agents connected' }
     }
     const corr = crypto.randomBytes(8)
     const req: RedeemRequest = { pactId, token, writerKey, corr }
@@ -1007,7 +1007,7 @@ export class Daemon extends EventEmitter {
 
   /**
    * Member keys currently authenticated over a live peer link for the
-   * given pact. Used by the /peers endpoint to report online status
+   * given pact. Used by the /agents endpoint to report online status
    * without relying on autobase's activeWriters — autobase may have
    * GC'd a writer even while we hold an active, authenticated link to
    * them. Keys are lowercase hex.

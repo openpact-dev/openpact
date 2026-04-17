@@ -12,7 +12,7 @@ export default async function statusRoute(
     const pacts = await daemon.listPacts()
     return {
       current: currentAlias,
-      peers: daemon.connections,
+      agents: daemon.connections,
       pact_count: pacts.length,
     }
   })
@@ -20,7 +20,7 @@ export default async function statusRoute(
   // Per-pact status — the fat payload the dashboard / SDK rely on.
   app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/status', async (req) => {
     const pact = await resolvePact(daemon, req)
-    const onlinePeers = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
+    const onlineAgents = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
     return {
       pact_id: pact.pactKey,
       pact_name: pact.pactName,
@@ -31,7 +31,7 @@ export default async function statusRoute(
       public_key: pact.publicKey,
       // Pact status reports only authenticated members for this pact.
       // Host-wide connection churn belongs on GET /v1/status.
-      peers: onlinePeers,
+      agents: onlineAgents,
       entries: pact.viewVersion,
       is_member: pact.isMember,
       is_indexer: pact.isIndexer,

@@ -11,7 +11,7 @@ import {
 } from '../../apply'
 import { resolvePact } from '../pact-resolver'
 
-interface PeerInfo {
+interface AgentInfo {
   id: string
   remote_key: string
   role: 'indexer' | 'member'
@@ -21,8 +21,8 @@ interface PeerInfo {
 
 /**
  * Read the `_agents/<agent_id>` index populated by apply.ts. Every
- * valid entry with a non-empty display_name — including admin and
- * invite-redeemed — updates this map, so peers show their name even
+ * valid entry with a non-empty display_name (including admin and
+ * invite-redeemed) updates this map, so agents show their name even
  * before posting user-facing content.
  */
 async function buildDisplayNameIndex(view: any): Promise<Map<string, string>> {
@@ -45,21 +45,23 @@ async function isIndexer(view: any, keyHex: string): Promise<boolean> {
   return got != null
 }
 
-export default async function peersRoute(
+export default async function agentsRoute(
   app: FastifyInstance,
   { daemon }: { daemon: Daemon },
 ): Promise<void> {
-  // Peers scoped to one pact. We walk the ledger's `_members/` index so
-  // peers stay on the list regardless of whether autobase is currently
-  // tracking their writer core — autobase GCs inactive writers out of
-  // `activeWriters` once they've flushed, but the member entry on the
-  // ledger is authoritative until an explicit admin.removeWriter lands.
+  // Agents scoped to one pact. We walk the ledger's `_members/` index
+  // so agents stay on the list regardless of whether autobase is
+  // currently tracking their writer core. Autobase GCs inactive writers
+  // out of `activeWriters` once they've flushed, but the member entry
+  // on the ledger is authoritative until an explicit admin.removeWriter
+  // lands.
   //
-  // For online status we cross-reference `autobase.activeWriters`: if a
-  // writer is tracked and its hypercore has remote peers, we call that
-  // online. A member who's been GC'd or has no peers on their core is
-  // "offline" — but still present in the list.
-  app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/peers', async (req) => {
+  // Online status comes from the daemon's authenticated member-auth
+  // links, not autobase.activeWriters: autobase can GC a writer even
+  // while we hold a live authenticated link to them, and a writer can
+  // sit in activeWriters with an empty core.peers array right after
+  // reconnect before hypercore finishes its handshake.
+  app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/agents', async (req) => {
     const pact = await resolvePact(daemon, req)
     const view = pact.view
     const autobase = pact.autobase
@@ -68,16 +70,9 @@ export default async function peersRoute(
     const selfKeyHex = pact.publicKey ?? ''
     const nameByAgent = await buildDisplayNameIndex(view)
 
-    // Presence comes from the daemon's authenticated peer links rather
-    // than autobase.activeWriters: autobase can GC a writer even while
-    // we hold a live, authenticated link to them, and a writer can be
-    // in activeWriters with an empty core.peers array right after
-    // reconnect before hypercore finishes its handshake. Authenticated
-    // member-auth responses are the reliable "this agent is here now"
-    // signal.
     const onlineSet = pact.pactKey ? daemon.onlineMembers(pact.pactKey) : new Set<string>()
 
-    const peers: PeerInfo[] = []
+    const agents: AgentInfo[] = []
     const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
     for await (const row of view.createReadStream(range)) {
       const keyHex = typeof row?.key === 'string' ? row.key.slice(MEMBER_PREFIX.length) : ''
@@ -86,7 +81,7 @@ export default async function peersRoute(
       const agentId = derive(keyBuf)
       const role: 'indexer' | 'member' = (await isIndexer(view, keyHex)) ? 'indexer' : 'member'
       const online = onlineSet.has(keyHex.toLowerCase())
-      peers.push({
+      agents.push({
         id: agentId,
         remote_key: keyHex,
         role,
@@ -94,6 +89,6 @@ export default async function peersRoute(
         online,
       })
     }
-    return peers
+    return agents
   })
 }

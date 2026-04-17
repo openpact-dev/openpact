@@ -120,7 +120,7 @@ test('invites.redeem: 410 INVITE_EXPIRED → InviteExpiredError', async (t) => {
 test('invites.redeem: 503 NO_INDEXER_REACHABLE → NoIndexerReachableError', async (t) => {
   const m = mockFetch({
     status: 503,
-    body: { error: 'NO_INDEXER_REACHABLE', message: 'no peers' },
+    body: { error: 'NO_INDEXER_REACHABLE', message: 'no agents' },
   })
   const r = invitesResource(new OpenPactClient({ fetch: m.fetch, pactId: PACT_ID }))
   await t.exception(() => r.redeem(TOKEN, WRITER), NoIndexerReachableError)

@@ -3,7 +3,7 @@ import { createApi } from '../../../src/api'
 import { pair } from '../../helpers/pair'
 import type { Daemon } from '../../../src/daemon'
 
-test('GET /peers returns the other member with their latest display_name', async (t) => {
+test('GET /agents returns the other member with their latest display_name', async (t) => {
   const { a, b } = await pair(t, {
     a: { displayName: 'Alice' },
     b: { displayName: 'Bob' },
@@ -22,23 +22,23 @@ test('GET /peers returns the other member with their latest display_name', async
 
   // Wait for A to (a) see B as a member and (b) index B's entry so the
   // display_name lookup resolves. The activeWriters probe directly checks
-  // what the /peers endpoint iterates.
+  // what the /agents endpoint iterates.
   const deadline = Date.now() + 20_000
   const aBase: any = (a.daemon as any).current?.autobase
   while (Date.now() < deadline) {
     await a.daemon.update()
     const size = aBase?.activeWriters?.size ?? 0
     if (size >= 2) {
-      const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+      const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
       const list = JSON.parse(res.body) as Array<{ display_name: string | null }>
       if (list.length >= 1 && list[0].display_name === 'Bob') break
     }
     await new Promise((r) => setTimeout(r, 100))
   }
 
-  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
   t.is(res.statusCode, 200)
-  const peers = JSON.parse(res.body) as Array<{
+  const agents = JSON.parse(res.body) as Array<{
     id: string
     remote_key: string
     role: string
@@ -46,13 +46,13 @@ test('GET /peers returns the other member with their latest display_name', async
     online: boolean
   }>
 
-  t.is(peers.length, 1, 'exactly one other member is visible')
-  const p = peers[0]
-  t.is(p.remote_key, b.daemon.publicKey, 'remote_key is B autobase member key')
-  t.is(p.id, b.daemon.peerHandle, 'id derives from the writer key, matching agent_id on entries')
-  t.is(p.display_name, 'Bob', 'display_name comes from the latest entry B authored')
-  t.is(p.role, 'member', 'B was admitted as a non-indexer member')
-  t.ok(typeof p.online === 'boolean')
+  t.is(agents.length, 1, 'exactly one other member is visible')
+  const a0 = agents[0]
+  t.is(a0.remote_key, b.daemon.publicKey, 'remote_key is B autobase member key')
+  t.is(a0.id, b.daemon.peerHandle, 'id derives from the writer key, matching agent_id on entries')
+  t.is(a0.display_name, 'Bob', 'display_name comes from the latest entry B authored')
+  t.is(a0.role, 'member', 'B was admitted as a non-indexer member')
+  t.ok(typeof a0.online === 'boolean')
 })
 
 test('rename propagates: setDisplayName on A is visible on B without A posting content', async (t) => {
@@ -67,24 +67,24 @@ test('rename propagates: setDisplayName on A is visible on B without A posting c
 
   // A renames without posting any knowledge/task/message content. The
   // rename-message must replicate and populate B's _agents/ index so
-  // the new name is visible via /peers.
+  // the new name is visible via /agents.
   await a.daemon.current!.setDisplayName('Acolyte')
 
   const deadline = Date.now() + 20_000
   while (Date.now() < deadline) {
     await b.daemon.update()
-    const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+    const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
     const list = JSON.parse(res.body) as Array<{ display_name: string | null }>
     if (list[0]?.display_name === 'Acolyte') break
     await new Promise((r) => setTimeout(r, 100))
   }
 
-  const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
-  const peers = JSON.parse(res.body) as Array<{ display_name: string | null }>
-  t.is(peers[0]?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
+  const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
+  const agents = JSON.parse(res.body) as Array<{ display_name: string | null }>
+  t.is(agents[0]?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
 })
 
-test('GET /peers keeps members after they stop (marked offline, not removed)', async (t) => {
+test('GET /agents keeps members after they stop (marked offline, not removed)', async (t) => {
   const { a, b } = await pair(t, {
     a: { displayName: 'Alice' },
     b: { displayName: 'Bob' },
@@ -97,11 +97,11 @@ test('GET /peers keeps members after they stop (marked offline, not removed)', a
   // null once the pact is closed.
   const bKey = b.daemon.publicKey!
 
-  // Wait for B to show up in A's peer list at all.
+  // Wait for B to show up in A's agent list at all.
   const deadline = Date.now() + 15_000
   while (Date.now() < deadline) {
     await a.daemon.update()
-    const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+    const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
     const list = JSON.parse(res.body) as Array<{ remote_key: string }>
     if (list.length >= 1) break
     await new Promise((r) => setTimeout(r, 100))
@@ -112,23 +112,23 @@ test('GET /peers keeps members after they stop (marked offline, not removed)', a
   // `_members/<B>` stays intact on the ledger.
   await b.daemon.stop()
 
-  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
-  const peers = JSON.parse(res.body) as Array<{
+  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
+  const agents = JSON.parse(res.body) as Array<{
     remote_key: string
     online: boolean
   }>
-  t.is(peers.length, 1, 'B is still listed after stopping')
-  t.is(peers[0].remote_key, bKey, 'same canonical key')
+  t.is(agents.length, 1, 'B is still listed after stopping')
+  t.is(agents[0].remote_key, bKey, 'same canonical key')
 })
 
-test('GET /peers is empty when the peer has not yet been admitted as member', async (t) => {
+test('GET /agents is empty when the agent has not yet been admitted as member', async (t) => {
   const { a } = await pair(t)
   const aApi = createApi(a.daemon)
   t.teardown(() => aApi.close())
 
   // B is paired via the swarm but never admitted — activeWriters on A still
-  // only contains A itself, so /peers is empty.
-  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/peers' })
+  // only contains A itself, so /agents is empty.
+  const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
   t.is(res.statusCode, 200)
   t.alike(JSON.parse(res.body), [])
 })

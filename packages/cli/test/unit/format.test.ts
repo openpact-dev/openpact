@@ -2,7 +2,7 @@ import test from 'brittle'
 import {
   formatHostStatus,
   formatStatus,
-  formatPeers,
+  formatAgents,
   formatLogLine,
   formatError,
 } from '../../src/lib/format'
@@ -20,7 +20,7 @@ test('formatStatus: includes all fields', (t) => {
       peer_handle: 'anon-krait-7f2d9999',
       role: 'creator',
       public_key: 'abcdef',
-      peers: 2,
+      agents: 2,
       entries: 14,
       is_member: true,
       is_indexer: true,
@@ -31,7 +31,7 @@ test('formatStatus: includes all fields', (t) => {
   t.ok(out.includes('deadbeefcafe'))
   t.ok(out.includes('anon-krait-7f2d9999'))
   t.ok(out.includes('creator'))
-  t.ok(out.includes('Peers'))
+  t.ok(out.includes('Agents'))
   t.ok(out.includes('2'))
   t.ok(out.includes('Entries'))
   t.ok(out.includes('14'))
@@ -49,7 +49,7 @@ test('formatStatus: renders pact name, purpose, display name, and context', (t) 
         display_name: 'Henry',
         role: 'creator',
         public_key: 'abcdef',
-        peers: 2,
+        agents: 2,
         entries: 14,
         is_member: true,
         is_indexer: true,
@@ -84,7 +84,7 @@ test('formatHostStatus: renders daemon details when no pact exists', (t) => {
     formatHostStatus(
       {
         current: null,
-        peers: 0,
+        agents: 0,
         pact_count: 0,
       },
       {
@@ -114,7 +114,7 @@ test('formatStatus: handles uninitialised state', (t) => {
       peer_handle: null,
       role: null,
       public_key: null,
-      peers: 0,
+      agents: 0,
       entries: 0,
       is_member: false,
       is_indexer: false,
@@ -124,13 +124,13 @@ test('formatStatus: handles uninitialised state', (t) => {
   t.ok(out.includes('—'), 'em-dash placeholder for missing values')
 })
 
-test('formatPeers: empty list', (t) => {
-  t.ok(strip(formatPeers([])).includes('No peers bound'))
+test('formatAgents: empty list', (t) => {
+  t.ok(strip(formatAgents([])).includes('No agents bound'))
 })
 
-test('formatPeers: tabular rows', (t) => {
+test('formatAgents: tabular rows', (t) => {
   const out = strip(
-    formatPeers([
+    formatAgents([
       { id: 'anon-krait-7f2d9999', remote_key: 'abcdef0123456789', online: true },
       { id: 'anon-cobra-3e910000', remote_key: 'fedcba9876543210', online: false },
     ]),

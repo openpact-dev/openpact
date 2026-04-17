@@ -25,13 +25,13 @@ tools:
     method: GET
     path: /v1/pacts
   - name: pact_status
-    description: Pact id, name, purpose, this peer handle + display name, role, peer + entry counts.
+    description: Pact id, name, purpose, this peer handle + display name, role, agent + entry counts.
     method: GET
     path: /v1/pacts/:pactId/status
-  - name: list_peers
-    description: Peers currently connected to this host.
+  - name: list_agents
+    description: Agents currently connected to this host.
     method: GET
-    path: /v1/pacts/:pactId/peers
+    path: /v1/pacts/:pactId/agents
   - name: recall_knowledge
     description: List recent knowledge entries, optionally filtered by topic. Response is a page envelope { entries, cursor, has_more }.
     method: GET

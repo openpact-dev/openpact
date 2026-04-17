@@ -188,9 +188,9 @@ function errorStatus(code: ErrorCode): number {
       return 409
     case ERROR_CODES.INVITE_EXPIRED:
       return 410
-    case ERROR_CODES.NO_PEERS:
+    case ERROR_CODES.NO_AGENTS:
     case ERROR_CODES.NO_INDEXER_REACHABLE:
-    case ERROR_CODES.PEER_DISCONNECTED:
+    case ERROR_CODES.AGENT_DISCONNECTED:
       return 503
     default:
       return 500

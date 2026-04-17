@@ -37,7 +37,7 @@ export function spy<T = unknown>(): Spy<T> {
 export interface FakePact {
   ping: Spy
   status: Spy
-  peers: Spy
+  agents: Spy
   knowledge: { list: Spy; create: Spy }
   tasks: { list: Spy; get: Spy; create: Spy; claim: Spy; complete: Spy; release: Spy }
   skills: { list: Spy; create: Spy; getContent: Spy }
@@ -49,7 +49,7 @@ export function fakePact(): FakePact {
   return {
     ping: spy(),
     status: spy(),
-    peers: spy(),
+    agents: spy(),
     knowledge: { list: spy(), create: spy() },
     tasks: {
       list: spy(),

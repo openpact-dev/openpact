@@ -152,8 +152,8 @@ test('MCP end-to-end: messages send + read with since cursor', async (t) => {
   t.is(recent[0].payload.content, 'second')
 })
 
-test('MCP end-to-end: list_peers returns an empty array on a solo daemon', async (t) => {
+test('MCP end-to-end: list_agents returns an empty array on a solo daemon', async (t) => {
   const { client } = await bootMcpAgainstDaemon(t)
-  const r = await callTool(client, 'list_peers')
+  const r = await callTool(client, 'list_agents')
   t.alike(JSON.parse(textOf(r)), [])
 })

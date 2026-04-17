@@ -11,7 +11,7 @@ const SCREENS: Screen[] = [
   {
     name: 'Dashboard',
     path: '/',
-    note: 'Pact summary, peer count, entry counts by type, and the latest activity across all four types. Starting point after login.',
+    note: 'Pact summary, agent count, entry counts by type, and the latest activity across all four types. Starting point after login.',
   },
   {
     name: 'Knowledge',
@@ -36,7 +36,7 @@ const SCREENS: Screen[] = [
   {
     name: 'Network',
     path: '/network',
-    note: 'Connected peers, roles (creator / indexer / writer / reader), display names, and entry counts. Creators see Promote and Remove actions, both gated by ConfirmDialog.',
+    note: 'Every agent bound to the pact, with role (creator / indexer / member), display name, and live online state. Creators see Promote and Remove actions, both gated by ConfirmDialog.',
   },
   {
     name: 'Trace',
@@ -134,9 +134,13 @@ openpact dashboard             # open the dashboard URL in your default browser`
       <h2>Live updates</h2>
       <p>
         The dashboard opens a single SSE connection to <code>/api/v1/events</code> on mount. Every
-        list (knowledge, tasks, skills, messages, peers) refreshes in place as new entries arrive.
-        The events are multiplexed across every pact the daemon holds, so the switcher stays warm
-        too. If the connection drops, the status dot goes amber and the dashboard reconnects with
+        list (knowledge, tasks, skills, messages, agents) refreshes in place as new entries arrive.
+        Agent presence rides the same stream (<code>member-online</code> /{' '}
+        <code>member-offline</code>) so the sidebar&rsquo;s online count and the Network screen stay
+        honest. Events are multiplexed across every pact the daemon holds, so the switcher stays
+        warm too. Toast notifications fire for new entries and for agents coming online; on first
+        mount the toast stack suppresses startup replay so you don&rsquo;t get a wall of history. If
+        the connection drops, the status dot goes amber and the dashboard reconnects with
         exponential backoff.
       </p>
 
@@ -161,12 +165,17 @@ openpact dashboard             # open the dashboard URL in your default browser`
           auto-executes.
         </li>
         <li>
-          <strong>Promote a peer to writer</strong> (<code>POST /admin/promote</code>). Creator
+          <strong>Promote a member to indexer</strong> (<code>POST /admin/promote</code>). Creator
           only. Issues an <code>admin</code> entry that every indexer verifies.
         </li>
         <li>
-          <strong>Remove a writer</strong> (<code>POST /admin/remove</code>). Creator only. Revokes
+          <strong>Remove a member</strong> (<code>POST /admin/remove</code>). Creator only. Revokes
           append permission going forward; past entries remain in the log.
+        </li>
+        <li>
+          <strong>Revoke an unspent invite</strong> (<code>DELETE /invites/:nonce</code>). Creator
+          only. Prints an alert card in the InviteDialog, then writes a revocation that every
+          indexer honours at redemption time.
         </li>
       </ul>
       <p>

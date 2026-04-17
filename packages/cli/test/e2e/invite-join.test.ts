@@ -81,7 +81,7 @@ test('join: auto-starts the daemon when none is running', async (t) => {
     '2',
   ])
 
-  // Redeem will fail (no peers), so exit code is non-zero. What we're
+  // Redeem will fail (no agents), so exit code is non-zero. What we're
   // checking is that the daemon started anyway, not that the redeem
   // succeeded.
   const pid = await readPidFile(home)
@@ -101,9 +101,9 @@ test('join: auto-starts the daemon when none is running', async (t) => {
       res.stderr.toLowerCase().includes('daemon not running'),
     'surfaces that auto-start happened',
   )
-  // The redeem attempt hits the "no indexer peer" path after the short timeout.
+  // The redeem attempt hits the "no indexer agent" path after the short timeout.
   t.ok(
-    res.stderr.toLowerCase().includes('indexer') || res.stderr.toLowerCase().includes('peer'),
+    res.stderr.toLowerCase().includes('indexer') || res.stderr.toLowerCase().includes('agent'),
     'proceeds past auto-start into the join flow',
   )
 })

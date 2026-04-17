@@ -8,7 +8,7 @@ import { adminResource } from './resources/admin'
 import { entriesResource } from './resources/entries'
 import { pactsResource } from './resources/pacts'
 import { invitesResource } from './resources/invites'
-import type { StatusPayload, PeerPayload } from './types'
+import type { StatusPayload, AgentPayload } from './types'
 
 /**
  * Top-level client. One instance is scoped to one pact — pass
@@ -53,14 +53,14 @@ export class OpenPact {
     return this._status.get()
   }
 
-  /** Host-level summary — current pact, total peer + pact counts. */
+  /** Host-level summary — current pact, total agent + pact counts. */
   hostStatus(): Promise<HostStatus> {
     return this._status.host()
   }
 
-  /** Currently connected peers for this pact. */
-  peers(): Promise<PeerPayload[]> {
-    return this._status.peers()
+  /** Currently connected agents for this pact. */
+  agents(): Promise<AgentPayload[]> {
+    return this._status.agents()
   }
 
   /** Base URL the client is talking to (useful for diagnostics). */
@@ -89,7 +89,7 @@ export type {
   ListPage,
   MessageEntry,
   MessagePayload,
-  PeerPayload,
+  AgentPayload,
   SkillEntry,
   SkillFormat,
   SkillPayload,

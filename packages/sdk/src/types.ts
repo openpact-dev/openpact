@@ -108,15 +108,15 @@ export interface StatusPayload {
   display_name: string | null
   role: string | null
   public_key: string | null
-  /** Count of currently online remote peers for this pact only. Excludes self. */
-  peers: number
+  /** Count of currently online remote agents for this pact only. Excludes self. */
+  agents: number
   entries: number
   is_member: boolean
   is_indexer: boolean
   synced: boolean
 }
 
-export interface PeerPayload {
+export interface AgentPayload {
   id: string
   remote_key: string
   online: boolean

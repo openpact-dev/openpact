@@ -60,10 +60,10 @@ export const ERROR_CODES = {
   INVITE_NOT_INDEXER: 'INVITE_NOT_INDEXER',
   INVITE_EXPIRED: 'INVITE_EXPIRED',
 
-  /** Fan-out redeem could not find a live, indexer-capable peer. */
-  NO_PEERS: 'NO_PEERS',
+  /** Fan-out redeem could not find a live, indexer-capable agent. */
+  NO_AGENTS: 'NO_AGENTS',
   NO_INDEXER_REACHABLE: 'NO_INDEXER_REACHABLE',
-  PEER_DISCONNECTED: 'PEER_DISCONNECTED',
+  AGENT_DISCONNECTED: 'AGENT_DISCONNECTED',
 
   /** Autobase view didn't catch up within waitForView's window. */
   VIEW_TIMEOUT: 'VIEW_TIMEOUT',
