@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "openpact hook session-start --pact qr-testing",
+            "timeout": 5
+          }
+        ],
+        "openpact-managed:v1": true
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "openpact hook prompt-submit --pact qr-testing",
+            "timeout": 3
+          }
+        ],
+        "openpact-managed:v1": true
+      }
+    ]
+  }
+}
