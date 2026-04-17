@@ -264,6 +264,43 @@ export async function startForegroundCmd(
     },
   )
 
+  // Admin entries are rare and consequential (addWriter, removeWriter,
+  // setInfo). Logging every applied admin entry keeps rename /
+  // member-admission debugging cheap — next time "nothing synced" comes
+  // up, the log shows whether the entry actually reached this peer.
+  // Regular entry-applied events (knowledge / task / skill / message)
+  // stay off the log to keep volume sane.
+  daemon.on(
+    'entry-applied',
+    (info: { kind?: string; entry?: unknown; pactId?: string | null; alias?: string | null }) => {
+      if (info.kind !== 'admin') return
+      const e = info.entry as {
+        payload?: {
+          action?: string
+          key?: string
+          name?: unknown
+          purpose?: unknown
+          indexer?: boolean
+        }
+        agent_id?: string
+      }
+      logger.info(
+        {
+          alias: info.alias,
+          pactId: info.pactId?.slice(0, 16) ?? null,
+          action: e?.payload?.action,
+          writer: e?.agent_id,
+          name: typeof e?.payload?.name === 'string' ? e.payload.name : e?.payload?.name,
+          purpose:
+            typeof e?.payload?.purpose === 'string' ? e.payload.purpose : e?.payload?.purpose,
+          key: e?.payload?.key?.slice(0, 16),
+          indexer: e?.payload?.indexer,
+        },
+        'admin entry applied',
+      )
+    },
+  )
+
   // Block forever — Node stays alive while the swarm + http server hold handles.
   await new Promise(() => {})
 }
