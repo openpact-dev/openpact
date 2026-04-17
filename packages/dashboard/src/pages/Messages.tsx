@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSharedSse } from '../hooks/useSse'
+import { useTraceDialog } from '../hooks/useTraceDialog'
 import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
 import { relTime, preferredName } from '../lib/format'
@@ -439,6 +440,7 @@ function DispatchRow({
   // Orphan reply: row has a refs[0] but its parent isn't in this page.
   // Surface a dim "↰ in reply to #id" hint so the relationship isn't lost.
   const orphanParent = !threaded && msg.refs && msg.refs[0] ? msg.refs[0] : null
+  const dialog = useTraceDialog()
 
   return (
     <>
@@ -456,13 +458,14 @@ function DispatchRow({
           {/* Left column: postmark (id + time). Monospaced, hushed. */}
           <div class="flex flex-col gap-1 pt-0.5">
             {msg.id ? (
-              <a
-                href={`/trace/${msg.id}`}
-                class="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink2)] transition-colors hover:text-[var(--color-ember)]"
+              <button
+                type="button"
+                onClick={() => dialog.open(msg.id!)}
+                class="text-left font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink2)] transition-colors hover:text-[var(--color-ember)]"
                 title="View entry trace"
               >
                 #{msg.id}
-              </a>
+              </button>
             ) : (
               <span class="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-ink3)]">
                 —
@@ -491,13 +494,14 @@ function DispatchRow({
                 </span>
               ) : null}
               {orphanParent ? (
-                <a
-                  href={`/trace/${orphanParent}`}
+                <button
+                  type="button"
+                  onClick={() => dialog.open(orphanParent)}
                   class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)] transition-colors hover:text-[var(--color-ember)]"
                   title={`Reply to entry ${orphanParent} not in this page`}
                 >
                   ↰ reply to #{orphanParent}
-                </a>
+                </button>
               ) : null}
               {msg.id ? (
                 <button

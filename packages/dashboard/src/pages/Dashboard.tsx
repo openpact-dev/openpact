@@ -2,6 +2,7 @@ import { useMemo, useState } from 'preact/hooks'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSharedSse } from '../hooks/useSse'
+import { useAgentNames } from '../hooks/useAgentNames'
 import { MetricCard } from '../components/MetricCard'
 import { Panel } from '../components/Panel'
 import { ActivityFeed } from '../components/ActivityFeed'
@@ -23,6 +24,7 @@ export function Dashboard() {
 function DashboardPage() {
   const pact = usePact()
   const sse = useSharedSse()
+  const { nameFor } = useAgentNames()
   const trigger = eventSeqForPact(sse.last, pact.pactId, [
     'entry-applied',
     'member-online',
@@ -56,11 +58,18 @@ function DashboardPage() {
     for (const e of knowledgeEntries) merged.push(e as Entry)
     for (const t of taskEntries) {
       const last = (t as any).history?.[(t as any).history.length - 1]
+      // History entries carry the author's display_name from write time
+      // (apply.ts stores it). Fall through to the live roster lookup so
+      // a renamed peer still displays correctly on the Dashboard feed.
+      const authorHandle = (last?.agent_id as string | undefined) ?? ''
+      const displayName =
+        (last?.display_name as string | null | undefined) ?? nameFor(authorHandle) ?? null
       merged.push({
         id: (t as any).id,
         type: 'task',
         timestamp: last?.timestamp ?? '',
-        agent_id: last?.agent_id ?? '',
+        agent_id: authorHandle,
+        display_name: displayName || null,
         payload: { title: (t as any).title, status: (t as any).status },
       })
     }
@@ -69,7 +78,7 @@ function DashboardPage() {
       .filter((e) => e.timestamp)
       .sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1))
       .slice(0, 5)
-  }, [knowledgeEntries, taskEntries, messageEntries])
+  }, [knowledgeEntries, taskEntries, messageEntries, nameFor])
 
   const agentCount = agents.data?.length ?? 0
   const onlineAgentList = (agents.data ?? []).filter((a: any) => a.online)
@@ -162,7 +171,7 @@ function DashboardPage() {
         ) : (
           <div class="divide-y-[0.5px] divide-[var(--color-line)]">
             {openTasks.map((t: any, i: number) => (
-              <TaskRow key={t.id} task={t} index={i} />
+              <TaskRow key={t.id} task={t} index={i} nameFor={nameFor} />
             ))}
           </div>
         )}
@@ -213,7 +222,15 @@ function AgentRow({ agent }: { agent: any }) {
   )
 }
 
-function TaskRow({ task, index }: { task: any; index: number }) {
+function TaskRow({
+  task,
+  index,
+  nameFor,
+}: {
+  task: any
+  index: number
+  nameFor: (handle: string | null | undefined) => string
+}) {
   return (
     <div
       class="animate-etch flex items-start gap-3 px-5 py-2.5"
@@ -226,8 +243,15 @@ function TaskRow({ task, index }: { task: any; index: number }) {
           {task.claimed_by ? (
             <>
               Claimed by{' '}
-              <span class="font-mono text-[var(--color-ember)]">
-                {shortHandle(task.claimed_by)}
+              <span class="font-mono text-[var(--color-ember)]" title={task.claimed_by}>
+                {nameFor(task.claimed_by)}
+              </span>
+            </>
+          ) : task.assigned_to ? (
+            <>
+              Reserved for{' '}
+              <span class="font-mono text-[var(--color-ink2)]" title={task.assigned_to}>
+                {nameFor(task.assigned_to)}
               </span>
             </>
           ) : (

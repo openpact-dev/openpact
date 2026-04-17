@@ -21,6 +21,8 @@ import { DashboardConnectionProvider, useDashboardConnection } from './hooks/use
 import { SseProvider } from './hooks/useSse'
 import { useTheme } from './hooks/useTheme'
 import { useActivityToasts } from './hooks/useActivityToasts'
+import { TraceDialogProvider } from './hooks/useTraceDialog'
+import { TraceDialog } from './components/TraceDialog'
 
 function NotFound() {
   return (
@@ -40,7 +42,9 @@ export function App() {
   return (
     <SseProvider>
       <DashboardConnectionProvider>
-        <AppShell />
+        <TraceDialogProvider>
+          <AppShell />
+        </TraceDialogProvider>
       </DashboardConnectionProvider>
     </SseProvider>
   )
@@ -94,6 +98,7 @@ function AppShell() {
         </main>
       </div>
       <ActivityBridge />
+      <TraceDialog />
       <ThemedToaster />
     </PactContext.Provider>
   )

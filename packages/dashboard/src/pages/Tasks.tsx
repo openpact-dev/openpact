@@ -1,12 +1,12 @@
 import { useMemo } from 'preact/hooks'
-import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
 import { useSharedSse } from '../hooks/useSse'
+import { useAgentNames } from '../hooks/useAgentNames'
+import { useTraceDialog } from '../hooks/useTraceDialog'
 import { Sigil } from '../components/Sigil'
 import { PactlessState } from '../components/PactlessState'
 import { eventSeqForPact } from '../lib/events'
-import { shortHandle } from '../lib/format'
 
 type TaskStatus = 'open' | 'claimed' | 'complete'
 
@@ -49,6 +49,7 @@ function TasksPage() {
   const pact = usePact()
   const sse = useSharedSse()
   const trigger = eventSeqForPact(sse.last, pact.pactId, ['entry-applied', 'update'])
+  const { nameFor } = useAgentNames()
 
   const tasks = useQuery(() => pact.tasks.list({ limit: 500 }), {
     key: `tasks:all:${pact.pactId}`,
@@ -100,7 +101,9 @@ function TasksPage() {
                 {grouped[col.key].length === 0 ? (
                   <div class="px-2 py-4 text-[13px] text-[var(--color-ink3)]">None.</div>
                 ) : (
-                  grouped[col.key].map((t, i) => <TaskCard key={t.id} task={t} index={i} />)
+                  grouped[col.key].map((t, i) => (
+                    <TaskCard key={t.id} task={t} index={i} nameFor={nameFor} />
+                  ))
                 )}
               </div>
             </div>
@@ -111,11 +114,20 @@ function TasksPage() {
   )
 }
 
-function TaskCard({ task, index }: { task: TaskRow; index: number }) {
+function TaskCard({
+  task,
+  index,
+  nameFor,
+}: {
+  task: TaskRow
+  index: number
+  nameFor: (handle: string | null | undefined) => string
+}) {
+  const dialog = useTraceDialog()
   return (
     <button
       type="button"
-      onClick={() => route(`/trace/${task.id}`)}
+      onClick={() => dialog.open(task.id)}
       class="group animate-etch block border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/40 p-3 text-left transition-colors hover:border-[var(--color-ember)]/50 hover:bg-[var(--color-mist)]/30"
       style={{ animationDelay: `${index * 25}ms` }}
       data-testid="task-card"
@@ -126,10 +138,12 @@ function TaskCard({ task, index }: { task: TaskRow; index: number }) {
           <div class="text-[14px] leading-[1.4] text-[var(--color-ink)]">{task.title}</div>
           <div class="mt-1.5 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
             {task.claimed_by ? (
-              <span class="text-[var(--color-ember)]">{shortHandle(task.claimed_by)}</span>
+              <span class="text-[var(--color-ember)]" title={task.claimed_by}>
+                {nameFor(task.claimed_by)}
+              </span>
             ) : task.assigned_to ? (
               <span class="text-[var(--color-ink2)]" title={`Reserved for ${task.assigned_to}`}>
-                → {shortHandle(task.assigned_to)}
+                → {nameFor(task.assigned_to)}
               </span>
             ) : (
               <span>Unclaimed</span>

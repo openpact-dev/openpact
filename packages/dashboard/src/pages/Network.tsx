@@ -167,13 +167,23 @@ function NetworkPage({
                   onPromote={() =>
                     setPending({
                       kind: 'promote',
-                      agent: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                      agent: {
+                        id: r.handle,
+                        remote_key: r.publicKey ?? undefined,
+                        role: r.role,
+                        display_name: r.displayName,
+                      },
                     })
                   }
                   onRemove={() =>
                     setPending({
                       kind: 'remove',
-                      agent: { id: r.handle, remote_key: r.publicKey ?? undefined, role: r.role },
+                      agent: {
+                        id: r.handle,
+                        remote_key: r.publicKey ?? undefined,
+                        role: r.role,
+                        display_name: r.displayName,
+                      },
                     })
                   }
                 />
@@ -228,9 +238,9 @@ function NetworkPage({
         title={pending?.kind === 'promote' ? 'Promote to indexer?' : 'Remove this agent?'}
         description={
           pending?.kind === 'promote'
-            ? `${shortHandle(pending.agent.id ?? pending.agent.remote_key ?? '')} will be allowed to confirm the frontier. They can be demoted again later.`
+            ? `${agentLabelFor(pending.agent)} will be allowed to confirm the frontier. They can be demoted again later.`
             : pending
-              ? `${shortHandle(pending.agent.id ?? pending.agent.remote_key ?? '')} will lose future pact access. Existing entries remain in the ledger.`
+              ? `${agentLabelFor(pending.agent)} will lose future pact access. Existing entries remain in the ledger.`
               : ''
         }
         confirmLabel={pending?.kind === 'promote' ? 'Promote' : 'Remove'}
@@ -247,10 +257,10 @@ function NetworkPage({
           if (!key) throw new Error('No remote key for this agent')
           if (pending.kind === 'promote') {
             await pact.admin.promoteToIndexer(key)
-            setToast(`Promoted ${shortHandle(pending.agent.id ?? key)}.`)
+            setToast(`Promoted ${agentLabelFor(pending.agent)}.`)
           } else {
             await pact.admin.removeMemberAsCreator(key)
-            setToast(`Removed ${shortHandle(pending.agent.id ?? key)}.`)
+            setToast(`Removed ${agentLabelFor(pending.agent)}.`)
           }
           setPending(null)
           agents.refetch()
@@ -271,6 +281,17 @@ function NetworkPage({
 }
 
 /* -------------------------------- rows --------------------------------- */
+
+/**
+ * Label a peer for confirm-dialog copy. Prefers the chosen display
+ * name, falls back to the shortened canonical handle so the dialog
+ * never shows a half-rendered `anon-…` fragment out of context.
+ */
+function agentLabelFor(agent: AgentRow): string {
+  const name = agent.display_name
+  if (typeof name === 'string' && name.trim() !== '') return name
+  return shortHandle(agent.id ?? agent.remote_key ?? '')
+}
 
 function AgentRowView({
   row,

@@ -1,56 +1,59 @@
+import { useEffect } from 'preact/hooks'
 import { route } from 'preact-router'
 import { usePact } from '../hooks/usePact'
 import { useQuery } from '../hooks/useQuery'
+import { useTraceDialog } from '../hooks/useTraceDialog'
 import { Sigil, type SigilKind } from '../components/Sigil'
-import { PactlessState } from '../components/PactlessState'
 import { relTime, preferredName } from '../lib/format'
 
+/**
+ * Route-level component for `/trace/:id`. This only exists to service
+ * deep links and bookmarks; in-app navigation uses the ambient dialog
+ * directly (`useTraceDialog().open(id)`) so the previous page stays
+ * visible behind the modal.
+ *
+ * Behaviour: fire `open(id)` once on mount, then `route('/', true)`
+ * so the underlying page becomes the Dashboard. Without the redirect
+ * the page behind the modal would be this empty route stub.
+ */
 export function Trace({ id }: { id?: string }) {
-  const pact = usePact()
-  if (!pact.pactId) {
-    return (
-      <PactlessState
-        page="Trace"
-        action="Entry traces come from a pact's ledger. Open a pact to explore its entries."
-      />
-    )
-  }
-  return <TracePage id={id} />
+  const dialog = useTraceDialog()
+  useEffect(() => {
+    if (id) {
+      dialog.open(id)
+      route('/', true)
+    }
+    // Effect intentionally runs once per id change; redirect cleans
+    // up the history entry so the back button lands on the previous
+    // page rather than cycling between /trace/:id and /.
+  }, [id, dialog])
+  return null
 }
 
-function TracePage({ id }: { id?: string }) {
+/**
+ * Body of the trace view — everything except the outer shell. Used by
+ * `<TraceDialog>` to fill the modal and kept as a standalone export so
+ * a future page-level embed (e.g. an admin trace tab) can reuse it.
+ */
+export function TraceView({ id }: { id: string }) {
   const pact = usePact()
-  const entry = useQuery(() => pact.entries.get(id ?? ''), { key: `trace:${pact.pactId}:${id}` })
-  const refs = useQuery(() => pact.entries.referencedBy(id ?? ''), {
+  const entry = useQuery(() => pact.entries.get(id), { key: `trace:${pact.pactId}:${id}` })
+  const refs = useQuery(() => pact.entries.referencedBy(id), {
     key: `refs:${pact.pactId}:${id}`,
   })
 
-  if (!id) {
-    return (
-      <section class="mx-auto max-w-[720px] pt-12 text-center">
-        <p class="text-[14px] text-[var(--color-ink2)]">No entry ID given.</p>
-      </section>
-    )
-  }
-
   if (entry.loading) {
-    return (
-      <section class="mx-auto max-w-[920px]">
-        <p class="px-1 py-6 text-[13px] text-[var(--color-ink3)]">Loading…</p>
-      </section>
-    )
+    return <p class="px-1 py-6 text-[13px] text-[var(--color-ink3)]">Loading…</p>
   }
 
   if (entry.error) {
     return (
-      <section class="mx-auto max-w-[920px]" data-testid="page-trace">
-        <header class="mb-6 border-b-[0.5px] border-[var(--color-line)] pb-4">
-          <h1 class="font-display text-[24px] font-light text-[var(--color-ink)]">Entry trace</h1>
-        </header>
-        <p class="text-[13px] text-[var(--color-ember)]">
+      <div data-testid="trace-error">
+        <h1 class="font-display text-[22px] font-light text-[var(--color-ink)]">Entry trace</h1>
+        <p class="mt-3 text-[13px] text-[var(--color-ember)]">
           Couldn't load this entry: {entry.error.message}
         </p>
-      </section>
+      </div>
     )
   }
 
@@ -58,9 +61,10 @@ function TracePage({ id }: { id?: string }) {
   const type = (e?.type ?? 'message') as SigilKind
   const payload = e?.payload ?? {}
   const isTask = type === 'task'
+  const dialog = useTraceDialog()
 
   return (
-    <section data-testid="page-trace" class="mx-auto max-w-[920px]">
+    <div data-testid="trace-view">
       <header class="mb-6 flex items-end justify-between gap-6 border-b-[0.5px] border-[var(--color-line)] pb-4">
         <div class="flex items-center gap-3">
           <Sigil kind={type} size={20} bordered />
@@ -68,7 +72,7 @@ function TracePage({ id }: { id?: string }) {
             <div class="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-ink3)]">
               {type}
             </div>
-            <h1 class="font-display text-[24px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
+            <h1 class="font-display text-[22px] font-light leading-none tracking-[-0.01em] text-[var(--color-ink)]">
               {summaryTitle(type, payload) ?? id}
             </h1>
           </div>
@@ -109,7 +113,7 @@ function TracePage({ id }: { id?: string }) {
                   <button
                     type="button"
                     key={r}
-                    onClick={() => route(`/trace/${r}`)}
+                    onClick={() => dialog.open(r)}
                     class="font-mono text-[11px] text-[var(--color-ember)] hover:underline"
                   >
                     {r}
@@ -140,7 +144,7 @@ function TracePage({ id }: { id?: string }) {
               <button
                 type="button"
                 key={r.id}
-                onClick={() => route(`/trace/${r.id}`)}
+                onClick={() => dialog.open(r.id)}
                 class="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--color-mist)]/30"
               >
                 <Sigil kind={r.type} size={12} bordered />
@@ -156,7 +160,7 @@ function TracePage({ id }: { id?: string }) {
           </div>
         )}
       </section>
-    </section>
+    </div>
   )
 }
 

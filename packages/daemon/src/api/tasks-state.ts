@@ -7,6 +7,13 @@ export interface TaskEntry {
   type: 'task'
   timestamp: string
   agent_id: string
+  /**
+   * Author display name at the time of writing. `apply.ts` persists
+   * this alongside the canonical `agent_id` so downstream consumers
+   * (dashboard task timeline, Claude's task history dump) can show a
+   * friendlier name without a separate roster lookup.
+   */
+  display_name?: string | null
   refs?: string[]
   payload: {
     title: string

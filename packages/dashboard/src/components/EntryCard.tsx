@@ -1,5 +1,5 @@
-import { route } from 'preact-router'
 import { Sigil, type SigilKind } from './Sigil'
+import { useTraceDialog } from '../hooks/useTraceDialog'
 import { relTime, preferredName } from '../lib/format'
 
 export interface Entry {
@@ -44,10 +44,11 @@ function summary(entry: Entry): string {
  * prose. Reads top-to-bottom like a logbook page.
  */
 export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) {
+  const dialog = useTraceDialog()
   return (
     <button
       type="button"
-      onClick={() => route(`/trace/${entry.id}`)}
+      onClick={() => dialog.open(entry.id)}
       class="group animate-etch grid w-full grid-cols-[78px_1px_1fr] items-stretch gap-0 px-5 py-2.5 text-left transition-colors hover:bg-[var(--color-mist)]/40"
       style={{ animationDelay: `${index * 35}ms` }}
       data-testid="entry-card"
@@ -92,10 +93,11 @@ export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) 
  * with topic eyebrow + body + provenance line.
  */
 export function EntryCard({ entry, index = 0 }: { entry: Entry; index?: number }) {
+  const dialog = useTraceDialog()
   return (
     <button
       type="button"
-      onClick={() => route(`/trace/${entry.id}`)}
+      onClick={() => dialog.open(entry.id)}
       class="group animate-etch relative flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--color-mist)]/30"
       style={{ animationDelay: `${index * 30}ms` }}
       data-testid="entry-card"
