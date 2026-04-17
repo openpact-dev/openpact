@@ -23,6 +23,12 @@ interface MessageRow {
   timestamp: string
   agent_id: string
   display_name?: string | null
+  /**
+   * When set, this message replies to `refs[0]`. The daemon hoists
+   * the `reply_to` POST-body field onto `refs`; the dashboard groups
+   * replies under their parent in Roster.
+   */
+  refs?: string[]
   payload: {
     content: string
     priority?: 'low' | 'normal' | 'high'
@@ -81,6 +87,9 @@ function MessagesPage() {
   const topIdRef = useRef<string | null>(null)
   const [atTop, setAtTop] = useState(true)
   const [unread, setUnread] = useState(0)
+  // Replying threads a new dispatch under an existing one. Cleared
+  // after send or via the pill's × button.
+  const [replyingTo, setReplyingTo] = useState<MessageRow | null>(null)
 
   const onScroll = () => {
     const el = scrollRef.current
@@ -128,9 +137,12 @@ function MessagesPage() {
       </header>
 
       <Composer
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
         onSent={() => {
           setAtTop(true)
           setUnread(0)
+          setReplyingTo(null)
           messages.refetch()
         }}
       />
@@ -152,7 +164,7 @@ function MessagesPage() {
           ) : rows.length === 0 ? (
             <EmptyState />
           ) : (
-            <Roster rows={rows} selfHandle={selfHandle} />
+            <Roster rows={rows} selfHandle={selfHandle} onReply={(msg) => setReplyingTo(msg)} />
           )}
 
           {unread > 0 ? (
@@ -173,7 +185,15 @@ function MessagesPage() {
 
 /* ------------------------------ composer ------------------------------- */
 
-function Composer({ onSent }: { onSent: () => void }) {
+function Composer({
+  onSent,
+  replyingTo,
+  onCancelReply,
+}: {
+  onSent: () => void
+  replyingTo: MessageRow | null
+  onCancelReply: () => void
+}) {
   const pact = usePact()
   const [content, setContent] = useState('')
   const [sending, setSending] = useState(false)
@@ -183,12 +203,21 @@ function Composer({ onSent }: { onSent: () => void }) {
   const trimmed = content.trim()
   const canSend = trimmed.length > 0 && trimmed.length <= CHAR_MAX && !sending
 
+  // When replyingTo is set, focus the textarea so the user can type
+  // immediately after clicking Reply on a dispatch.
+  useEffect(() => {
+    if (replyingTo?.id) taRef.current?.focus()
+  }, [replyingTo?.id])
+
   const send = async () => {
     if (!canSend) return
     setSending(true)
     setError(null)
     try {
-      await pact.messages.send({ content: trimmed })
+      await pact.messages.send({
+        content: trimmed,
+        ...(replyingTo?.id ? { reply_to: replyingTo.id } : {}),
+      })
       setContent('')
       onSent()
       taRef.current?.focus()
@@ -217,16 +246,40 @@ function Composer({ onSent }: { onSent: () => void }) {
     <div class="relative" data-testid="message-composer">
       {/* "New dispatch" eyebrow floating on the top border of the card. */}
       <span class="absolute left-4 top-0 -translate-y-1/2 bg-[var(--color-paper)] px-2 font-mono text-[9px] uppercase tracking-[0.28em] text-[var(--color-ember)]">
-        New dispatch
+        {replyingTo ? 'Reply' : 'New dispatch'}
       </span>
 
       <div class="border-[0.5px] border-[var(--color-line)] bg-[var(--color-paper)]/60">
+        {replyingTo ? (
+          <div
+            class="flex items-center gap-2 border-b-[0.5px] border-[var(--color-line)] bg-[var(--color-mist)]/20 px-4 py-2 font-mono text-[11px] text-[var(--color-ink2)]"
+            data-testid="composer-reply-target"
+          >
+            <span class="uppercase tracking-[0.18em] text-[var(--color-ink3)]">↪ Replying to</span>
+            <span class="text-[var(--color-ember)]">#{replyingTo.id}</span>
+            <span class="truncate italic text-[var(--color-ink3)]">
+              “{replyingTo.payload.content.slice(0, 80)}
+              {replyingTo.payload.content.length > 80 ? '…' : ''}”
+            </span>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              class="ml-auto font-mono text-[11px] text-[var(--color-ink3)] hover:text-[var(--color-ember)]"
+              title="Cancel reply"
+              data-testid="composer-cancel-reply"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
         <textarea
           ref={taRef as any}
           value={content}
           onInput={(e) => setContent((e.target as HTMLTextAreaElement).value)}
           onKeyDown={handleKey as any}
-          placeholder="Broadcast to every agent in this pact…"
+          placeholder={
+            replyingTo ? `Reply to #${replyingTo.id}…` : 'Broadcast to every agent in this pact…'
+          }
           rows={2}
           data-testid="message-textarea"
           class="block w-full resize-none border-0 bg-transparent px-4 py-3 font-display text-[15px] leading-[1.55] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink3)]"
@@ -264,24 +317,105 @@ function Composer({ onSent }: { onSent: () => void }) {
 
 /* ------------------------------- roster -------------------------------- */
 
-function Roster({ rows, selfHandle }: { rows: MessageRow[]; selfHandle: string }) {
-  // Insert day dividers between dispatches that cross midnight.
+function Roster({
+  rows,
+  selfHandle,
+  onReply,
+}: {
+  rows: MessageRow[]
+  selfHandle: string
+  onReply: (msg: MessageRow) => void
+}) {
+  // Thread grouping:
+  //   rootOrder keeps the top-level (newest-first) sequence from `rows`.
+  //   childrenOf[parentId] holds replies in chronological order (oldest
+  //   first) so a conversation reads naturally under the parent.
+  // A reply whose parent isn't in this page falls back to being rendered
+  // as a top-level row with a dim "↰ reply to <id>" hint; it otherwise
+  // stays in the newest-first stream so you don't lose the reply itself.
+  const ids = useMemo(() => new Set(rows.map((r) => r.id).filter(Boolean) as string[]), [rows])
+  const { rootOrder, childrenOf } = useMemo(() => {
+    const childrenOf = new Map<string, MessageRow[]>()
+    const rootOrder: MessageRow[] = []
+    for (const m of rows) {
+      const parent = m.refs?.[0]
+      if (parent && ids.has(parent)) {
+        const bucket = childrenOf.get(parent) ?? []
+        bucket.push(m)
+        childrenOf.set(parent, bucket)
+      } else {
+        rootOrder.push(m)
+      }
+    }
+    // Sort each thread oldest-first (chronological) — readable order for
+    // back-and-forth even though the outer stream stays newest-first.
+    for (const kids of childrenOf.values()) {
+      kids.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    }
+    return { rootOrder, childrenOf }
+  }, [rows, ids])
+
   return (
     <ol class="divide-y-[0.5px] divide-[var(--color-line)]" data-testid="message-list">
-      {rows.map((m, i) => {
-        const prev = rows[i - 1] // previous = more recent (newer) when newest-first
+      {rootOrder.map((m, i) => {
+        const prev = rootOrder[i - 1]
         const dayBreak = !prev || !sameDay(prev.timestamp, m.timestamp)
+        const replies = m.id ? childrenOf.get(m.id) : undefined
         return (
-          <DispatchRow
+          <DispatchGroup
             key={m.id ?? `${m.timestamp}-${i}`}
             msg={m}
             index={i}
             isSelf={m.agent_id === selfHandle}
             dayBreak={dayBreak}
+            replies={replies}
+            selfHandle={selfHandle}
+            onReply={onReply}
           />
         )
       })}
     </ol>
+  )
+}
+
+function DispatchGroup({
+  msg,
+  index,
+  isSelf,
+  dayBreak,
+  replies,
+  selfHandle,
+  onReply,
+}: {
+  msg: MessageRow
+  index: number
+  isSelf: boolean
+  dayBreak: boolean
+  replies: MessageRow[] | undefined
+  selfHandle: string
+  onReply: (msg: MessageRow) => void
+}) {
+  return (
+    <>
+      <DispatchRow msg={msg} index={index} isSelf={isSelf} dayBreak={dayBreak} onReply={onReply} />
+      {replies && replies.length > 0 ? (
+        <li class="list-none" data-testid="thread-replies">
+          <ol class="ml-10 border-l-[0.5px] border-[var(--color-line)] pl-5">
+            {replies.map((reply, j) => (
+              <DispatchRow
+                key={reply.id ?? `${reply.timestamp}-${j}`}
+                msg={reply}
+                index={j}
+                isSelf={reply.agent_id === selfHandle}
+                dayBreak={false}
+                onReply={onReply}
+                threaded
+              />
+            ))}
+          </ol>
+        </li>
+      ) : null}
+    </>
   )
 }
 
@@ -290,13 +424,21 @@ function DispatchRow({
   index,
   isSelf,
   dayBreak,
+  onReply,
+  threaded = false,
 }: {
   msg: MessageRow
   index: number
   isSelf: boolean
   dayBreak: boolean
+  onReply: (msg: MessageRow) => void
+  /** Row is nested under a parent — tighter left column, no self rail. */
+  threaded?: boolean
 }) {
   const author = preferredName({ agent_id: msg.agent_id, display_name: msg.display_name })
+  // Orphan reply: row has a refs[0] but its parent isn't in this page.
+  // Surface a dim "↰ in reply to #id" hint so the relationship isn't lost.
+  const orphanParent = !threaded && msg.refs && msg.refs[0] ? msg.refs[0] : null
 
   return (
     <>
@@ -304,12 +446,12 @@ function DispatchRow({
       <li
         class="animate-etch"
         style={{ animationDelay: `${Math.min(index * 18, 420)}ms` }}
-        data-testid="dispatch"
+        data-testid={threaded ? 'dispatch-reply' : 'dispatch'}
       >
         <article
-          class={`grid gap-5 py-4 md:grid-cols-[120px_1fr] ${
-            isSelf ? 'border-l-2 border-l-[var(--color-ember)] pl-4' : 'pl-0'
-          }`}
+          class={`group grid gap-5 py-4 ${
+            threaded ? 'md:grid-cols-[88px_1fr]' : 'md:grid-cols-[120px_1fr]'
+          } ${isSelf && !threaded ? 'border-l-2 border-l-[var(--color-ember)] pl-4' : 'pl-0'}`}
         >
           {/* Left column: postmark (id + time). Monospaced, hushed. */}
           <div class="flex flex-col gap-1 pt-0.5">
@@ -347,6 +489,26 @@ function DispatchRow({
                 <span class="border-[0.5px] border-[var(--color-ember)] px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ember)]">
                   Self
                 </span>
+              ) : null}
+              {orphanParent ? (
+                <a
+                  href={`/trace/${orphanParent}`}
+                  class="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)] transition-colors hover:text-[var(--color-ember)]"
+                  title={`Reply to entry ${orphanParent} not in this page`}
+                >
+                  ↰ reply to #{orphanParent}
+                </a>
+              ) : null}
+              {msg.id ? (
+                <button
+                  type="button"
+                  onClick={() => onReply(msg)}
+                  class="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)] opacity-0 transition hover:text-[var(--color-ember)] group-hover:opacity-100 focus:opacity-100"
+                  data-testid="dispatch-reply-button"
+                  title="Reply to this message"
+                >
+                  ↪ Reply
+                </button>
               ) : null}
             </header>
             <p class="whitespace-pre-wrap font-display text-[16px] leading-[1.55] text-[var(--color-ink)]">

@@ -7,6 +7,7 @@ import {
   TaskAlreadyCompleteError,
   NotClaimerError,
   NotClaimedError,
+  NotAssigneeError,
   NotFoundError,
 } from '@openpact/sdk'
 import type { TaskStatus, TaskState } from '@openpact/sdk'
@@ -21,6 +22,7 @@ interface BaseOpts {
 
 interface AddOpts extends BaseOpts {
   description?: string
+  assignTo?: string
 }
 
 interface CompleteOpts extends BaseOpts {
@@ -41,6 +43,10 @@ export function registerTaskCommand(parent: Command): void {
     .command('add <title>')
     .description('create a new task')
     .option('--description <text>', 'longer-form description of what needs doing')
+    .option(
+      '--assign-to <handle>',
+      'reserve the task for one peer handle (only that agent can claim)',
+    )
     .option('--pact <alias>', 'pact to write to (default: current pact)')
     .option('--port <n>', 'daemon port', '7666')
     .action((title: string, opts: AddOpts, cmd: CmdLike) => taskAdd(title, opts, cmd))
@@ -98,18 +104,29 @@ async function clientFor(opts: BaseOpts, cmd: CmdLike): Promise<OpenPact> {
   return new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir })
 }
 
+const PEER_HANDLE_RE = /^anon-[a-z]+-[0-9a-f]{8}$/
+
 async function taskAdd(title: string, opts: AddOpts, cmd: CmdLike): Promise<void> {
   const trimmed = typeof title === 'string' ? title.trim() : ''
   if (!trimmed) throw new Error('task title must not be empty')
+  if (opts.assignTo !== undefined && !PEER_HANDLE_RE.test(opts.assignTo)) {
+    throw new Error(
+      `--assign-to expects a peer handle like anon-rat-12345678; got ${JSON.stringify(
+        opts.assignTo,
+      )}`,
+    )
+  }
   const client = await clientFor(opts, cmd)
   try {
     const res = await client.tasks.create({
       title: trimmed,
       ...(opts.description ? { description: opts.description } : {}),
+      ...(opts.assignTo ? { assigned_to: opts.assignTo } : {}),
     })
     console.log(`  ${emoji.brand} ${c.brandBold('Task')} ${c.bone(res.id)} ${c.ash('created')}`)
     console.log(`  ${c.ash(res.timestamp)}`)
     console.log(`  ${c.ash(trimmed)}`)
+    if (opts.assignTo) console.log(`  ${c.ash(`assigned to ${opts.assignTo}`)}`)
   } catch (err) {
     handleDaemonError(err)
   }
@@ -129,6 +146,11 @@ async function taskClaim(id: string, opts: BaseOpts, cmd: CmdLike): Promise<void
     }
     if (err instanceof TaskAlreadyCompleteError) {
       console.error(`${emoji.cross} ${c.brand('Task is already complete.')}`)
+      process.exit(1)
+    }
+    if (err instanceof NotAssigneeError) {
+      console.error(`${emoji.cross} ${c.brand('Task is reserved for another peer.')}`)
+      console.error(`  ${c.ash((err as Error).message)}`)
       process.exit(1)
     }
     if (err instanceof NotFoundError) {

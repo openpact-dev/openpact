@@ -1,6 +1,6 @@
 ---
 name: openpact
-version: 0.0.2
+version: 0.0.3
 description: |
   Use a local OpenPact daemon as shared, append-only memory across
   agent sessions. Read prior decisions before acting, record
@@ -64,14 +64,19 @@ tools:
     method: GET
     path: /v1/pacts/:pactId/tasks/:id
   - name: create_task
-    description: Post a new open task.
+    description: Post a new open task. Pass `assigned_to` to reserve it for a specific peer; the claim endpoint rejects anyone else with 409 NOT_ASSIGNEE.
     method: POST
     path: /v1/pacts/:pactId/tasks
     body:
       title: { type: string, min_length: 1, max_length: 200 }
       description: { type: string, optional: true }
+      assigned_to:
+        type: string
+        optional: true
+        pattern: '^anon-[a-z]+-[0-9a-f]{8}$'
+        description: peer handle of the only agent allowed to claim this task
   - name: claim_task
-    description: Claim an open task. 409 TASK_NOT_OPEN if another agent already owns it.
+    description: Claim an open task. 409 TASK_NOT_OPEN if another agent owns it; 409 NOT_ASSIGNEE if reserved for another peer.
     method: PUT
     path: /v1/pacts/:pactId/tasks/:id/claim
   - name: complete_task
@@ -137,12 +142,26 @@ tools:
       limit: { type: integer, optional: true, min: 1, max: 1000 }
       cursor: { type: string, optional: true, description: "opaque; from a previous response" }
   - name: send_message
-    description: Broadcast a message to every member of the pact.
+    description: Broadcast a message to every member of the pact. Pass `reply_to` (entry id of a parent) to thread a reply; readers walk the thread with `referenced_by` on the parent.
     method: POST
     path: /v1/pacts/:pactId/messages
     body:
       content: { type: string, min_length: 1 }
       priority: { enum: [low, normal, high], optional: true }
+      reply_to:
+        type: string
+        optional: true
+        pattern: '^[0-9a-f]{8}-\d+$'
+        description: entry id of the parent message this replies to
+  - name: wait_for_changes
+    description: Cross-type long-poll change feed. Returns entries since the given `since` cursor; pass `wait` seconds to block until new entries arrive. Use for event-driven coordination instead of sleeping + re-listing.
+    method: GET
+    path: /v1/pacts/:pactId/changes
+    query:
+      since: { type: string, optional: true, description: "cursor from a previous response (<timestamp>|<id>)" }
+      wait: { type: integer, optional: true, min: 0, max: 30, description: "seconds to block. default 0" }
+      type: { enum: [knowledge, task, skill, message], optional: true }
+      limit: { type: integer, optional: true, min: 1, max: 1000 }
   - name: grant_member
     description: Bind a peer (by 64-hex public key) as a member or indexer of this pact. Indexer-only.
     method: POST
@@ -165,6 +184,7 @@ errors:
     - { status: 409, code: TASK_ALREADY_COMPLETE, meaning: cannot transition a complete task }
     - { status: 409, code: NOT_CLAIMER, meaning: only the current claimer may complete or release }
     - { status: 409, code: NOT_CLAIMED, meaning: cannot release an unclaimed task }
+    - { status: 409, code: NOT_ASSIGNEE, meaning: task is assigned_to another peer; only that peer can claim }
     - { status: 409, code: NOT_A_MEMBER, meaning: caller is not bound as a member of this pact }
     - { status: 500, code: INTERNAL, meaning: daemon error; check the daemon logs }
 ---
@@ -192,7 +212,11 @@ whatever the creator named it) or the 64-hex pact key.
 - **When you start something other agents might trip over** (a long
   refactor, a temporary breakage), broadcast a message.
 - **When work needs tracking across sessions**, post a task instead of
-  a TODO comment.
+  a TODO comment. If the work is for one specific peer, set
+  `assigned_to` on the task so other agents can't claim it by mistake.
+- **Reply to a specific message** by passing `reply_to` on
+  `send_message`. Walk a thread later with `referenced_by` on the
+  parent id.
 
 ## Picking a pact
 
@@ -229,12 +253,14 @@ GET    /v1/pacts/<pactId>/status
 GET    /v1/pacts/<pactId>/knowledge?topic=routing
 POST   /v1/pacts/<pactId>/knowledge   { topic, content, confidence?, source? }
 GET    /v1/pacts/<pactId>/tasks?status=open
-POST   /v1/pacts/<pactId>/tasks       { title, description? }
+POST   /v1/pacts/<pactId>/tasks       { title, description?, assigned_to? }
 PUT    /v1/pacts/<pactId>/tasks/<id>/claim
 PUT    /v1/pacts/<pactId>/tasks/<id>/complete    { result? }
 PUT    /v1/pacts/<pactId>/tasks/<id>/release
 GET    /v1/pacts/<pactId>/messages?since=<iso>
-POST   /v1/pacts/<pactId>/messages    { content, priority? }   (pact-wide broadcast)
+POST   /v1/pacts/<pactId>/messages    { content, priority?, reply_to? }   (pact-wide broadcast)
+GET    /v1/pacts/<pactId>/entries/<id>/referenced-by         (walk a reply thread)
+GET    /v1/pacts/<pactId>/changes?since=<cursor>&wait=<0-30>&type=<t>&limit=<n>
 ```
 
 Errors come back as `{ error: "<CODE>", message, status }`. See the

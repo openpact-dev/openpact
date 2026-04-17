@@ -190,6 +190,7 @@ export function buildProgram(): Command {
     .command('message <content>')
     .description('broadcast a short message to the current pact')
     .option('--priority <p>', 'low | normal | high')
+    .option('--reply-to <id>', 'thread this message under a parent entry id')
     .option('--pact <alias>', 'pact to write to (default: current pact)')
     .option('--port <n>', 'daemon port', '7666')
     .action(messageCmd)

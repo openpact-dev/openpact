@@ -21,3 +21,12 @@ test('send_message: forwards full payload', async (t) => {
   await handler({ content: 'hello', priority: 'normal' })
   t.alike(pact.messages.send.calls[0].args, [{ content: 'hello', priority: 'normal' }])
 })
+
+test('send_message: passes reply_to through for threaded replies', async (t) => {
+  const pact = fakePact()
+  pact.messages.send.resolveWith({ id: 'm-2', timestamp: 'T' })
+  const server = buildServer(pact as any)
+  const { handler } = getRegisteredTool(server, 'send_message')
+  await handler({ content: 'got it', reply_to: 'a7f2bcde-412' })
+  t.alike(pact.messages.send.calls[0].args, [{ content: 'got it', reply_to: 'a7f2bcde-412' }])
+})

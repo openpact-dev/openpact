@@ -33,6 +33,17 @@ test('create_task: posts body and prefixes a summary', async (t) => {
   t.ok(r.content[0].text.startsWith('Created task a-2 at T.'))
 })
 
+test('create_task: forwards assigned_to when reserving for a specific peer', async (t) => {
+  const pact = fakePact()
+  pact.tasks.create.resolveWith({ id: 'a-3', timestamp: 'T' })
+  const server = buildServer(pact as any)
+  const { handler } = getRegisteredTool(server, 'create_task')
+  await handler({ title: 'review PR', assigned_to: 'anon-rat-12345678' })
+  t.alike(pact.tasks.create.calls[0].args, [
+    { title: 'review PR', assigned_to: 'anon-rat-12345678' },
+  ])
+})
+
 test('claim_task: lost race surfaces TASK_NOT_OPEN', async (t) => {
   const pact = fakePact()
   pact.tasks.claim.rejectWith(new TaskNotOpenError('lost claim race'))

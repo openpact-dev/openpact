@@ -8,9 +8,11 @@ export interface MessageOpts {
   pact?: string
   port?: string | number
   priority?: string
+  replyTo?: string
 }
 
 const PRIORITIES = ['low', 'normal', 'high'] as const
+const ENTRY_ID_RE = /^[0-9a-f]{8}-\d+$/
 
 export async function messageCmd(
   content: string,
@@ -26,6 +28,11 @@ export async function messageCmd(
       throw new Error(`unknown priority: ${opts.priority}. Allowed: ${PRIORITIES.join(', ')}`)
     }
     priority = opts.priority as MessagePayload['priority']
+  }
+  if (opts.replyTo !== undefined && !ENTRY_ID_RE.test(opts.replyTo)) {
+    throw new Error(
+      `--reply-to expects an entry id like a7f2bcde-412; got ${JSON.stringify(opts.replyTo)}`,
+    )
   }
 
   const hostDir = resolveDataDir(cmd.optsWithGlobals())
@@ -44,9 +51,11 @@ export async function messageCmd(
   try {
     const payload: MessagePayload = { content: trimmed }
     if (priority) payload.priority = priority
+    if (opts.replyTo) payload.reply_to = opts.replyTo
     const res = await client.messages.send(payload)
     console.log(`  ${emoji.brand} ${c.brandBold('Broadcast')} ${c.ash(res.id)}`)
     console.log(`  ${c.ash(res.timestamp)}`)
+    if (opts.replyTo) console.log(`  ${c.ash(`in reply to ${opts.replyTo}`)}`)
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
       console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)

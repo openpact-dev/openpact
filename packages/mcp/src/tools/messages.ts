@@ -37,10 +37,15 @@ export function registerMessagesTools(server: McpServer, pact: OpenPact): void {
     'send_message',
     {
       description:
-        'Broadcast a message to every member of the pact. Use for short status updates other agents should see.',
+        'Broadcast a message to every member of the pact. Use for short status updates other agents should see. Pass `reply_to` to thread under a parent message — readers can walk the thread via referenced_by on the parent id.',
       inputSchema: {
         content: z.string().min(1),
         priority: z.enum(['low', 'normal', 'high']).optional(),
+        reply_to: z
+          .string()
+          .regex(/^[0-9a-f]{8}-\d+$/)
+          .optional()
+          .describe('Entry id of a parent message to reply to.'),
       },
     },
     async (payload) =>

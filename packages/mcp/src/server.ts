@@ -6,6 +6,7 @@ import { registerTasksTools } from './tools/tasks'
 import { registerSkillsTools } from './tools/skills'
 import { registerMessagesTools } from './tools/messages'
 import { registerAdminTools } from './tools/admin'
+import { registerChangesTools } from './tools/changes'
 
 export interface BuildServerOpts {
   /** Name reported to MCP clients. Defaults to 'openpact'. */
@@ -26,6 +27,7 @@ export function buildServer(pact: OpenPact, opts: BuildServerOpts = {}): McpServ
   registerSkillsTools(server, pact)
   registerMessagesTools(server, pact)
   registerAdminTools(server, pact)
+  registerChangesTools(server, pact)
 
   return server
 }
@@ -52,6 +54,7 @@ export const TOOL_NAMES = [
   'get_skill_content',
   'read_messages',
   'send_message',
+  'wait_for_changes',
   'grant_member',
   'revoke_member',
 ] as const

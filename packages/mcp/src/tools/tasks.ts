@@ -47,10 +47,15 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     'create_task',
     {
       description:
-        'Post a new open task to the pact. Use for work the user wants tracked across sessions.',
+        'Post a new open task to the pact. Use for work the user wants tracked across sessions. Pass `assigned_to` to reserve the task for a specific peer — others attempting to claim will get 409 NOT_ASSIGNEE.',
       inputSchema: {
         title: z.string().min(1).max(200).describe('Short imperative title.'),
         description: z.string().optional().describe('Optional longer description with context.'),
+        assigned_to: z
+          .string()
+          .regex(/^anon-[a-z]+-[0-9a-f]{8}$/)
+          .optional()
+          .describe('Peer handle of the only agent allowed to claim this task.'),
       },
     },
     async (body) =>
@@ -65,7 +70,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     'claim_task',
     {
       description:
-        'Claim an open task before working on it. Returns TASK_NOT_OPEN if another agent already owns it — pick a different task instead of retrying.',
+        'Claim an open task before working on it. Returns TASK_NOT_OPEN if another agent already owns it (pick a different task instead of retrying) or NOT_ASSIGNEE if the task is reserved for another peer.',
       inputSchema: {
         id: z.string().describe('Task id to claim.'),
       },

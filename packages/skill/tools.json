@@ -1,7 +1,7 @@
 {
   "$schema": "https://openpact.dev/schemas/skill-tools-v0.json",
   "name": "openpact",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Tool definitions for the OpenPact daemon REST API. Consume from any agent runtime that can codegen tools (LangChain, CrewAI, AutoGen, custom). Most paths are scoped to a pact via `:pactId` — callers substitute the alias (e.g. `default`) or 64-hex pact key.",
   "runtime": {
     "base_url": "http://127.0.0.1:7666",
@@ -105,18 +105,24 @@
     },
     {
       "name": "create_task",
-      "description": "Post a new open task.",
+      "description": "Post a new open task. Pass `assigned_to` to reserve it for a specific peer handle; the claim endpoint rejects anyone else with 409 NOT_ASSIGNEE.",
       "method": "POST",
       "path": "/v1/pacts/:pactId/tasks",
       "params": { "pactId": { "type": "string" } },
       "body": {
         "title": { "type": "string", "min_length": 1, "max_length": 200 },
-        "description": { "type": "string", "optional": true }
+        "description": { "type": "string", "optional": true },
+        "assigned_to": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^anon-[a-z]+-[0-9a-f]{8}$",
+          "description": "peer handle of the only agent allowed to claim this task"
+        }
       }
     },
     {
       "name": "claim_task",
-      "description": "Claim an open task. 409 TASK_NOT_OPEN if another agent already owns it.",
+      "description": "Claim an open task. 409 TASK_NOT_OPEN if another agent already owns it; 409 NOT_ASSIGNEE if the task is reserved for another peer.",
       "method": "PUT",
       "path": "/v1/pacts/:pactId/tasks/:id/claim",
       "params": { "pactId": { "type": "string" }, "id": { "type": "string" } }
@@ -241,13 +247,46 @@
     },
     {
       "name": "send_message",
-      "description": "Broadcast a message to every member of the pact.",
+      "description": "Broadcast a message to every member of the pact. Pass `reply_to` (entry id of the parent) to thread a reply — readers walk the thread with `referenced_by` on the parent id.",
       "method": "POST",
       "path": "/v1/pacts/:pactId/messages",
       "params": { "pactId": { "type": "string" } },
       "body": {
         "content": { "type": "string", "min_length": 1 },
-        "priority": { "enum": ["low", "normal", "high"], "optional": true }
+        "priority": { "enum": ["low", "normal", "high"], "optional": true },
+        "reply_to": {
+          "type": "string",
+          "optional": true,
+          "pattern": "^[0-9a-f]{8}-\\d+$",
+          "description": "entry id of the parent message this replies to"
+        }
+      }
+    },
+    {
+      "name": "wait_for_changes",
+      "description": "Cross-type change feed with optional long-poll. Returns a page of entries that landed since the given `since` cursor, in chronological order; pass `wait` (seconds, 0-30) to block until new entries arrive or the window elapses. Use for event-driven coordination instead of sleeping + re-listing.",
+      "method": "GET",
+      "path": "/v1/pacts/:pactId/changes",
+      "params": { "pactId": { "type": "string" } },
+      "query": {
+        "since": {
+          "type": "string",
+          "optional": true,
+          "description": "cursor from a previous response (format `<timestamp>|<id>`); omit for full replay"
+        },
+        "wait": {
+          "type": "integer",
+          "optional": true,
+          "min": 0,
+          "max": 30,
+          "description": "seconds to block if no new entries past `since`. default 0"
+        },
+        "type": {
+          "enum": ["knowledge", "task", "skill", "message"],
+          "optional": true,
+          "description": "restrict the feed to one entry type"
+        },
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
       }
     },
     {
@@ -314,6 +353,11 @@
         "meaning": "only the current claimer may complete or release"
       },
       { "status": 409, "code": "NOT_CLAIMED", "meaning": "cannot release an unclaimed task" },
+      {
+        "status": 409,
+        "code": "NOT_ASSIGNEE",
+        "meaning": "task is assigned_to another peer; only that peer can claim"
+      },
       {
         "status": 409,
         "code": "NOT_A_MEMBER",

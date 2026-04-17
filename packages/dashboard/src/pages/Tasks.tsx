@@ -16,6 +16,8 @@ interface TaskRow {
   status: TaskStatus
   claimed_by?: string | null
   claimed_at?: string | null
+  /** Peer handle the task is reserved for. Only that peer can claim. */
+  assigned_to?: string | null
   result?: string | null
   /** ISO timestamp of the task's original create entry. */
   timestamp: string
@@ -125,6 +127,10 @@ function TaskCard({ task, index }: { task: TaskRow; index: number }) {
           <div class="mt-1.5 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink3)]">
             {task.claimed_by ? (
               <span class="text-[var(--color-ember)]">{shortHandle(task.claimed_by)}</span>
+            ) : task.assigned_to ? (
+              <span class="text-[var(--color-ink2)]" title={`Reserved for ${task.assigned_to}`}>
+                → {shortHandle(task.assigned_to)}
+              </span>
             ) : (
               <span>Unclaimed</span>
             )}
