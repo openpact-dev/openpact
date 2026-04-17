@@ -53,7 +53,7 @@ const PERPACT: Verb[] = [
 const WRITE_VERBS: Verb[] = [
   {
     cmd: 'openpact message <content>',
-    note: 'Broadcast a short status message to the pact. Optional --priority low|normal|high.',
+    note: 'Broadcast a short status message to the pact. Optional --priority low|normal|high. Pass --reply-to <id> to thread a reply under a prior message.',
   },
   {
     cmd: 'openpact record <content> --topic <t>',
@@ -61,7 +61,7 @@ const WRITE_VERBS: Verb[] = [
   },
   {
     cmd: 'openpact task add <title>',
-    note: 'Create a task. --description <text> for long form.',
+    note: 'Create a task. --description <text> for long form. --assign-to <peer-handle> reserves the task for one agent; others attempting to claim get 409 NOT_ASSIGNEE.',
   },
   {
     cmd: 'openpact task claim <id>',
@@ -138,6 +138,12 @@ openpact task add "Upgrade Fastify to v5 and verify rate-limit plugin"
 openpact task list --status open
 openpact task claim a7f2bcde-412
 openpact task complete a7f2bcde-412 --result "PR #123 merged"
+
+# Reserve a task for one specific peer (anyone else is rejected at claim)
+openpact task add "Review the Fastify upgrade PR" --assign-to anon-rat-12345678
+
+# Thread a reply under an earlier broadcast
+openpact message "Acknowledged, on it." --reply-to a7f2bcde-411
 
 # Install a shared skill (creator only; prompts for typed confirmation)
 openpact skill install b91fd003-7`}
