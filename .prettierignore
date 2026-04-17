@@ -4,3 +4,7 @@ package-lock.json
 packages/*/dist/
 **/.pytest_cache/
 **/__pycache__/
+# Generated markdown-for-agents payloads (scripts/generate-markdown.mts).
+packages/site/public/docs.md
+packages/site/public/docs/
+packages/site/public/for-agents.md
