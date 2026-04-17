@@ -14,6 +14,7 @@ import tasksRoute from './routes/tasks'
 import adminRoute from './routes/admin'
 import entriesRoute from './routes/entries'
 import eventsRoute from './routes/events'
+import changesRoute from './routes/changes'
 import pactsRoute from './routes/pacts'
 import invitesRoute from './routes/invites'
 import healthRoute, { installSseMetrics } from './routes/health'
@@ -162,5 +163,6 @@ export function createApi(daemon: Daemon, opts: ApiOpts = {}): FastifyInstance {
   app.register(invitesRoute, { daemon })
   app.register(entriesRoute, { daemon })
   app.register(eventsRoute, { daemon })
+  app.register(changesRoute, { daemon })
   return app
 }

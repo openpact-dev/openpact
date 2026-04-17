@@ -326,6 +326,7 @@ This is the heart of the project. Get this right before touching anything else.
   GET  /v1/skills/:id/content                  -> { id, name, version, format, checksum, content }
   GET  /v1/messages?since=TS                   -> [entries]
   POST /v1/messages                            -> MessageEntry     (body { content, priority? }; pact-wide broadcast)
+  GET  /v1/changes?since=&wait=&type=&limit=   -> { entries, cursor, has_more } (cross-type long-poll change feed for agent coordination)
   ```
 - [x] Request validation via Fastify per-route JSON Schema (rejects with 400 `BAD_REQUEST`)
 - [x] Uniform error envelope `{error, message, status}` via `setErrorHandler`

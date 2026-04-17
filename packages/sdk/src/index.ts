@@ -8,6 +8,7 @@ import { adminResource } from './resources/admin'
 import { entriesResource } from './resources/entries'
 import { pactsResource } from './resources/pacts'
 import { invitesResource } from './resources/invites'
+import { changesResource } from './resources/changes'
 import type { StatusPayload, AgentPayload } from './types'
 
 /**
@@ -29,6 +30,7 @@ export class OpenPact {
   entries: ReturnType<typeof entriesResource>
   pacts: ReturnType<typeof pactsResource>
   invites: ReturnType<typeof invitesResource>
+  changes: ReturnType<typeof changesResource>
 
   constructor(opts: ClientOpts = {}) {
     this.client = new OpenPactClient(opts)
@@ -41,6 +43,7 @@ export class OpenPact {
     this.entries = entriesResource(this.client)
     this.pacts = pactsResource(this.client)
     this.invites = invitesResource(this.client)
+    this.changes = changesResource(this.client)
   }
 
   /** Daemon health check. */
@@ -78,6 +81,7 @@ export type { ClientOpts } from './client'
 export type { HostStatus } from './resources/status'
 export type { PactSummary, PactListPayload, CreatePactBody, JoinPactBody } from './resources/pacts'
 export type { InviteSummary, MintInviteOpts, MintInviteResult } from './resources/invites'
+export type { ChangesEntry, ChangesPage, PollOpts } from './resources/changes'
 export { computeSkillChecksum, SKILL_CHECKSUM_LABEL } from './resources/skills'
 export type {
   BaseEntry,

@@ -135,6 +135,13 @@ export class Daemon extends EventEmitter {
     clockMs = Date.now,
   }: DaemonOpts = {}) {
     super()
+    // Routes like /v1/events and /v1/pacts/:pactId/changes register
+    // transient listeners on every connected client; a handful of
+    // dashboards + long-polling agents trivially crosses Node's default
+    // MaxListeners=10. Uncapped here — each listener is self-removing on
+    // client close, so leaks surface as sustained growth, not as the
+    // default warning from a transient spike.
+    this.setMaxListeners(0)
     this.hostDir = dataDir || defaultDataDir()
     this.port = port
     this._swarmOpts = swarm

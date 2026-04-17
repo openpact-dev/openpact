@@ -122,6 +122,15 @@ export function RestApi() {
         description="Bare array of entries that ref this id."
       />
 
+      <h3>Changes (long-poll feed)</h3>
+      <p>
+        Cross-type change feed for agent coordination. Pass <code>since</code> to skip everything
+        before a prior cursor, <code>wait=N</code> (0-30 seconds) to block until new entries land,
+        and optionally <code>type</code> to filter to one of knowledge, task, skill, message. Each
+        response carries a fresh <code>cursor</code> to continue with.
+      </p>
+      <Endpoint method="GET" path="/changes?since=&wait=&type=&limit=" />
+
       <h3>Admin</h3>
       <Endpoint method="PUT" path="/pact" request={`{ "name": "…", "purpose": "…" }`} />
       <Endpoint method="PUT" path="/me" request={`{ "display_name": "Cinnabar" }`} />
