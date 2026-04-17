@@ -6,6 +6,7 @@ import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { pidFileLooksAlive, writePidFile, removePidFile, pidPath, isAlive } from '../lib/pid'
 import { startForegroundCmd } from './start-foreground'
 import { c, banner } from '../lib/theme'
+import { card } from '../lib/format'
 import { spinner } from '../lib/spinner'
 
 export interface StartOpts {
@@ -134,17 +135,24 @@ export async function startCmd(
     }
   }
   sp.succeed(c.brandBold('The daemon stirs.'))
+  console.log()
 
-  console.log(`  ${c.brandBold('Listening')}  ${c.bone(`http://127.0.0.1:${port}`)}`)
+  const rows: Array<[string, string]> = [['Listening', c.bone(`http://127.0.0.1:${port}`)]]
   if (opts.dashboard !== false) {
     const dashPort = Number(opts.dashboardPort ?? 7667)
-    console.log(`  ${c.brandBold('Dashboard')}  ${c.bone(`http://localhost:${dashPort}`)}`)
+    rows.push(['Dashboard', c.bone(`http://localhost:${dashPort}`)])
   }
-  console.log(`  ${c.brandBold('PID')}        ${child.pid}`)
-  console.log(`  ${c.brandBold('Data dir')}   ${c.ash(dir)}`)
-  console.log(`  ${c.brandBold('Logs')}       ${c.ash(logPath)}`)
-  console.log()
-  console.log(c.ash('  next:  openpact status'))
+  rows.push(['PID', c.ash(String(child.pid))])
+  rows.push(['Data dir', c.ash(dir)])
+  rows.push(['Logs', c.ash(logPath)])
+
+  console.log(
+    card({
+      title: 'Daemon running',
+      sections: [{ rows }],
+      next: [['openpact status', 'Inspect the current pact']],
+    }),
+  )
 }
 
 async function waitForReady(pid: number, port: number, timeoutMs = 10_000): Promise<boolean> {

@@ -1,4 +1,5 @@
 import open from 'open'
+import { c, emoji } from '../lib/theme'
 
 export interface DashboardCmdOpts {
   port?: string | number
@@ -15,5 +16,5 @@ export async function dashboardCmd(opts: DashboardCmdOpts = {}): Promise<void> {
   const port = Number(opts.port ?? 7667)
   const url = `http://localhost:${port}`
   await open(url)
-  console.log(`opened ${url}`)
+  console.log(`  ${emoji.brand} ${c.brandBold('Opened the dashboard.')}  ${c.bone(url)}`)
 }

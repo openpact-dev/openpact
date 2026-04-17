@@ -3,6 +3,7 @@ import { Daemon, config as daemonConfig } from '@openpact/daemon'
 import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji, banner } from '../lib/theme'
+import { card } from '../lib/format'
 import { askText } from '../lib/prompt'
 import { suggestPactName, suggestPactPurpose, suggestDisplayName } from '../lib/themes'
 import { startCmd } from './start'
@@ -104,25 +105,39 @@ export async function initCmd(
   process.stdout.write(banner())
   console.log(`  ${emoji.brand} ${c.brandBold('A pact has been sealed.')}`)
   console.log()
-  console.log(`  ${c.brandBold('Pact')}        ${pactName}`)
-  console.log(`  ${c.brandBold('Alias')}       ${c.ash(sealed.alias)}`)
-  console.log(`  ${c.brandBold('Purpose')}     ${c.ash(pactPurpose)}`)
-  console.log(`  ${c.brandBold('Data dir')}    ${c.ash(hostDir)}`)
-  console.log(`  ${c.brandBold('Pact key')}    ${c.bone(sealed.pactKey)}`)
-  console.log(`  ${c.brandBold('Agent')}       ${displayName} ${c.ash(`(${sealed.peerHandle})`)}`)
-  console.log()
 
   const shouldAutoStart = !daemonAlreadyRunning && opts.start !== false && !!process.stdin.isTTY
   const shouldOpen = opts.open !== false && !!process.stdin.isTTY
 
+  const next: Array<[string, string]> = []
   if (daemonAlreadyRunning) {
-    console.log(c.ash('  next:  openpact invite              (share the pact key)'))
-    console.log(c.ash('         openpact dashboard           (open the dashboard)'))
+    next.push(['openpact invite', 'Mint a one-time invite token'])
+    next.push(['openpact dashboard', 'Open the dashboard'])
   } else if (!shouldAutoStart) {
-    console.log(c.ash('  next:  openpact start'))
-    console.log(c.ash('         openpact invite              (share the pact key)'))
-    return
+    next.push(['openpact start', 'Summon the daemon'])
+    next.push(['openpact invite', 'Mint a one-time invite token'])
   }
+
+  console.log(
+    card({
+      title: pactName,
+      subtitle: sealed.alias,
+      sections: [
+        {
+          rows: [
+            ['Purpose', c.ash(pactPurpose)],
+            ['Pact key', c.bone(sealed.pactKey)],
+            ['Agent', `${c.bone(displayName)}  ${c.ash(`(${sealed.peerHandle})`)}`],
+            ['Data dir', c.ash(hostDir)],
+          ],
+        },
+      ],
+      next: next.length > 0 ? next : undefined,
+    }),
+  )
+  console.log()
+
+  if (!shouldAutoStart && !daemonAlreadyRunning) return
 
   if (shouldAutoStart) {
     await startCmd({ port: opts.port, dashboardPort: opts.dashboardPort }, cmd)
@@ -134,7 +149,7 @@ export async function initCmd(
     try {
       await open(url)
       console.log()
-      console.log(c.ash(`  opened ${url} in your default browser`))
+      console.log(`  ${c.brand('→')}  Opened ${c.bone(url)} in your default browser`)
     } catch {
       // headless fallback — URL already printed above
     }

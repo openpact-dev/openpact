@@ -13,12 +13,12 @@ export async function stopCmd(
   const dir = resolveDataDir(cmd.optsWithGlobals())
   const pid = await readPidFile(dir)
   if (pid === null) {
-    console.error(c.ash('no PID file. no daemon to banish.'))
+    console.log(`  ${c.ash('No daemon to banish (no PID file).')}`)
     return
   }
 
   if (!isAlive(pid)) {
-    console.error(c.ash(`stale PID file (pid ${pid} is gone). cleaning up.`))
+    console.log(`  ${c.ash(`Stale PID file (pid ${pid} is gone). Cleaning up.`)}`)
     await removePidFile(dir)
     return
   }
@@ -33,7 +33,7 @@ export async function stopCmd(
   }
 
   if (isAlive(pid)) {
-    console.error(c.ember(`daemon ${pid} did not exit within ${timeout}ms. forcing SIGKILL.`))
+    console.log(`  ${c.ember(`Daemon ${pid} did not exit within ${timeout}ms. Forcing SIGKILL.`)}`)
     try {
       process.kill(pid, 'SIGKILL')
     } catch {

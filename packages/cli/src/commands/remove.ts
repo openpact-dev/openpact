@@ -111,6 +111,6 @@ export async function removeCmd(
     }
   }
 
-  console.log(`${emoji.brand} ${c.brandBold('Removed')} ${alias}`)
-  console.log(`  ${c.ash(`wiped ${entry.dataDir}`)}`)
+  console.log(`  ${emoji.brand} ${c.brandBold('Removed')} ${c.bone(alias)}`)
+  console.log(`  ${c.ash(`Wiped ${entry.dataDir}`)}`)
 }

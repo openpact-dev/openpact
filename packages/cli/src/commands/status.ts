@@ -44,9 +44,9 @@ export async function statusCmd(
       return
     } catch (err) {
       if (err instanceof DaemonNotRunningError) {
-        console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
-        console.error(c.ash(`  data dir   ${dir}`))
-        console.error(c.ash('  summon it  openpact start'))
+        console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
+        console.error(`  ${c.ash('Data dir')}    ${c.ash(dir)}`)
+        console.error(`  ${c.ash('Summon it')}   openpact start`)
         process.exit(1)
       }
       throw err
@@ -70,10 +70,10 @@ export async function statusCmd(
     console.log(formatStatus(status, ctx))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
-      console.error(c.ash(`  data dir   ${dir}`))
-      console.error(c.ash(`  pact       ${pactId}`))
-      console.error(c.ash(`  summon it  openpact start`))
+      console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
+      console.error(`  ${c.ash('Data dir')}    ${c.ash(dir)}`)
+      console.error(`  ${c.ash('Pact')}        ${c.ash(pactId)}`)
+      console.error(`  ${c.ash('Summon it')}   openpact start`)
       process.exit(1)
     }
     throw err

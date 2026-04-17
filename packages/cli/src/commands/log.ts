@@ -1,7 +1,7 @@
 import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact, NoPactsError } from '../lib/pact-select'
-import { formatLogLine, type LogEntry } from '../lib/format'
+import { formatLogLine, header, rule, type LogEntry } from '../lib/format'
 import { c, emoji } from '../lib/theme'
 
 const TYPES = ['knowledge', 'task', 'skill', 'message'] as const
@@ -19,22 +19,10 @@ export async function logCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
-  let pactId: string
-  try {
-    pactId = await resolveCurrentPact(dir, opts.pact)
-  } catch (err) {
-    if (err instanceof NoPactsError) {
-      // No pacts on this host → nothing to log. Render the same
-      // welcoming banner as `op start` so the user knows the next
-      // step rather than seeing a raw 404.
-      console.log(c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.'))
-      return
-    }
-    throw err
-  }
-  const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
-  const limit = Number(opts.limit ?? 20)
 
+  // Validate --type before resolving the pact. A bad --type is a flag
+  // mistake the user can fix without ever needing a pact; failing fast
+  // here avoids swallowing the error in the no-pacts empty-state path.
   let types: readonly EntryType[]
   if (opts.type) {
     if (!(TYPES as readonly string[]).includes(opts.type)) {
@@ -44,6 +32,24 @@ export async function logCmd(
   } else {
     types = TYPES
   }
+
+  let pactId: string
+  try {
+    pactId = await resolveCurrentPact(dir, opts.pact)
+  } catch (err) {
+    if (err instanceof NoPactsError) {
+      // No pacts on this host → nothing to log. Render the same
+      // welcoming banner as `op start` so the user knows the next
+      // step rather than seeing a raw 404.
+      console.log(
+        `  ${c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.')}`,
+      )
+      return
+    }
+    throw err
+  }
+  const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
+  const limit = Number(opts.limit ?? 20)
 
   try {
     const collected: LogEntry[] = []
@@ -56,16 +62,21 @@ export async function logCmd(
     // whole log listing via `undefined.localeCompare`.
     collected.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
     const tail = collected.slice(-limit)
+    const subtitle = opts.type
+      ? `${pactId} · ${opts.type} · last ${tail.length}`
+      : `${pactId} · last ${tail.length}`
+    console.log(header('Recent entries', subtitle))
+    console.log(rule())
     if (tail.length === 0) {
-      console.log(c.ash('(the pact is silent)'))
+      console.log(`  ${c.ash('The pact is silent.')}`)
       return
     }
     for (const entry of tail) {
-      console.log(formatLogLine(entry))
+      console.log('  ' + formatLogLine(entry))
     }
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
+      console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
       process.exit(1)
     }
     throw err

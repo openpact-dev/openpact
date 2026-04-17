@@ -2,6 +2,7 @@ import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
 import { c, emoji } from '../lib/theme'
+import { short } from '../lib/format'
 
 export interface AddMemberOpts {
   indexer?: boolean
@@ -24,13 +25,13 @@ export async function addMemberCmd(
     await client.admin.addMember(key, { indexer: !!opts.indexer })
     const role = opts.indexer ? 'indexer' : 'member'
     console.log(
-      `${emoji.bind} ${c.brandBold('A new pact-bearer is bound.')}  ${c.ash(`(${role})`)}`,
+      `  ${emoji.bind} ${c.brandBold('A new pact-bearer is bound.')}  ${c.ash(`(${role})`)}`,
     )
-    console.log(`  ${c.ash(`key ${key.slice(0, 12)}… on pact ${pactId}`)}`)
-    console.log(c.ash('  the binding is broadcast to all peers as an admin entry'))
+    console.log(`  ${c.ash(`Key ${c.bone(short(key, 12) + '…')} on pact ${c.bone(pactId)}`)}`)
+    console.log(c.ash('  The binding is broadcast to all peers as an admin entry.'))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
+      console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
       process.exit(1)
     }
     throw err

@@ -13,6 +13,7 @@ import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { writePidFile, removePidFile } from '../lib/pid'
 import { resolveBootstrap } from '../lib/bootstrap'
 import { c, emoji, banner } from '../lib/theme'
+import { card } from '../lib/format'
 
 export interface StartForegroundOpts {
   port?: string | number
@@ -89,28 +90,46 @@ export async function startForegroundCmd(
         daemonToken: apiToken,
       })
     } catch (err) {
-      console.error(c.brand(`✗ dashboard failed to start: ${(err as Error).message}`))
-      console.error(c.ash('  daemon will continue without the dashboard'))
+      console.error(
+        `${emoji.cross} ${c.brand(`Dashboard failed to start: ${(err as Error).message}`)}`,
+      )
+      console.error(c.ash('  Daemon will continue without the dashboard'))
     }
   }
 
   await writePidFile(dir, process.pid)
 
   process.stdout.write(banner())
-  console.log(`  ${emoji.flame} ${c.brandBold('The daemon stirs.')}  listening on ${c.bone(url)}`)
-  if (dashboard) {
-    console.log(`  ${c.brandBold('Dashboard')}  ${c.bone(dashboard.url)}`)
-  }
+  console.log(`  ${emoji.flame} ${c.brandBold('The daemon stirs.')}`)
+  console.log()
+
+  const rows: Array<[string, string]> = [['Listening', c.bone(url)]]
+  if (dashboard) rows.push(['Dashboard', c.bone(dashboard.url)])
   if (daemon.pactKey) {
-    console.log(`  ${c.ash(`pact ${daemon.pactKey.slice(0, 12)}…   agent ${daemon.peerHandle}`)}`)
-  } else {
-    console.log(
-      `  ${c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.')}`,
-    )
+    rows.push(['Pact', c.ash(`${daemon.pactKey.slice(0, 12)}…`)])
+    rows.push(['Agent', c.bone(String(daemon.peerHandle))])
   }
   if (opts.logFile !== '-') {
-    console.log(`  ${c.ash(`logs   ${opts.logFile ?? defaultLogFile(dir)}  (level=${level})`)}`)
+    rows.push([
+      'Logs',
+      `${c.ash(opts.logFile ?? defaultLogFile(dir))}  ${c.ash(`(level=${level})`)}`,
+    ])
   }
+
+  const next: Array<[string, string]> | undefined = daemon.pactKey
+    ? undefined
+    : [
+        ['openpact init', 'Seal a new pact'],
+        ['openpact join <token>', 'Redeem an invite token'],
+      ]
+
+  console.log(
+    card({
+      title: daemon.pactKey ? 'Daemon running' : 'Daemon running · no pacts yet',
+      sections: [{ rows }],
+      next,
+    }),
+  )
   console.log()
   logger.info(
     { url, dashboard: dashboard?.url ?? null, pactKey: daemon.pactKey ?? null },
@@ -121,7 +140,7 @@ export async function startForegroundCmd(
   const shutdown = async (signal: string) => {
     if (shuttingDown) return
     shuttingDown = true
-    console.error(c.ash(`\nreceived ${signal}, banishing…`))
+    console.error(c.ash(`\nReceived ${signal}, banishing…`))
     logger.info({ signal }, 'shutdown')
     try {
       if (dashboard) await dashboard.close()
@@ -131,7 +150,7 @@ export async function startForegroundCmd(
       await closeLogger()
     } catch (err) {
       logger.error({ err }, 'error during shutdown')
-      console.error(c.brand(`✗ error during shutdown: ${(err as Error).message}`))
+      console.error(`${emoji.cross} ${c.brand(`Error during shutdown: ${(err as Error).message}`)}`)
     }
     process.exit(0)
   }

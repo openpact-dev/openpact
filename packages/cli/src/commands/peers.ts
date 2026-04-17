@@ -18,10 +18,10 @@ export async function peersCmd(
   const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
   try {
     const peers = await client.peers()
-    console.log(formatPeers(peers))
+    console.log(formatPeers(peers, { alias: pactId }))
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
+      console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
       process.exit(1)
     }
     throw err

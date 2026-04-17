@@ -48,7 +48,8 @@ test('stop without running daemon is a no-op', async (t) => {
   await runWithDir(home, ['init', '--alias', 'default'])
   const res = await runWithDir(home, ['stop'])
   t.is(res.exitCode, 0)
-  t.ok(res.stderr.includes('no PID file') || res.stderr.includes('no daemon to banish'))
+  const all = res.stdout + res.stderr
+  t.ok(all.includes('no PID file') || all.includes('No daemon to banish'))
 })
 
 test('start binds on an empty data dir (no pacts yet)', async (t) => {
@@ -90,7 +91,7 @@ test('start binds on an empty data dir (no pacts yet)', async (t) => {
   const status = await runWithDir(home, ['status', '--port', port, '--dashboard-port', dashPort])
   t.is(status.exitCode, 0)
   t.ok(status.stdout.includes('Daemon is running'))
-  t.ok(status.stdout.includes('no pacts yet'))
+  t.ok(status.stdout.includes('No pacts yet'))
   t.ok(status.stdout.includes(`http://127.0.0.1:${port}/v1/*`))
   t.ok(status.stdout.includes(`http://127.0.0.1:${dashPort}`))
   t.ok(status.stdout.includes(String(pid)))

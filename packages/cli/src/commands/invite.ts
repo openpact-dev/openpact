@@ -2,6 +2,15 @@ import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { resolveCurrentPact } from '../lib/pact-select'
 import { c, emoji } from '../lib/theme'
+import { card, table } from '../lib/format'
+
+interface InviteRow {
+  nonce: string
+  expires_at: string
+  spent_at?: string | null
+  revoked?: boolean
+  dead: boolean
+}
 
 export interface InviteOpts {
   /** Alias of the pact to issue against. Defaults to the host's currentAlias. */
@@ -37,40 +46,69 @@ export async function inviteCmd(
       await client.invites.revoke(opts.revoke)
       if (process.stdout.isTTY) {
         process.stderr.write(
-          `${emoji.brand} ${c.brandBold('Invite revoked.')} ${c.ash(opts.revoke)}\n`,
+          `  ${emoji.brand} ${c.brandBold('Invite revoked.')}  ${c.ash(opts.revoke)}\n`,
         )
       }
       return
     }
 
     if (opts.list) {
-      const entries = await client.invites.list()
+      const entries = (await client.invites.list()) as InviteRow[]
       const live = entries.filter((e) => !e.dead)
       const dead = entries.filter((e) => e.dead)
+
       if (live.length === 0 && dead.length === 0) {
-        console.log(c.ash('no invites yet — run `openpact invite` to mint one'))
+        console.log(
+          table<InviteRow>({
+            title: 'Invites',
+            subtitle: pactId,
+            columns: [
+              { header: 'Nonce', value: () => '' },
+              { header: 'Status', value: () => '' },
+              { header: 'When', value: () => '' },
+            ],
+            rows: [],
+            empty: 'No invites yet. Run `openpact invite` to mint one.',
+          }),
+        )
         return
       }
-      if (live.length > 0) {
-        console.log(c.brandBold(`Live (${live.length})`))
-        for (const i of live) {
-          console.log(
-            `  ${c.bone(shortenNonce(i.nonce))}  ${c.ash('expires')} ${relative(i.expires_at)}`,
-          )
-        }
-      }
-      if (dead.length > 0) {
-        if (live.length > 0) console.log()
-        console.log(c.ash(`Spent / revoked / expired (${dead.length})`))
-        for (const i of dead) {
-          const reason = i.spent_at
-            ? `spent ${relative(i.spent_at)}`
-            : i.revoked
-              ? 'revoked'
-              : 'expired'
-          console.log(`  ${c.ash(shortenNonce(i.nonce))}  ${c.ash(reason)}`)
-        }
-      }
+
+      console.log(
+        table<InviteRow>({
+          title: 'Invites',
+          subtitle: `${pactId}  ·  ${live.length} live, ${dead.length} dead`,
+          columns: [
+            {
+              header: 'Nonce',
+              value: (i) => (i.dead ? c.ash(shortenNonce(i.nonce)) : c.bone(shortenNonce(i.nonce))),
+            },
+            {
+              header: 'Status',
+              value: (i) =>
+                i.dead
+                  ? i.spent_at
+                    ? c.ash('spent')
+                    : i.revoked
+                      ? c.ember('revoked')
+                      : c.ash('expired')
+                  : `${c.brand('●')} live`,
+            },
+            {
+              header: 'When',
+              value: (i) =>
+                c.ash(
+                  i.dead
+                    ? i.spent_at
+                      ? relative(i.spent_at)
+                      : 'past'
+                    : 'expires ' + relative(i.expires_at),
+                ),
+            },
+          ],
+          rows: [...live, ...dead],
+        }),
+      )
       return
     }
 
@@ -83,16 +121,28 @@ export async function inviteCmd(
     if (process.stdout.isTTY) {
       process.stderr.write('\n')
       process.stderr.write(`  ${emoji.brand} ${c.brandBold('One-time invite minted.')}\n`)
+      process.stderr.write('\n')
       process.stderr.write(
-        c.ash(`  Expires ${relative(invite.expires_at)}. Redeem once to admit a new member.\n`),
+        card({
+          title: 'Invite',
+          subtitle: pactId,
+          sections: [
+            {
+              rows: [
+                ['Share URL', c.bone(invite.share_url)],
+                ['Expires', c.ash(`${relative(invite.expires_at)}  (${invite.expires_at})`)],
+                ['Nonce', c.ash(invite.nonce)],
+              ],
+            },
+          ],
+          next: [['openpact invite --revoke ' + invite.nonce, 'Cancel before it is redeemed']],
+        }) + '\n',
       )
-      process.stderr.write(c.ash(`  Nonce   ${invite.nonce}\n`))
-      process.stderr.write(c.ash(`  Revoke  openpact invite --revoke ${invite.nonce}\n`))
     }
   } catch (err) {
     if (err instanceof DaemonNotRunningError) {
-      console.error(`${emoji.cross} ${c.brand('openpact daemon is not running')}`)
-      console.error(c.ash(`  start it with:  openpact start`))
+      console.error(`${emoji.cross} ${c.brand('OpenPact daemon is not running.')}`)
+      console.error(`  ${c.ash('Start it with `openpact start`.')}`)
       process.exit(1)
     }
     throw err

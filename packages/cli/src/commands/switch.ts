@@ -1,6 +1,7 @@
 import { Daemon, config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji } from '../lib/theme'
+import { short } from '../lib/format'
 
 /**
  * `openpact switch <alias>` — change which pact is "current" on this
@@ -24,7 +25,7 @@ export async function switchCmd(
     throw new Error(`no pact named ${alias}. known: ${known}`)
   }
   if (registry.currentAlias === alias) {
-    console.log(c.ash(`already on ${alias}.`))
+    console.log(`  ${c.ash(`Already on ${c.bone(alias)}.`)}`)
     return
   }
 
@@ -32,6 +33,7 @@ export async function switchCmd(
   // daemon.start() — this only touches daemon.json.
   const daemon = new Daemon({ dataDir: hostDir })
   await daemon.setCurrentAlias(alias)
-  console.log(`${emoji.brand} ${c.brandBold('Switched to')} ${alias}`)
-  console.log(`  ${c.ash(`pact_id ${entry.pactId.slice(0, 12)}…`)}`)
+  console.log(
+    `  ${emoji.brand} ${c.brandBold('Switched to')} ${c.bone(alias)}  ${c.ash(`(${short(entry.pactId, 12)}…)`)}`,
+  )
 }

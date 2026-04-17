@@ -1,6 +1,7 @@
 import { Daemon, config as daemonConfig } from '@openpact/daemon'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji } from '../lib/theme'
+import { short } from '../lib/format'
 
 /**
  * `openpact rename <oldAlias> <newAlias>` — change a pact's local
@@ -37,6 +38,8 @@ export async function renameCmd(
   } finally {
     await daemon.stop()
   }
-  console.log(`${emoji.brand} ${c.brandBold('Renamed')} ${oldAlias} → ${newAlias}`)
-  console.log(`  ${c.ash(`pact_id ${entry.pactId.slice(0, 12)}… (unchanged)`)}`)
+  console.log(
+    `  ${emoji.brand} ${c.brandBold('Renamed')} ${c.bone(oldAlias)} ${c.ash('→')} ${c.bone(newAlias)}`,
+  )
+  console.log(`  ${c.ash(`pact_id ${short(entry.pactId, 12)}… (unchanged)`)}`)
 }

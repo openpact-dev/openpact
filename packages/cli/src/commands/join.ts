@@ -2,6 +2,7 @@ import { invites as inviteCodec, type InviteTokenPayload } from '@openpact/daemo
 import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
 import { c, emoji } from '../lib/theme'
+import { card } from '../lib/format'
 import { askText } from '../lib/prompt'
 import { suggestDisplayName } from '../lib/themes'
 import { startCmd } from './start'
@@ -118,13 +119,12 @@ export async function joinCmd(
   if (process.stdout.isTTY) {
     process.stderr.write('\n')
     process.stderr.write(`  ${emoji.brand} ${c.brandBold('Pact joined. Redeeming invite…')}\n`)
-    if (decoded.pactName) {
-      process.stderr.write(c.ash(`  Pact    ${decoded.pactName}\n`))
-    }
-    if (decoded.issuerDisplay) {
-      process.stderr.write(c.ash(`  Invite  from ${decoded.issuerDisplay}\n`))
-    }
-    process.stderr.write(c.ash(`  Alias   ${joined.alias}\n`))
+    process.stderr.write('\n')
+    const rows: Array<[string, string]> = []
+    if (decoded.pactName) rows.push(['Pact', c.bone(decoded.pactName)])
+    if (decoded.issuerDisplay) rows.push(['Invited by', c.bone(decoded.issuerDisplay)])
+    rows.push(['Alias', c.bone(joined.alias)])
+    process.stderr.write(card({ title: 'Joining', sections: [{ rows }] }) + '\n')
   }
 
   const pactClient = new OpenPact({ port: apiPort, pactId: joined.alias, hostDir: dir })
@@ -181,13 +181,15 @@ export async function joinCmd(
       )
     } else {
       process.stderr.write(
-        `  ${emoji.cross} ${c.brand('redeem succeeded but membership has not landed yet.')}\n`,
+        `  ${emoji.cross} ${c.brand('Redeem succeeded but membership has not landed yet.')}\n`,
       )
       process.stderr.write(
-        c.ash('  Give Autobase a moment to converge, then check with `openpact status`.\n'),
+        `  ${c.ash('Give Autobase a moment to converge, then check with `openpact status`.')}\n`,
       )
     }
-    process.stderr.write(c.ash(`  Agent   ${displayName} (${finalStatus.peer_handle})\n`))
+    process.stderr.write(
+      `  ${c.ash('Agent')}  ${c.bone(displayName)}  ${c.ash(`(${finalStatus.peer_handle})`)}\n`,
+    )
   } else {
     // Piped / scripted: one JSON line on stdout.
     console.log(

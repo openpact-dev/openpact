@@ -176,7 +176,7 @@ test('init without TTY does not auto-start (CI-safe default)', async (t) => {
   const res = await runWithDir(home, ['init', '--no-interactive'])
   t.is(res.exitCode, 0)
   t.ok(res.stdout.includes('pact has been sealed'))
-  t.ok(res.stdout.includes('next:  openpact start'))
+  t.ok(res.stdout.includes('openpact start') && res.stdout.includes('Summon the daemon'))
   let stat: any = null
   try {
     stat = await fs.stat(path.join(home, 'pid'))

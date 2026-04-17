@@ -100,7 +100,7 @@ test('formatHostStatus: renders daemon details when no pact exists', (t) => {
 
   t.ok(out.includes('Daemon is running'))
   t.ok(out.includes('0'))
-  t.ok(out.includes('no pacts yet'))
+  t.ok(out.includes('No pacts yet'))
   t.ok(out.includes('http://127.0.0.1:7666/v1/*'))
   t.ok(out.includes('http://127.0.0.1:7667'))
   t.ok(out.includes('31337'))
@@ -125,7 +125,7 @@ test('formatStatus: handles uninitialised state', (t) => {
 })
 
 test('formatPeers: empty list', (t) => {
-  t.ok(strip(formatPeers([])).includes('no peers bound'))
+  t.ok(strip(formatPeers([])).includes('No peers bound'))
 })
 
 test('formatPeers: tabular rows', (t) => {
