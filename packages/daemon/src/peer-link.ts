@@ -2,7 +2,12 @@ import b4a from 'b4a'
 import Protomux from 'protomux'
 import type { Pact } from './pact'
 import type { RedeemRequest, RedeemResponse } from './invite-wire'
-import type { MemberAuthRequest, MemberAuthResponse } from './member-auth-wire'
+import type {
+  MemberAuthRequest,
+  MemberAuthResponse,
+  MemberAuthPing,
+  MemberAuthPong,
+} from './member-auth-wire'
 
 /**
  * Per-peer connection state shared by the invite and member-auth
@@ -18,6 +23,8 @@ export interface PeerLink {
   authChannel: any
   sendRequest: (req: RedeemRequest) => boolean
   sendAuthRequest: (req: MemberAuthRequest) => boolean
+  sendPing: (req: MemberAuthPing) => boolean
+  sendPong: (res: MemberAuthPong) => boolean
   pending: Map<string, (res: RedeemResponse) => void>
   pendingAuth: Map<
     string,
@@ -36,6 +43,29 @@ export interface PeerLink {
    */
   authenticatedMembers: Map<string, string>
   revocationTimers: Map<string, ReturnType<typeof setTimeout>>
+  /**
+   * Pending member-auth retries. Keyed by pactId. Each entry holds the
+   * next-retry timer + the attempt counter so {@link clearAuthRetry}
+   * can cancel and a new attempt can pick up the backoff schedule
+   * mid-stream. The timer is null only for the brief window between
+   * "we kicked off an attempt" and "the attempt awaited or timed out".
+   */
+  authRetry: Map<string, { attempt: number; timer: ReturnType<typeof setTimeout> | null }>
+  /**
+   * Liveness ping bookkeeping. `interval` is the periodic sender;
+   * `lastPongAt` is the wall-clock ms of the last received pong (or
+   * the moment the link opened, so a freshly-opened link doesn't
+   * trip the dead-peer threshold immediately). `missed` counts the
+   * consecutive ping windows that elapsed without a pong; once it
+   * reaches LIVENESS_MAX_MISSES the link is destroyed and
+   * Hyperswarm reconnect logic takes over.
+   */
+  liveness: {
+    interval: ReturnType<typeof setInterval> | null
+    lastPongAt: number
+    missed: number
+    pendingPings: Set<string>
+  }
 }
 
 /** Default-populated link with no-op senders; channel openers rebind these. */
@@ -46,12 +76,36 @@ export function newPeerLink(conn: any): PeerLink {
     authChannel: null,
     sendRequest: () => false,
     sendAuthRequest: () => false,
+    sendPing: () => false,
+    sendPong: () => false,
     pending: new Map(),
     pendingAuth: new Map(),
     claimedMembers: new Map(),
     authenticatedMembers: new Map(),
     revocationTimers: new Map(),
+    authRetry: new Map(),
+    liveness: {
+      interval: null,
+      lastPongAt: Date.now(),
+      missed: 0,
+      pendingPings: new Set(),
+    },
   }
+}
+
+/** Cancel any queued auth retry for this pact. Called on success + on conn close. */
+export function clearAuthRetry(link: PeerLink, pactId: string): void {
+  const slot = link.authRetry.get(pactId)
+  if (!slot) return
+  if (slot.timer) clearTimeout(slot.timer)
+  link.authRetry.delete(pactId)
+}
+
+/** Stop the liveness loop and clear bookkeeping. Idempotent. */
+export function stopLiveness(link: PeerLink): void {
+  if (link.liveness.interval) clearInterval(link.liveness.interval)
+  link.liveness.interval = null
+  link.liveness.pendingPings.clear()
 }
 
 /** Best-effort destroy — callers shouldn't rely on timely resolution. */

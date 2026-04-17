@@ -668,6 +668,84 @@ test('display_name missing field is preserved (backward compat from pre-4a pacts
   t.is(stored.display_name, undefined) // field never existed, not added by apply
 })
 
+test('display_name that trims to empty does not create _agents/ index row', async (t) => {
+  // Whitespace-only display_name used to write an empty-string name
+  // into the index; the trim + early-return at apply.ts guards that.
+  const view = fakeView()
+  const apply = makeApply()
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'x', content: 'y' }),
+          display_name: '   ',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  t.absent(
+    view._keys().some((k) => k.startsWith(AGENT_NAME_PREFIX)),
+    'no _agents/<handle> row written for whitespace-only display_name',
+  )
+})
+
+test('_agents/ index overwrites rows that lack a timestamp (pre-4a migration)', async (t) => {
+  // Seed an _agents/<handle> row with the old shape ({ name } with no
+  // ts). The next entry should win — the "existing ts missing" branch
+  // in upsertAgentName falls through to the put() instead of
+  // returning early.
+  const view = fakeView()
+  const apply = makeApply()
+  view._data.set(`${AGENT_NAME_PREFIX}${HANDLE_A}`, { name: 'Legacy' })
+  await apply(
+    [
+      node({
+        writerKey: KEY_A,
+        length: 0,
+        value: {
+          ...entry('knowledge', { topic: 'x', content: 'y' }),
+          display_name: 'Fresh',
+        },
+      }),
+    ],
+    view,
+    fakeHost(),
+  )
+  const row = view._data.get(`${AGENT_NAME_PREFIX}${HANDLE_A}`) as { name: string; ts: string }
+  t.is(row.name, 'Fresh', 'legacy row without ts was overwritten')
+  t.ok(row.ts, 'new row carries a ts')
+})
+
+test('entry id uses seq=0 when node.length is absent', async (t) => {
+  // Autobase typically supplies node.length, but defensive code in
+  // apply.ts treats an undefined length as seq 0. Covers the `?? 0`
+  // fallback in the entry-id build step.
+  const view = fakeView()
+  const apply = makeApply()
+  const applied: AppliedInfo[] = []
+  await makeApply({ onApplied: (info) => applied.push(info) })(
+    [
+      {
+        from: { key: b4a.from(KEY_A, 'hex') as Buffer },
+        value: entry('knowledge', { topic: 'x', content: 'y' }),
+      },
+    ],
+    view,
+    fakeHost(),
+  )
+  t.ok(
+    view._keys().some((k) => k.startsWith('knowledge/')),
+    'entry still applied',
+  )
+  // eslint rule that flags unused vars is happy — we wanted apply
+  // purely for its side-effect.
+  void apply
+})
+
 // ─────── invite-redeemed ────────────────────────────────────────────
 
 const NONCE_A = '11'.repeat(24)

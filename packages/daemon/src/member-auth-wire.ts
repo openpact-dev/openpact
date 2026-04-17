@@ -20,6 +20,22 @@ export interface MemberAuthResponse {
   message?: string
 }
 
+/**
+ * Application-level liveness ping. Both peers emit one every
+ * `LIVENESS_INTERVAL_MS`; the responder echoes the same `corr` back
+ * via `MemberAuthPong`. Ping/pong runs on the same Protomux channel
+ * as the auth handshake so it proves the entire mux (not just the
+ * underlying TCP/UDX stream) is moving bytes — the only signal that
+ * survives a remote OS pausing the network stack mid-session.
+ */
+export interface MemberAuthPing {
+  corr: Buffer
+}
+
+export interface MemberAuthPong {
+  corr: Buffer
+}
+
 export const memberAuthRequestEnc: cenc.Encoding<MemberAuthRequest> = {
   preencode(state: { end: number }, m: MemberAuthRequest): void {
     cenc.string.preencode(state, m.pactId)
@@ -84,5 +100,29 @@ export const memberAuthResponseEnc: cenc.Encoding<MemberAuthResponse> = {
       code: code || undefined,
       message: message || undefined,
     }
+  },
+}
+
+export const memberAuthPingEnc: cenc.Encoding<MemberAuthPing> = {
+  preencode(state: { end: number }, m: MemberAuthPing): void {
+    cenc.buffer.preencode(state, m.corr)
+  },
+  encode(state: { buffer: Buffer; start: number }, m: MemberAuthPing): void {
+    cenc.buffer.encode(state, m.corr)
+  },
+  decode(state: { buffer: Buffer; start: number; end: number }): MemberAuthPing {
+    return { corr: cenc.buffer.decode(state) as Buffer }
+  },
+}
+
+export const memberAuthPongEnc: cenc.Encoding<MemberAuthPong> = {
+  preencode(state: { end: number }, m: MemberAuthPong): void {
+    cenc.buffer.preencode(state, m.corr)
+  },
+  encode(state: { buffer: Buffer; start: number }, m: MemberAuthPong): void {
+    cenc.buffer.encode(state, m.corr)
+  },
+  decode(state: { buffer: Buffer; start: number; end: number }): MemberAuthPong {
+    return { corr: cenc.buffer.decode(state) as Buffer }
   },
 }

@@ -25,10 +25,18 @@ import {
   clearRevocationTimer,
   scheduleRevocationDisconnect,
   attachPactToLink,
+  clearAuthRetry,
+  stopLiveness,
   corrKey,
 } from './peer-link'
 import { openInviteChannel } from './invite-channel'
-import { openMemberAuthChannel, requestMemberAuth } from './member-auth-channel'
+import {
+  openMemberAuthChannel,
+  requestMemberAuth,
+  backoffDelayMs,
+  shortKey,
+  type MemberAuthOutcome,
+} from './member-auth-channel'
 import { ERROR_CODES, type ErrorCode } from './error-codes'
 
 export interface DaemonOpts {
@@ -72,6 +80,14 @@ export interface JoinPactOpts {
 }
 
 const DEFAULT_CLAIM_TTL_MS = 24 * 60 * 60 * 1000
+/**
+ * Cadence for {@link Daemon._reconcileInterval}. 30s is short enough
+ * to recover from a transient auth failure within "did the user
+ * notice yet" wall-clock time, long enough to avoid chatty re-auth
+ * during normal operation (the per-link backoff already handles
+ * the fast retries).
+ */
+const RECONCILE_INTERVAL_MS = 30_000
 
 /**
  * The process-level host. Owns one Hyperswarm + one port-bound REST
@@ -101,6 +117,15 @@ export class Daemon extends EventEmitter {
   private _joinedTopics: Set<string> = new Set()
   /** Open invite-protocol links, one per connected peer. */
   private _peerLinks: Set<PeerLink> = new Set()
+  /**
+   * Periodic auth + liveness reconcile interval. Belt-and-suspenders
+   * on top of the per-link backoff: every {@link RECONCILE_INTERVAL_MS}
+   * we sweep every link × every pact and re-trigger auth on any pair
+   * that's currently unauthed but should be. Catches cases where the
+   * in-link backoff exhausted (link is alive, peer briefly unreachable,
+   * eventually came back) without forcing a destroy/reconnect cycle.
+   */
+  private _reconcileInterval: ReturnType<typeof setInterval> | null = null
 
   constructor({
     dataDir,
@@ -412,6 +437,25 @@ export class Daemon extends EventEmitter {
       })
       openMemberAuthChannel(link, mux, {
         handleMemberAuthRequest: (req) => this._handleMemberAuthRequest(req),
+        onLivenessDead: (l, missed) => {
+          this.emit('liveness-dead', {
+            remoteKey: shortKey(l.conn?.remotePublicKey ?? null),
+            missed,
+          })
+          // Tear the conn down so Hyperswarm reconnects. The
+          // 'close' handler below clears link state and emits
+          // member-offline for every pact this link was authed on.
+          destroyPeerLink(l)
+        },
+        onLivenessMiss: (l, missed) =>
+          this.emit('liveness-miss', {
+            remoteKey: shortKey(l.conn?.remotePublicKey ?? null),
+            missed,
+          }),
+        onLivenessRecover: (l) =>
+          this.emit('liveness-recover', {
+            remoteKey: shortKey(l.conn?.remotePublicKey ?? null),
+          }),
       })
       this._peerLinks.add(link)
 
@@ -419,8 +463,10 @@ export class Daemon extends EventEmitter {
       this.emit('peer-add', { remoteKey: b4a.toString(conn.remotePublicKey, 'hex') })
       conn.on('close', () => {
         this._peerLinks.delete(link)
+        stopLiveness(link)
         for (const timer of link.revocationTimers.values()) clearTimeout(timer)
         link.revocationTimers.clear()
+        for (const pactId of link.authRetry.keys()) clearAuthRetry(link, pactId)
         // Surface a member-offline for each pact this link was
         // authenticated on; the dashboard uses this to flip online
         // state without waiting for the next autobase tick.
@@ -437,6 +483,12 @@ export class Daemon extends EventEmitter {
     })
     this._started = true
     for (const pact of this._pacts.values()) this._joinTopic(pact)
+    if (!this._reconcileInterval) {
+      this._reconcileInterval = setInterval(() => {
+        for (const pact of this._pacts.values()) void this._reconcilePactLinks(pact)
+      }, RECONCILE_INTERVAL_MS)
+      this._reconcileInterval.unref?.()
+    }
     this.emit('start')
   }
 
@@ -457,16 +509,47 @@ export class Daemon extends EventEmitter {
     }
   }
 
-  private _requestMemberAuth(link: PeerLink, pact: Pact): Promise<void> {
-    return requestMemberAuth(link, pact, {
-      onMemberAuthenticated: (pactKey, memberKey) => {
-        this.emit('member-online', {
-          pactId: pactKey,
-          alias: this._aliasForPactKey(pactKey),
-          member_key: memberKey,
-        })
+  /**
+   * Run a single member-auth attempt and surface the outcome via
+   * structured events. Retry orchestration lives in
+   * {@link Daemon._scheduleMemberAuth}; this is the inner step.
+   */
+  private async _runMemberAuthAttempt(
+    link: PeerLink,
+    pact: Pact,
+    attempt: number,
+  ): Promise<MemberAuthOutcome> {
+    return requestMemberAuth(
+      link,
+      pact,
+      {
+        onMemberAuthenticated: (pactKey, memberKey) =>
+          this.emit('member-online', {
+            pactId: pactKey,
+            alias: this._aliasForPactKey(pactKey),
+            member_key: memberKey,
+          }),
+        onAttempt: (pactKey, n) =>
+          this.emit('auth-attempt', {
+            remoteKey: shortKey(link.conn?.remotePublicKey ?? null),
+            pactId: pactKey,
+            attempt: n,
+          }),
+        onTimeout: (pactKey, n) =>
+          this.emit('auth-timeout', {
+            remoteKey: shortKey(link.conn?.remotePublicKey ?? null),
+            pactId: pactKey,
+            attempt: n,
+          }),
+        onFail: (pactKey, reason) =>
+          this.emit('auth-fail', {
+            remoteKey: shortKey(link.conn?.remotePublicKey ?? null),
+            pactId: pactKey,
+            reason,
+          }),
       },
-    })
+      { attempt },
+    )
   }
 
   private async _bootstrapReplicationForAdmission(
@@ -499,6 +582,7 @@ export class Daemon extends EventEmitter {
     if (!isOwnKey) {
       link.claimedMembers.set(pactKey, claimedKey)
       clearRevocationTimer(link, pactKey)
+      clearAuthRetry(link, pactKey)
       const wasAuthed = link.authenticatedMembers.has(pactKey)
       link.authenticatedMembers.set(pactKey, claimedKey)
       if (!wasAuthed) {
@@ -531,6 +615,7 @@ export class Daemon extends EventEmitter {
         const claimedMemberKey = link.claimedMembers.get(pactId)
         if (claimedMemberKey && (await pact.hasActiveMemberKey(claimedMemberKey))) {
           clearRevocationTimer(link, pactId)
+          clearAuthRetry(link, pactId)
           link.authenticatedMembers.set(pactId, claimedMemberKey)
           attachPactToLink(pact, link)
           this.emit('member-online', {
@@ -540,18 +625,100 @@ export class Daemon extends EventEmitter {
           })
           continue
         }
-        await this._requestMemberAuth(link, pact)
+        // Kick (or restart) the per-link backoff for this pact. If a
+        // retry is already queued and the link is still healthy we
+        // leave it alone; otherwise we start a fresh attempt cycle.
+        this._scheduleMemberAuthForPact(link, pact)
       }
     }
   }
 
+  /**
+   * Initiate the auth retry loop for every pact this daemon holds on
+   * the given link. Called once when a fresh peer connects. Each pact
+   * runs its own backoff schedule via
+   * {@link Daemon._scheduleMemberAuthForPact}.
+   */
   private _scheduleMemberAuth(link: PeerLink): void {
-    for (const delayMs of [0, 250, 1000]) {
-      setTimeout(() => {
-        if (!this._peerLinks.has(link)) return
-        for (const pact of this._pacts.values()) void this._requestMemberAuth(link, pact)
-      }, delayMs)
+    if (!this._peerLinks.has(link)) return
+    for (const pact of this._pacts.values()) {
+      this._scheduleMemberAuthForPact(link, pact)
     }
+  }
+
+  /**
+   * Per-(link, pact) auth retry loop. Fires the first attempt
+   * immediately on next-tick; on any non-success outcome that's worth
+   * retrying, schedules the next attempt using
+   * {@link backoffDelayMs}. The loop exits cleanly on:
+   *   - 'authed' (we recorded membership and emitted member-online)
+   *   - 'channel-closed' (link is dying — conn.on('close') will
+   *     remove it shortly)
+   *   - 'not-member' (we aren't a member yet; the autobase 'writable'
+   *     handler in _wireEvents reschedules once we are)
+   *   - 'not-active' (the remote isn't in our active member set;
+   *     reconnecting them later won't help until membership changes)
+   *
+   * 'pending' is treated as success-in-flight: another caller already
+   * has an attempt outstanding, so we don't queue a duplicate. The
+   * outstanding attempt's outcome will trigger the next loop step (or
+   * exit) on its own.
+   */
+  private _scheduleMemberAuthForPact(link: PeerLink, pact: Pact): void {
+    const pactId = pact.pactKey?.toLowerCase()
+    if (!pactId) return
+    if (link.authenticatedMembers.has(pactId)) {
+      clearAuthRetry(link, pactId)
+      return
+    }
+    const existing = link.authRetry.get(pactId)
+    if (existing && existing.timer !== null) return
+    const slot = existing ?? { attempt: 0, timer: null }
+    link.authRetry.set(pactId, slot)
+    const run = async () => {
+      slot.timer = null
+      if (!this._peerLinks.has(link)) {
+        link.authRetry.delete(pactId)
+        return
+      }
+      slot.attempt += 1
+      const outcome = await this._runMemberAuthAttempt(link, pact, slot.attempt)
+      if (!this._peerLinks.has(link)) {
+        link.authRetry.delete(pactId)
+        return
+      }
+      switch (outcome) {
+        case 'authed':
+        case 'channel-closed':
+        case 'not-active':
+          link.authRetry.delete(pactId)
+          return
+        case 'not-member':
+          // Joiner pre-admission: clear the slot so the autobase
+          // 'writable' handler can re-arm cleanly once we're admitted.
+          link.authRetry.delete(pactId)
+          return
+        case 'pending':
+          // Another attempt is already in flight (probably from the
+          // initial schedule racing with the periodic reconcile);
+          // leave the slot in place and let that one finish.
+          return
+        case 'timeout':
+        case 'send-failed':
+        case 'verify-failed':
+        default: {
+          const delay = backoffDelayMs(slot.attempt)
+          slot.timer = setTimeout(run, delay)
+          slot.timer.unref?.()
+          return
+        }
+      }
+    }
+    // First attempt fires on next tick so the conn handshake can
+    // settle before we send our first request — channel.open() is
+    // synchronous on our side but the remote may not have ack'd yet.
+    slot.timer = setTimeout(run, 0)
+    slot.timer.unref?.()
   }
 
   /** Handle an inbound redeem-request: map to local Pact.redeemInvite and reply. */
@@ -709,6 +876,11 @@ export class Daemon extends EventEmitter {
     this._stopped = true
     this._started = false
 
+    if (this._reconcileInterval) {
+      clearInterval(this._reconcileInterval)
+      this._reconcileInterval = null
+    }
+
     // Stop announcing every pact topic. Best-effort: leave() can
     // fail if the swarm already tore down mid-shutdown.
     if (this._swarm) {
@@ -722,11 +894,14 @@ export class Daemon extends EventEmitter {
     }
     this._joinedTopics.clear()
 
-    // Cancel any revocation disconnect timers we queued so they
-    // don't fire against a torn-down link.
+    // Cancel any revocation disconnect timers, auth retry timers,
+    // and liveness intervals so they don't fire against a torn-down
+    // link.
     for (const link of this._peerLinks) {
       for (const timer of link.revocationTimers.values()) clearTimeout(timer)
       link.revocationTimers.clear()
+      for (const pactId of [...link.authRetry.keys()]) clearAuthRetry(link, pactId)
+      stopLiveness(link)
     }
 
     // Destroy the swarm — this closes every peer socket, which in

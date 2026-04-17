@@ -154,12 +154,115 @@ export async function startForegroundCmd(
   // Surface peer + swarm errors that the daemon has already swallowed
   // (see Daemon._swarm.on('error') / conn.on('error')) so an operator
   // tailing `op start --foreground` sees them.
-  daemon.on('peer-error', ({ remoteKey, error }) => {
+  daemon.on('peer-error', ({ remoteKey, error }: { remoteKey: string | null; error: Error }) => {
     logger.warn({ remoteKey: remoteKey?.slice(0, 16) ?? null, err: error }, 'peer error')
   })
-  daemon.on('swarm-error', ({ error }) => {
+  daemon.on('swarm-error', ({ error }: { error: Error }) => {
     logger.warn({ err: error }, 'swarm error')
   })
+
+  // Full peer + auth + liveness lifecycle. Without these in the log
+  // file, sleep/wake bugs and flaky reconnect bugs are undiagnosable
+  // — the dashboard's SSE feed is gone the moment the user closes the
+  // tab. Volume is bounded: a normal session emits one peer-add and
+  // one member-online per remote peer per pact per connection.
+  daemon.on('peer-add', ({ remoteKey }: { remoteKey: string }) => {
+    logger.info({ remoteKey: remoteKey.slice(0, 16) }, 'peer add')
+  })
+  daemon.on('peer-remove', ({ remoteKey }: { remoteKey: string }) => {
+    logger.info({ remoteKey: remoteKey.slice(0, 16) }, 'peer remove')
+  })
+  daemon.on(
+    'member-online',
+    ({
+      pactId,
+      alias,
+      member_key,
+    }: {
+      pactId: string | null
+      alias?: string
+      member_key: string
+    }) => {
+      logger.info(
+        { pactId: pactId?.slice(0, 16) ?? null, alias, memberKey: member_key.slice(0, 16) },
+        'member online',
+      )
+    },
+  )
+  daemon.on(
+    'member-offline',
+    ({
+      pactId,
+      alias,
+      member_key,
+    }: {
+      pactId: string | null
+      alias?: string
+      member_key: string
+    }) => {
+      logger.info(
+        { pactId: pactId?.slice(0, 16) ?? null, alias, memberKey: member_key.slice(0, 16) },
+        'member offline',
+      )
+    },
+  )
+  daemon.on(
+    'auth-attempt',
+    ({
+      remoteKey,
+      pactId,
+      attempt,
+    }: {
+      remoteKey: string | null
+      pactId: string
+      attempt: number
+    }) => {
+      logger.debug({ remoteKey, pactId: pactId.slice(0, 16), attempt }, 'auth attempt')
+    },
+  )
+  daemon.on(
+    'auth-timeout',
+    ({
+      remoteKey,
+      pactId,
+      attempt,
+    }: {
+      remoteKey: string | null
+      pactId: string
+      attempt: number
+    }) => {
+      logger.warn({ remoteKey, pactId: pactId.slice(0, 16), attempt }, 'auth timeout')
+    },
+  )
+  daemon.on(
+    'auth-fail',
+    ({
+      remoteKey,
+      pactId,
+      reason,
+    }: {
+      remoteKey: string | null
+      pactId: string
+      reason: string
+    }) => {
+      logger.warn({ remoteKey, pactId: pactId.slice(0, 16), reason }, 'auth fail')
+    },
+  )
+  daemon.on(
+    'liveness-miss',
+    ({ remoteKey, missed }: { remoteKey: string | null; missed: number }) => {
+      logger.warn({ remoteKey, missed }, 'liveness miss')
+    },
+  )
+  daemon.on('liveness-recover', ({ remoteKey }: { remoteKey: string | null }) => {
+    logger.info({ remoteKey }, 'liveness recover')
+  })
+  daemon.on(
+    'liveness-dead',
+    ({ remoteKey, missed }: { remoteKey: string | null; missed: number }) => {
+      logger.warn({ remoteKey, missed }, 'liveness dead — destroying conn for reconnect')
+    },
+  )
 
   // Block forever — Node stays alive while the swarm + http server hold handles.
   await new Promise(() => {})
