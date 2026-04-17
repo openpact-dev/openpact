@@ -1,8 +1,9 @@
 #!/usr/bin/env tsx
 // Render each Preact docs page to HTML, strip the site chrome, convert
 // the article body to markdown, and write it under public/ so Vercel
-// can serve it when an agent sends `Accept: text/markdown`. Matches the
-// Cloudflare "Markdown for Agents" content-negotiation pattern.
+// serves markdown counterparts at their own URLs (/llms.txt, /docs.md,
+// /docs/<slug>.md, /for-agents.md). Agents discover them via the Link
+// header on `/` (rel="describedby" / rel="alternate"; type="text/markdown").
 
 import { h, type ComponentType } from 'preact'
 import { renderToString } from 'preact-render-to-string'
