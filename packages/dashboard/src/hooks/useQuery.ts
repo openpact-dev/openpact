@@ -49,11 +49,14 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
 
   const refetch = () => setVersion((v) => v + 1)
 
-  // Re-run when the cache key, the external trigger, or refetch counter changes.
-  // Version is intentionally NOT part of the cache key — that way a refetch()
-  // sees the same entry (potentially holding a previous value) and can carry
-  // it forward as stale data while the new fetch resolves.
-  const cacheKey = `${key}::${trigger}`
+  // Cache by `key` alone. `trigger` and `version` both *invalidate* by
+  // re-running the effect, but neither belongs in the cache key —
+  // including them would mean every SSE-driven trigger bump misses the
+  // cache, which loses the prior settled value and forces the UI to
+  // render with `data: undefined` until the new fetch resolves. The
+  // visible symptom was a "whole page reload" flash on every event.
+  // Stale-while-revalidate only works when the cache lookup hits.
+  const cacheKey = key
 
   const [state, setState] = useState<{
     data: T | undefined
@@ -123,7 +126,7 @@ export function useQuery<T>(fn: () => Promise<T>, opts: QueryOpts): QueryState<T
     return () => {
       cancelled = true
     }
-  }, [cacheKey, version])
+  }, [cacheKey, trigger, version])
 
   return useMemo(() => ({ ...state, refetch }), [state])
 }

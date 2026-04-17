@@ -77,6 +77,37 @@ describe('useQuery', () => {
     expect(calls).toBe(2)
   })
 
+  test('changing trigger preserves the previous data while the refetch is in flight', async () => {
+    // Pre-fix: cacheKey embedded the trigger, so every advance produced
+    // a fresh cache miss and the hook briefly emitted { data: undefined,
+    // loading: true } until the new fetch resolved. The visible symptom
+    // on SSE-driven pages was a "whole page reload" flash on every event.
+    let resolveNext: ((v: number) => void) | null = null
+    let calls = 0
+    const fn = async () => {
+      calls++
+      if (calls === 1) return 1
+      return await new Promise<number>((r) => {
+        resolveNext = r
+      })
+    }
+    let trigger = 0
+    const { result, rerender } = renderHook(() => useQuery(fn, { key: 'k7', trigger }))
+    await waitFor(() => expect(result.current.data).toBe(1))
+
+    // Advance the trigger; the refetch is now blocked on `resolveNext`.
+    trigger = 1
+    rerender()
+    expect(result.current.data).toBe(1)
+    expect(result.current.loading).toBe(true)
+
+    await act(async () => {
+      resolveNext!(2)
+    })
+    await waitFor(() => expect(result.current.data).toBe(2))
+    expect(result.current.loading).toBe(false)
+  })
+
   test('marks stale when a refetch fails after earlier data loaded', async () => {
     let calls = 0
     const fn = async () => {
