@@ -212,13 +212,10 @@ export function buildProgram(): Command {
 
 export async function run(argv = process.argv): Promise<void> {
   const program = buildProgram()
-  await program.parseAsync(argv)
-}
-
-// Direct invocation guard: only run when executed (not when imported in tests).
-if (require.main === module || (process.argv[1] && process.argv[1].endsWith('openpact.js'))) {
-  run().catch((err) => {
+  try {
+    await program.parseAsync(argv)
+  } catch (err) {
     console.error(`${emoji.cross} ${c.brand((err as Error).message)}`)
     process.exit(1)
-  })
+  }
 }
