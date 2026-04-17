@@ -28,9 +28,14 @@ test('status.get returns full status payload', async (t) => {
   t.alike(await r.get(), payload)
 })
 
-test('status.agents returns array', async (t) => {
-  const m = mockFetch({ status: 200, body: [{ id: 'x', remote_key: 'y', online: true }] })
+test('status.agents returns array with is_self on self', async (t) => {
+  const body = [
+    { id: 'me', remote_key: 'mm', online: true, role: 'creator', is_self: true },
+    { id: 'x', remote_key: 'y', online: true, role: 'member', is_self: false },
+  ]
+  const m = mockFetch({ status: 200, body })
   const r = statusResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   const agents = await r.agents()
-  t.is(agents.length, 1)
+  t.is(agents.length, 2)
+  t.is(agents[0].is_self, true, 'self is pinned to the first row by the daemon')
 })

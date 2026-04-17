@@ -38,6 +38,7 @@ export interface AgentPayload {
   id: string
   remote_key: string
   online: boolean
+  is_self?: boolean
 }
 
 export interface LogEntry {
@@ -350,7 +351,8 @@ export function formatAgents(agents: AgentPayload[], opts: { alias?: string } = 
     columns: [
       {
         header: 'Handle',
-        value: (a: AgentPayload) => c.bone(a.id),
+        value: (a: AgentPayload) =>
+          a.is_self ? `${c.bone(a.id)}  ${c.brand('(you)')}` : c.bone(a.id),
         minWidth: 22,
       },
       {

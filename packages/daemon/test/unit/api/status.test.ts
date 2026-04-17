@@ -28,7 +28,7 @@ test('GET /v1/pacts/:pactId/status returns the fat per-pact payload', async (t) 
   t.ok(typeof body.pact_id === 'string')
   t.ok(/^anon-[a-z]+-[0-9a-f]{8}$/.test(body.peer_handle))
   t.is(body.role, 'creator')
-  t.is(body.agents, 0)
+  t.is(body.agents, 1, 'pact status counts self when we are a member')
   t.is(typeof body.entries, 'number')
   t.is(body.is_member, true)
 })
@@ -46,7 +46,7 @@ test('GET /v1/pacts/:pactId/status agents is pact-scoped, not host-wide', async 
   )
 
   t.is(host.agents, 3, 'host status reports all swarm connections')
-  t.is(pact.agents, 1, 'pact status reports only authenticated members for that pact')
+  t.is(pact.agents, 2, 'pact status counts one remote authenticated member plus self')
 })
 
 test('GET /v1/pacts/:pactId/status entries reflects appends', async (t) => {

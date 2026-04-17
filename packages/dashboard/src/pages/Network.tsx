@@ -18,6 +18,7 @@ interface AgentRow {
   online?: boolean
   entries?: number
   display_name?: string | null
+  is_self?: boolean
 }
 
 type AdminAction = { kind: 'promote' | 'remove'; agent: AgentRow }
@@ -81,36 +82,27 @@ function NetworkPage({
   const pactId = s?.pact_id ?? ''
   const pactName = s?.pact_name ?? null
   const pactPurpose = s?.pact_purpose ?? null
-  const selfHandle = s?.peer_handle ?? ''
   const selfDisplay = s?.display_name ?? null
   const selfRole = s?.role ?? 'Pending'
-  const selfPublicKey = s?.public_key ?? ''
   const isCreator = selfRole === 'creator'
-  const selfOnline = !!s && connection.daemonReachable !== false
 
-  // Fold self + remote agents into one list so the self-agent sits in
-  // the table like any other row. The self-row is always pinned to the
-  // top.
+  // The daemon now returns self as the first row of /agents, so we just
+  // project each entry into the unified shape. Self's `online` reflects
+  // its presence in the authenticated member set on the daemon; when the
+  // dashboard is talking to the daemon we are definitionally online, so
+  // we also OR in the dashboard-connection signal to smooth over brief
+  // proxy hiccups.
   const rows: UnifiedRow[] = useMemo(() => {
-    if (!s) return []
-    const self: UnifiedRow = {
-      handle: selfHandle,
-      displayName: selfDisplay,
-      publicKey: selfPublicKey,
-      role: selfRole,
-      online: selfOnline,
-      isSelf: true,
-    }
-    const others: UnifiedRow[] = (agents.data ?? []).map((a: AgentRow) => ({
+    const list = agents.data ?? []
+    return list.map((a: AgentRow) => ({
       handle: a.id ?? a.remote_key ?? '',
       displayName: a.display_name ?? null,
       publicKey: a.remote_key ?? null,
       role: a.role ?? 'member',
-      online: !!a.online,
-      isSelf: false,
+      online: a.is_self ? !!a.online && connection.daemonReachable !== false : !!a.online,
+      isSelf: !!a.is_self,
     }))
-    return [self, ...others]
-  }, [agents.data, s, selfHandle, selfDisplay, selfPublicKey, selfRole, selfOnline])
+  }, [agents.data, connection.daemonReachable])
 
   return (
     <section data-testid="page-network" class="mx-auto max-w-[1180px]">

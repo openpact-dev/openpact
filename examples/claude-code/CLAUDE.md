@@ -4,18 +4,34 @@
 
 This project uses an OpenPact daemon as shared, append-only memory.
 Treat it as a long-lived notebook every agent (and the human) reads
-and writes. The daemon listens on `127.0.0.1:7666` by default; if it's
-not running, the curl commands below will fail with `Connection
-refused` — surface that and stop, don't try to start it yourself.
+and writes. The daemon listens on `127.0.0.1:7666` by default. If it
+is not running, the curl commands below fail with `Connection
+refused`. Surface that and stop. Do not try to start it yourself.
 
 One daemon holds many pacts. Pick which pact these recipes address by
 setting `OPENPACT_PACT` to its alias. Leave it unset to use whatever
 alias the daemon considers current (`openpact list` marks it with `*`).
 
+The REST API requires a bearer token. It is auto-minted on first boot
+into `~/.openpact/daemon.json` with mode 0600. Load it once per
+session:
+
 ```bash
-OPENPACT_URL="http://127.0.0.1:7666"
+OPENPACT_URL="${OPENPACT_URL:-http://127.0.0.1:7666}"
 OPENPACT_PACT="${OPENPACT_PACT:-default}"
+OPENPACT_TOKEN="${OPENPACT_TOKEN:-$(jq -r .apiToken "${OPENPACT_DATA_DIR:-$HOME/.openpact}/daemon.json")}"
+AUTH=(-H "Authorization: Bearer $OPENPACT_TOKEN")
 ```
+
+Every pact-scoped request carries `"${AUTH[@]}"`. `/v1/ping` is the
+only route that works without the header.
+
+Prefer automatic reads? Run `openpact install claude-code` once in the
+project. It writes SessionStart and UserPromptSubmit hooks into
+`.claude/settings.json` so Claude Code injects pact status and new
+peer activity at session start and before each prompt. The recipes
+below still matter for writes. The install teaches Claude how to read
+the pact. It does not teach it when to record to it.
 
 ### When to read
 
@@ -27,11 +43,11 @@ OPENPACT_PACT="${OPENPACT_PACT:-default}"
 ### When to write
 
 - After making a non-obvious call (a tradeoff, a workaround, a chosen
-  convention), record it as knowledge with a clear topic. Don't record
+  convention), record it as knowledge with a clear topic. Do not record
   what the diff already shows.
 - When you start something other agents might trip over (a long
   refactor, a temporary breakage), broadcast a message.
-- When there's work the user wants tracked across sessions, post a
+- When there is work the user wants tracked across sessions, post a
   task instead of a TODO comment.
 
 ### Recipes
@@ -39,29 +55,29 @@ OPENPACT_PACT="${OPENPACT_PACT:-default}"
 **List recent knowledge on a topic:**
 
 ```bash
-curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20" \
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20" \
   | jq '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
 ```
 
 **Record a discovery:**
 
 ```bash
-curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
+curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
   -H "content-type: application/json" \
-  -d '{"topic":"routing","content":"Use the resolver factory in src/router.ts — the legacy switch in legacy/route-map.ts is deprecated.","confidence":0.9}'
+  -d '{"topic":"routing","content":"Use the resolver factory in src/router.ts. The legacy switch in legacy/route-map.ts is deprecated.","confidence":0.9}'
 ```
 
 **List open tasks:**
 
 ```bash
-curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open" \
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open" \
   | jq '.entries[] | {id, title, created_by}'
 ```
 
 **Post a task for another agent (or future you):**
 
 ```bash
-curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks" \
+curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks" \
   -H "content-type: application/json" \
   -d '{"title":"Migrate auth middleware off legacy session store","description":"Tracking ticket; details in CLAUDE.md decision log."}'
 ```
@@ -69,16 +85,16 @@ curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks" \
 **Claim a task before working on it:**
 
 ```bash
-curl -sf -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/claim" | jq '.task'
+curl -sf "${AUTH[@]}" -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/claim" | jq '.task'
 ```
 
 If the response is HTTP 409 with `error: "TASK_NOT_OPEN"`, another
-agent already owns it — don't fight; pick a different task.
+agent already owns it. Do not fight. Pick a different task.
 
 **Complete a task:**
 
 ```bash
-curl -sf -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/complete" \
+curl -sf "${AUTH[@]}" -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/complete" \
   -H "content-type: application/json" \
   -d '{"result":"PR #123 merged"}' \
   | jq '.task'
@@ -87,7 +103,7 @@ curl -sf -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/complete" \
 **Broadcast a short status message:**
 
 ```bash
-curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
+curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
   -H "content-type: application/json" \
   -d '{"content":"Starting refactor of src/router/*; expect churn for ~30 min."}'
 ```
@@ -95,7 +111,7 @@ curl -sf -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
 **See messages since a cursor:**
 
 ```bash
-curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
   | jq '.entries[] | {ts: .timestamp, from: .agent_id, content: .payload.content}'
 ```
 
@@ -103,12 +119,12 @@ curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:
 
 - **Topics are short and reusable.** `routing`, `auth`, `db-schema`,
   `testing`. Pick from existing topics before inventing a new one
-  (`curl -sf "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.entries[].payload.topic' | sort -u`).
-- **One fact per entry.** Don't dump a paragraph; record the decision
+  (`curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.entries[].payload.topic' | sort -u`).
+- **One fact per entry.** Do not dump a paragraph; record the decision
   and one sentence of reasoning. Future readers can fetch context.
-- **Don't echo the diff.** The pact stores knowledge that isn't in the
-  code or git history.
-- **Check status before assuming the daemon's there:**
+- **Do not echo the diff.** The pact stores knowledge that is not in
+  the code or git history.
+- **Check status before assuming the daemon is there:**
   `curl -sf "$OPENPACT_URL/v1/ping"` → `{"ok":true}`.
 
 <!-- END: openpact recipe -->

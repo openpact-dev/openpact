@@ -22,7 +22,12 @@ export function statusResource(client: OpenPactClient) {
     get(): Promise<StatusPayload> {
       return client.req<StatusPayload>(client.pactPath('/status'))
     },
-    /** GET /v1/pacts/:pactId/agents — connected agents for this pact. */
+    /**
+     * GET /v1/pacts/:pactId/agents — agents in this pact. Includes the
+     * local peer (pinned to the first row with `is_self: true`) when we
+     * are an admitted member, so the array length matches
+     * `status.agents`.
+     */
     agents(): Promise<AgentPayload[]> {
       return client.req<AgentPayload[]>(client.pactPath('/agents'))
     },

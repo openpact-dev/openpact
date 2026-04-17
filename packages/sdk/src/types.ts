@@ -108,7 +108,10 @@ export interface StatusPayload {
   display_name: string | null
   role: string | null
   public_key: string | null
-  /** Count of currently online remote agents for this pact only. Excludes self. */
+  /**
+   * Agents in this pact. Includes self when `is_member` is true so
+   * the number matches the length of the array returned by `agents()`.
+   */
   agents: number
   entries: number
   is_member: boolean
@@ -120,8 +123,10 @@ export interface AgentPayload {
   id: string
   remote_key: string
   online: boolean
-  role?: 'indexer' | 'member'
+  role?: 'creator' | 'indexer' | 'member'
   display_name?: string | null
+  /** True for the local peer. Set by the daemon; consumers render a "self" marker. */
+  is_self?: boolean
 }
 
 export interface AppendResult {

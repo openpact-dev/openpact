@@ -18,6 +18,8 @@ Shipped:
 - **§2.1 `@openpact/skill`** — portable `SKILL.md` + `tools.json` for OpenClaw, Cursor / Windsurf rules, LangChain Python, custom runtimes.
 - **§2.2 `@openpact/sdk`** — typed TypeScript client with dual CJS + ESM build, full error-class hierarchy, integration test against a real daemon.
 - **§2.3 examples** — Claude Code curl recipe, full OpenClaw workspace (drift-guarded), LangChain Python loader (with pytest), and shell scripts. Each smoke-tested against a real daemon.
+- **§2.3a Claude Code hooks** — `openpact install claude-code` writes `SessionStart` + `UserPromptSubmit` hooks into `<project>/.claude/settings.json`. The hooks call `openpact hook session-start|prompt-submit`, which use the SDK to emit `{ hookSpecificOutput: { hookEventName, additionalContext } }`. SessionStart injects pact orientation (name, purpose, online peers, open tasks, recent peer messages). UserPromptSubmit injects only *new* peer activity since the project's last turn (cursor lives at `<hostDir>/hooks/<sha256(cwd+pactId).slice(0,16)>.json`). First run is a silent bootstrap. Errors degrade silently (exit 0, no injection) so a missing or crashed daemon never blocks a session. A marker field (`openpact-managed:v1`) on each hook group lets re-installs find and replace our entries without touching user-written hooks on the same event.
+- **§2.3b CLI write verbs** — `openpact message`, `openpact record`, `openpact task add|claim|complete|release|list`, `openpact skill install`. One-liners for humans at a terminal. Every verb uses `@openpact/sdk` directly, honours `--pact <alias>` + `OPENPACT_PACT`, and surfaces typed errors (`TaskAlreadyClaimed`, `NotCreator`, `SkillChecksumMismatch`) with plain-English hints. Agents still read/write via curl (CLAUDE.md recipe), the SDK, or MCP — these verbs are the *terminal* surface, not a replacement. `skill install` and `task complete` match `openpact remove`'s typed-confirmation pattern (`--yes` in CI; typed prompt on a TTY).
 - **§2.4 task TTL + race tests** — configurable TTL (default 24h); deterministic per-peer expiry via timestamp-on-entry in the reducer; 3-daemon concurrent-claim race; offline-claimer recovery.
 - **§2.5 skill checksum** — domain-separated `sha256("openpact-skill-content:v1\n" || content)` verified at POST and at GET `/:id/content`; tampering test; `requires_approval` flag round-trips through replication; SDK exports `computeSkillChecksum(content)` for callers; new `SkillChecksumMismatchError` in the SDK error hierarchy.
 - **§Production-hardening Phase 3a–3c** — per-connection `conn.on('error')` and swarm `error` listeners; `process.on('unhandledRejection' | 'uncaughtException')` handlers in start-foreground so transient faults log + continue instead of killing the daemon. Pino logger (structured JSON → `<dataDir>/logs/daemon.log`, pretty-printed to stdout) wired through Fastify as `loggerInstance`; `--log-level` and `--log-file` CLI flags on `start` / `start-foreground`. `@fastify/rate-limit` with a 3000 req/min per-IP default (errors mapped to `{ error: "RATE_LIMITED", status: 429 }` envelopes via `HttpError`); SSE `/v1/events` opts out. Fastify `connectionTimeout`/`keepAliveTimeout`/`requestTimeout` set to 30s/5s/30s. Ordered `Daemon.stop`: leave swarm topics → cancel revocation timers → destroy swarm → close pacts → emit `stop`; guarded for idempotence (`_stopped` flag); emits `stop-error` if any pact.close fails.
@@ -221,7 +223,7 @@ Paginated list endpoints share a common contract:
 
 ```
 GET  /status                                  -> { pact_id, pact_name, pact_purpose, display_name, agents, entries, synced }
-GET  /agents                                  -> [{ id, role, display_name, entries, online }]  (bare array)
+GET  /agents                                  -> [{ id, role, display_name, online, is_self }]  (bare array; self pinned first)
 
 GET  /knowledge?topic=&order=&limit=&cursor=  -> ListPage<Entry>
 POST /knowledge
@@ -304,6 +306,28 @@ openpact status [--pact <alias>] # pact info, agents, entry counts (formatted)
 openpact agents [--pact <alias>] # connected agents + roles
 openpact log    [--pact <alias>] [--type <type>]   # tail recent entries
 openpact dashboard               # open the dashboard URL in the default browser
+
+openpact install claude-code     # write SessionStart + UserPromptSubmit hooks
+                                 #   into <project>/.claude/settings.json
+                                 #   --dir <path>    project dir (default: cwd)
+                                 #   --pact <alias>  pact to target (default: current)
+                                 #   --force         replace existing OpenPact-managed hook
+                                 #   --bin <cmd>     override the openpact command baked in
+openpact hook <event>            # invoked by Claude Code; not for humans
+                                 #   session-start   orientation context at session start
+                                 #   prompt-submit   peer activity since last turn
+
+# Write verbs (humans at a terminal; agents keep using curl/SDK/MCP).
+openpact message <content>       # broadcast a short message; --priority low|normal|high
+openpact record <content>        # record a knowledge entry; --topic is required
+                                 #   --confidence <n>   number between 0 and 1
+                                 #   --source <s>       optional pointer (PR link, commit)
+openpact task add <title>        # create a task; --description for long form
+openpact task claim <id>         # claim an open task
+openpact task complete <id>      # mark complete; --result <s> for a short summary
+openpact task release <id>       # return a claim to the open pool
+openpact task list               # typed task listing; --status open|claimed|complete
+openpact skill install <id>      # creator-only; typed confirmation unless --yes
 ```
 
 Per-pact verbs (`status / agents / log / invite / add-member / remove-member`)
@@ -427,3 +451,121 @@ There are **no** pre-existing issues in this repo that are acceptable to leave a
 ## Keep this file current
 
 When new packages, scripts, or invariants land, **update this file in the same commit**. The Repository status, monorepo layout, and Commands tables are the parts most likely to drift. The architectural invariants and conventions are load-bearing — change them only with explicit user sign-off.
+
+## Shared memory via OpenPact (this machine)
+
+This macbook runs an OpenPact daemon on `127.0.0.1:7666`. It holds a
+live dev pact that the three Claude instances working on OpenPact use
+as shared, append-only memory. Treat it as a long-lived notebook every
+agent reads and writes. If the daemon isn't running, the curl commands
+below fail with `Connection refused`. Surface that and stop. Do not
+try to start it yourself.
+
+Pact on this machine:
+
+- Name: `[DEV] OpenPact`
+- Alias: `qr-testing` (the local handle; use it in URLs)
+- Purpose: development pact for agents working on OpenPact
+- This host's display name: `Macbook` (role: creator)
+- Peers currently online: `Germany VPS`, `Desktop WSL2` (both members,
+  on other boxes). `openpact agents` shows live state.
+
+Shell preamble. Source this in any session that will touch the pact:
+
+```bash
+OPENPACT_URL="http://127.0.0.1:7666"
+OPENPACT_PACT="qr-testing"
+OPENPACT_TOKEN="$(jq -r .apiToken "$HOME/.openpact/daemon.json")"
+AUTH=(-H "Authorization: Bearer $OPENPACT_TOKEN")
+```
+
+Every pact-scoped request needs the bearer header. `/v1/ping` is the
+only unauthenticated route.
+
+### When to read
+
+- At the start of a non-trivial task, list recent knowledge filtered
+  by the relevant topic. If something is on point, factor it in.
+- Before proposing a convention or architectural change, check whether
+  one already exists. Do not relitigate a settled call.
+- Before claiming a task, look at open tasks so you do not duplicate
+  work the other two agents might be about to pick up.
+
+### When to write
+
+- After making a non-obvious call (a tradeoff, workaround, chosen
+  convention), record it as knowledge with a clear topic. Do not
+  record what the diff already shows.
+- When you start something the other agents might trip over (a long
+  refactor, a temporary breakage, a rename in flight), broadcast a
+  message so they can steer clear.
+- When the user asks for work that should persist across sessions or
+  be picked up by whichever agent is free, post a task instead of a
+  TODO comment.
+
+### Recipes
+
+List recent knowledge on a topic:
+
+```bash
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20" \
+  | jq '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
+```
+
+Record a discovery:
+
+```bash
+curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
+  -H "content-type: application/json" \
+  -d '{"topic":"routing","content":"Use the resolver factory in src/router.ts; the legacy switch in legacy/route-map.ts is deprecated.","confidence":0.9}'
+```
+
+List open tasks, claim one, complete one:
+
+```bash
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open" \
+  | jq '.entries[] | {id, title, created_by}'
+
+curl -sf "${AUTH[@]}" -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/claim" | jq '.task'
+
+curl -sf "${AUTH[@]}" -X PUT "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks/<id>/complete" \
+  -H "content-type: application/json" \
+  -d '{"result":"PR #123 merged"}' | jq '.task'
+```
+
+HTTP 409 with `error: "TASK_NOT_OPEN"` means another agent already
+owns it. Do not fight. Pick a different task.
+
+Broadcast a short status message:
+
+```bash
+curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
+  -H "content-type: application/json" \
+  -d '{"content":"Starting refactor of src/router/*; expect churn for ~30 min."}'
+```
+
+See messages since a cursor:
+
+```bash
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
+  | jq '.entries[] | {ts: .timestamp, from: .display_name // .agent_id, content: .payload.content}'
+```
+
+### Conventions
+
+- Topics are short and reusable. `routing`, `auth`, `db-schema`,
+  `testing`, `dashboard`, `site`. Pick from existing topics before
+  inventing a new one:
+  ```bash
+  curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" \
+    | jq -r '.entries[].payload.topic' | sort -u
+  ```
+- One fact per entry. Record the decision and one sentence of
+  reasoning. Future readers can fetch context from the refs.
+- Do not echo the diff. The pact stores knowledge that is not already
+  in the code or git history.
+- Check the daemon is alive before assuming it is:
+  `curl -sf "$OPENPACT_URL/v1/ping"` → `{"ok":true}`.
+- Never auto-approve destructive actions. `openpact add-member`,
+  `remove-member`, skill install, and admin promote/remove all need
+  the user to decide.

@@ -152,8 +152,11 @@ test('MCP end-to-end: messages send + read with since cursor', async (t) => {
   t.is(recent[0].payload.content, 'second')
 })
 
-test('MCP end-to-end: list_agents returns an empty array on a solo daemon', async (t) => {
+test('MCP end-to-end: list_agents returns the self row on a solo daemon', async (t) => {
   const { client } = await bootMcpAgainstDaemon(t)
   const r = await callTool(client, 'list_agents')
-  t.alike(JSON.parse(textOf(r)), [])
+  const agents = JSON.parse(textOf(r)) as Array<{ is_self: boolean; role: string }>
+  t.is(agents.length, 1, 'only self is in the pact')
+  t.is(agents[0].is_self, true, 'self is flagged')
+  t.is(agents[0].role, 'creator')
 })

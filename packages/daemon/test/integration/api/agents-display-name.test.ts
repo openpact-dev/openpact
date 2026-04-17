@@ -30,8 +30,12 @@ test('GET /agents returns the other member with their latest display_name', asyn
     const size = aBase?.activeWriters?.size ?? 0
     if (size >= 2) {
       const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
-      const list = JSON.parse(res.body) as Array<{ display_name: string | null }>
-      if (list.length >= 1 && list[0].display_name === 'Bob') break
+      const list = JSON.parse(res.body) as Array<{
+        display_name: string | null
+        is_self?: boolean
+      }>
+      const remote = list.find((x) => !x.is_self)
+      if (remote && remote.display_name === 'Bob') break
     }
     await new Promise((r) => setTimeout(r, 100))
   }
@@ -44,15 +48,18 @@ test('GET /agents returns the other member with their latest display_name', asyn
     role: string
     display_name: string | null
     online: boolean
+    is_self: boolean
   }>
 
-  t.is(agents.length, 1, 'exactly one other member is visible')
-  const a0 = agents[0]
-  t.is(a0.remote_key, b.daemon.publicKey, 'remote_key is B autobase member key')
-  t.is(a0.id, b.daemon.peerHandle, 'id derives from the writer key, matching agent_id on entries')
-  t.is(a0.display_name, 'Bob', 'display_name comes from the latest entry B authored')
-  t.is(a0.role, 'member', 'B was admitted as a non-indexer member')
-  t.ok(typeof a0.online === 'boolean')
+  t.is(agents.length, 2, 'self plus the other member are visible')
+  t.is(agents[0].is_self, true, 'self is pinned to the first row')
+  t.is(agents[0].role, 'creator', 'A is the creator')
+  const bRow = agents.find((x) => !x.is_self)!
+  t.is(bRow.remote_key, b.daemon.publicKey, 'remote_key is B autobase member key')
+  t.is(bRow.id, b.daemon.peerHandle, 'id derives from the writer key, matching agent_id on entries')
+  t.is(bRow.display_name, 'Bob', 'display_name comes from the latest entry B authored')
+  t.is(bRow.role, 'member', 'B was admitted as a non-indexer member')
+  t.ok(typeof bRow.online === 'boolean')
 })
 
 test('rename propagates: setDisplayName on A is visible on B without A posting content', async (t) => {
@@ -74,14 +81,21 @@ test('rename propagates: setDisplayName on A is visible on B without A posting c
   while (Date.now() < deadline) {
     await b.daemon.update()
     const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
-    const list = JSON.parse(res.body) as Array<{ display_name: string | null }>
-    if (list[0]?.display_name === 'Acolyte') break
+    const list = JSON.parse(res.body) as Array<{
+      display_name: string | null
+      is_self?: boolean
+    }>
+    if (list.find((x) => !x.is_self)?.display_name === 'Acolyte') break
     await new Promise((r) => setTimeout(r, 100))
   }
 
   const res = await bApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
-  const agents = JSON.parse(res.body) as Array<{ display_name: string | null }>
-  t.is(agents[0]?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
+  const agents = JSON.parse(res.body) as Array<{
+    display_name: string | null
+    is_self: boolean
+  }>
+  const aRow = agents.find((x) => !x.is_self)
+  t.is(aRow?.display_name, 'Acolyte', 'B observes A renamed via rename-message')
 })
 
 test('GET /agents keeps members after they stop (marked offline, not removed)', async (t) => {
@@ -102,8 +116,8 @@ test('GET /agents keeps members after they stop (marked offline, not removed)', 
   while (Date.now() < deadline) {
     await a.daemon.update()
     const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
-    const list = JSON.parse(res.body) as Array<{ remote_key: string }>
-    if (list.length >= 1) break
+    const list = JSON.parse(res.body) as Array<{ remote_key: string; is_self?: boolean }>
+    if (list.some((x) => !x.is_self)) break
     await new Promise((r) => setTimeout(r, 100))
   }
 
@@ -116,21 +130,25 @@ test('GET /agents keeps members after they stop (marked offline, not removed)', 
   const agents = JSON.parse(res.body) as Array<{
     remote_key: string
     online: boolean
+    is_self: boolean
   }>
-  t.is(agents.length, 1, 'B is still listed after stopping')
-  t.is(agents[0].remote_key, bKey, 'same canonical key')
+  t.is(agents.length, 2, 'self plus B are still listed after B stops')
+  const bRow = agents.find((x) => !x.is_self)!
+  t.is(bRow.remote_key, bKey, 'same canonical key')
 })
 
-test('GET /agents is empty when the agent has not yet been admitted as member', async (t) => {
+test('GET /agents has only the self row when no remote has been admitted', async (t) => {
   const { a } = await pair(t)
   const aApi = createApi(a.daemon)
   t.teardown(() => aApi.close())
 
-  // B is paired via the swarm but never admitted — activeWriters on A still
-  // only contains A itself, so /agents is empty.
+  // B is paired via the swarm but never admitted — `_members/` on A
+  // still only contains A itself, so /agents is the self row alone.
   const res = await aApi.inject({ method: 'GET', url: '/v1/pacts/default/agents' })
   t.is(res.statusCode, 200)
-  t.alike(JSON.parse(res.body), [])
+  const body = JSON.parse(res.body) as Array<{ is_self: boolean }>
+  t.is(body.length, 1)
+  t.is(body[0].is_self, true)
 })
 
 async function admitMember(a: Daemon, b: Daemon): Promise<void> {

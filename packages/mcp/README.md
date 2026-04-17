@@ -12,7 +12,7 @@ The server exposes 18 tools the agent can call:
 
 | Group     | Tools                                                                                  |
 | --------- | -------------------------------------------------------------------------------------- |
-| Status    | `ping`, `pact_status`, `list_peers`                                                    |
+| Status    | `ping`, `pact_status`, `list_agents`                                                   |
 | Knowledge | `recall_knowledge`, `record_knowledge`                                                 |
 | Tasks     | `list_tasks`, `get_task`, `create_task`, `claim_task`, `complete_task`, `release_task` |
 | Skills    | `list_skills`, `share_skill`, `get_skill_content`                                      |

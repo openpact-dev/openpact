@@ -40,7 +40,11 @@ test('SDK end-to-end: ping + status + agents against real daemon', async (t) => 
   const status = await pact.status()
   t.is(status.role, 'creator')
   t.is(status.is_member, true)
-  t.alike(await pact.agents(), [])
+  t.is(status.agents, 1, 'a fresh pact counts only self')
+  const agents = await pact.agents()
+  t.is(agents.length, 1)
+  t.is(agents[0].is_self, true)
+  t.is(agents[0].role, 'creator')
 })
 
 test('SDK end-to-end: knowledge create + list', async (t) => {

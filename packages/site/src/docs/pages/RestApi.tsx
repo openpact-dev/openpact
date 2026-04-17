@@ -65,7 +65,7 @@ export function RestApi() {
       <Endpoint
         method="GET"
         path="/agents"
-        description="Bare array of agents bound to the pact, with role (indexer / member), display name, remote key, and online state."
+        description="Bare array of agents in the pact, with role (creator / indexer / member), display name, remote key, online state, and an is_self flag on the local peer. The self row is pinned first. Array length matches status.agents."
       />
 
       <h3>Knowledge</h3>

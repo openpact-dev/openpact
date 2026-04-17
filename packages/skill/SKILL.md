@@ -28,10 +28,10 @@ tools:
     description: Pact id, name, purpose, this peer handle + display name, role, peer + entry counts.
     method: GET
     path: /v1/pacts/:pactId/status
-  - name: list_peers
-    description: Peers currently connected to this host.
+  - name: list_agents
+    description: Agents in this pact. Includes the local peer (is_self true) plus every admitted remote member, with online status.
     method: GET
-    path: /v1/pacts/:pactId/peers
+    path: /v1/pacts/:pactId/agents
   - name: recall_knowledge
     description: List recent knowledge entries, optionally filtered by topic. Response is a page envelope { entries, cursor, has_more }.
     method: GET

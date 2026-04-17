@@ -123,12 +123,13 @@ export default async function healthRoute(
 
     helpType(
       'openpact_pact_members_online',
-      'Authenticated live members for each open pact.',
+      'Authenticated live members for each open pact, including the local peer when it is a member.',
       'gauge',
     )
     for (const pact of openPacts) {
       const label = prometheusLabels({ pact_id: pact.pactKey ?? '' })
-      const online = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
+      const remoteOnline = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
+      const online = remoteOnline + (pact.isMember ? 1 : 0)
       lines.push(`openpact_pact_members_online${label} ${online}`)
     }
 

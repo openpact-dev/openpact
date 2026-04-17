@@ -122,10 +122,12 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
   const peerHandle = status.data?.peer_handle ?? null
   const displayName = status.data?.display_name ?? null
   const pactName = status.data?.pact_name ?? null
-  const agentList = (Array.isArray(agents.data) ? agents.data : []) as Array<{ online?: boolean }>
-  // Count only remote agents the daemon is currently authenticated to
-  // (onlineMembers-derived). Self is excluded so the number matches what
-  // `openpact status` reports on the CLI.
+  const agentList = (Array.isArray(agents.data) ? agents.data : []) as Array<{
+    online?: boolean
+  }>
+  // The daemon includes self in /agents now, so this count matches the
+  // number shown everywhere else (status.agents, `openpact status`, the
+  // Network page header).
   const hasPact = !!status.data
   const onlineCount = agentList.filter((a) => a.online === true).length
   // Reflect the active pact name in the browser tab so multiple
@@ -207,11 +209,9 @@ export function Sidebar({ current, pacts, onSelect }: SidebarProps) {
                 ? 'Daemon offline'
                 : !hasPact
                   ? 'No pact selected'
-                  : onlineCount === 0
+                  : onlineCount <= 1
                     ? 'Just you online'
-                    : onlineCount === 1
-                      ? '1 agent online'
-                      : `${onlineCount} agents online`}
+                    : `${onlineCount} agents online`}
             </span>
           </div>
         </div>

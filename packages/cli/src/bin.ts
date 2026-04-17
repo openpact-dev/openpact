@@ -16,6 +16,12 @@ import { listCmd } from './commands/list'
 import { switchCmd } from './commands/switch'
 import { removeCmd } from './commands/remove'
 import { renameCmd } from './commands/rename'
+import { registerInstallCommand } from './commands/install'
+import { registerHookCommand } from './commands/hook'
+import { messageCmd } from './commands/message'
+import { recordCmd } from './commands/record'
+import { registerTaskCommand } from './commands/task'
+import { registerSkillCommand } from './commands/skill'
 
 export function buildProgram(): Command {
   const program = new Command()
@@ -172,6 +178,34 @@ export function buildProgram(): Command {
     .command('rename <oldAlias> <newAlias>')
     .description("change a pact's local alias (pact_id unchanged)")
     .action(renameCmd)
+
+  // Integration installers (Claude Code hooks today; Cursor/Windsurf/etc next).
+  registerInstallCommand(program)
+
+  // Hook runtime invoked by Claude Code when install wires it up.
+  registerHookCommand(program)
+
+  // Write verbs for humans at a terminal. Agents keep using curl/SDK/MCP.
+  program
+    .command('message <content>')
+    .description('broadcast a short message to the current pact')
+    .option('--priority <p>', 'low | normal | high')
+    .option('--pact <alias>', 'pact to write to (default: current pact)')
+    .option('--port <n>', 'daemon port', '7666')
+    .action(messageCmd)
+
+  program
+    .command('record <content>')
+    .description('record a knowledge entry (a decision, a convention, a workaround)')
+    .requiredOption('--topic <t>', 'short, reusable topic (e.g. routing, auth, db-schema)')
+    .option('--confidence <n>', 'number between 0 and 1')
+    .option('--source <s>', 'optional pointer (PR link, commit, person)')
+    .option('--pact <alias>', 'pact to write to (default: current pact)')
+    .option('--port <n>', 'daemon port', '7666')
+    .action(recordCmd)
+
+  registerTaskCommand(program)
+  registerSkillCommand(program)
 
   return program
 }

@@ -20,7 +20,7 @@ export default async function statusRoute(
   // Per-pact status — the fat payload the dashboard / SDK rely on.
   app.get<{ Params: { pactId: string } }>('/v1/pacts/:pactId/status', async (req) => {
     const pact = await resolvePact(daemon, req)
-    const onlineAgents = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
+    const remoteOnline = pact.pactKey ? daemon.onlineMembers(pact.pactKey).size : 0
     return {
       pact_id: pact.pactKey,
       pact_name: pact.pactName,
@@ -29,9 +29,11 @@ export default async function statusRoute(
       display_name: pact.displayName,
       role: pact.role,
       public_key: pact.publicKey,
-      // Pact status reports only authenticated members for this pact.
-      // Host-wide connection churn belongs on GET /v1/status.
-      agents: onlineAgents,
+      // Pact-scoped agent count. Includes self when we are a member so
+      // the dashboard, CLI, and REST consumers all read the same number
+      // that /agents returns as an array. Host-wide swarm connection
+      // churn is reported separately by GET /v1/status.
+      agents: remoteOnline + (pact.isMember ? 1 : 0),
       entries: pact.viewVersion,
       is_member: pact.isMember,
       is_indexer: pact.isIndexer,

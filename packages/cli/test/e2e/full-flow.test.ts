@@ -128,6 +128,8 @@ test(
     t.ok(/^[0-9a-f]{64}$/.test(bStatus.public_key), 'B reports a 64-hex public key')
 
     // The redeem path should have already formed the live swarm connection.
+    // status.agents counts self + every authenticated remote member, so A
+    // has to see at least 2 before we know B has shown up.
     const agentsDeadline = Date.now() + 15_000
     let aAgents: number = 0
     const headersA = await authHeaders(homeA)
@@ -138,10 +140,10 @@ test(
         agents: number
       }
       aAgents = aStatus.agents
-      if (aAgents >= 1) break
+      if (aAgents >= 2) break
       await new Promise((r) => setTimeout(r, 200))
     }
-    t.ok(aAgents >= 1, 'A sees B as an agent')
+    t.ok(aAgents >= 2, 'A sees itself plus B as agents')
 
     // Join already redeemed the invite, so B should be writable without a
     // second manual admission step.

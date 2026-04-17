@@ -190,7 +190,14 @@ function AgentRow({ agent }: { agent: any }) {
         {agent.online ? <span class="absolute inset-0 animate-ember-pulse rounded-full" /> : null}
       </span>
       <div class="min-w-0 flex-1">
-        <div class="truncate text-[13px] text-[var(--color-ink)]">{name}</div>
+        <div class="flex items-center gap-2">
+          <span class="truncate text-[13px] text-[var(--color-ink)]">{name}</span>
+          {agent.is_self ? (
+            <span class="shrink-0 border-[0.5px] border-[var(--color-ember)] px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ember)]">
+              Self
+            </span>
+          ) : null}
+        </div>
         <div class="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-ink3)]">
           {short}
         </div>

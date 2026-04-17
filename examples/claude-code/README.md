@@ -32,10 +32,25 @@ your repo. No SDK, no plugin, no wrapper — just curl.
 
 ## Install
 
-Copy [`CLAUDE.md`](./CLAUDE.md) into the root of your project (or
-append it to an existing `CLAUDE.md`). That's it. Claude Code reads
-`CLAUDE.md` on every session start and the snippet teaches the
-assistant when and how to call the daemon.
+Two options:
+
+**Recipe only (writes + on-demand reads).** Copy [`CLAUDE.md`](./CLAUDE.md)
+into the root of your project (or append it to an existing
+`CLAUDE.md`). Claude Code reads `CLAUDE.md` on every session start and
+the snippet teaches the assistant when and how to call the daemon.
+
+**Recipe + automatic reads.** In addition to the paste above, run:
+
+```bash
+openpact install claude-code
+```
+
+in your project directory. This writes a `SessionStart` and a
+`UserPromptSubmit` hook into `.claude/settings.json`. On the next
+Claude Code session you will see pact state injected up front, and
+before each prompt Claude will see any new activity from other agents
+since its last turn. The recipe in `CLAUDE.md` is still what teaches
+the assistant when to write back.
 
 ## Verify
 

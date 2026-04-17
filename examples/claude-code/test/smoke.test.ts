@@ -9,6 +9,7 @@
  * portable even when jq is unavailable in CI.
  */
 import test from 'brittle'
+import crypto from 'crypto'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
@@ -22,13 +23,15 @@ let nextPort = 19800
 
 interface Env {
   base: string
+  auth: string[]
 }
 
 async function bootDaemon(t: any): Promise<Env> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'openpact-cc-'))
   const daemon = await Daemon.create({ dataDir: dir })
   // await daemon.start() — skipped: no swarm needed for HTTP-only tests
-  const app = createApi(daemon)
+  const token = crypto.randomBytes(32).toString('hex')
+  const app = createApi(daemon, { token })
   const port = nextPort++
   await bind(app, { host: '127.0.0.1', port })
   t.teardown(async () => {
@@ -36,7 +39,7 @@ async function bootDaemon(t: any): Promise<Env> {
     await daemon.stop()
     await fs.rm(dir, { recursive: true, force: true })
   })
-  return { base: `http://127.0.0.1:${port}` }
+  return { base: `http://127.0.0.1:${port}`, auth: ['-H', `Authorization: Bearer ${token}`] }
 }
 
 async function curl(...args: string[]): Promise<string> {
@@ -60,16 +63,30 @@ async function waitFor<T>(
 }
 
 test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
-  const { base } = await bootDaemon(t)
+  const { base, auth } = await bootDaemon(t)
 
-  // ping
+  // ping — public route, no auth header required
   const ping = JSON.parse(await curl('-sf', `${base}/v1/ping`))
   t.alike(ping, { ok: true })
+
+  // Without the bearer header, pact-scoped routes must 401.
+  const unauthorizedFile = path.join(os.tmpdir(), `openpact-cc-401-${Date.now()}.json`)
+  const unauthorizedCode = await curl(
+    '-s',
+    '-o',
+    unauthorizedFile,
+    '-w',
+    '%{http_code}',
+    `${base}/v1/pacts/default/knowledge`,
+  )
+  t.is(unauthorizedCode.trim(), '401', 'pact-scoped routes require a bearer token')
+  await fs.unlink(unauthorizedFile).catch(() => {})
 
   // record knowledge
   const created = JSON.parse(
     await curl(
       '-sf',
+      ...auth,
       '-X',
       'POST',
       `${base}/v1/pacts/default/knowledge`,
@@ -88,8 +105,9 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   // list filtered by topic — wait for view
   const list = await waitFor(
     async () =>
-      JSON.parse(await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`))
-        .entries,
+      JSON.parse(
+        await curl('-sf', ...auth, `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`),
+      ).entries,
     (arr: any[]) => Array.isArray(arr) && arr.length >= 1,
   )
   t.is(list[0].payload.topic, 'routing')
@@ -99,6 +117,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   const task = JSON.parse(
     await curl(
       '-sf',
+      ...auth,
       '-X',
       'POST',
       `${base}/v1/pacts/default/tasks`,
@@ -115,13 +134,14 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
 
   // list open tasks
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)).entries,
+    async () =>
+      JSON.parse(await curl('-sf', ...auth, `${base}/v1/pacts/default/tasks?status=open`)).entries,
     (arr: any[]) => arr.some((tt) => tt.id === taskId),
   )
 
   // claim
   const claimed = JSON.parse(
-    await curl('-sf', '-X', 'PUT', `${base}/v1/pacts/default/tasks/${taskId}/claim`),
+    await curl('-sf', ...auth, '-X', 'PUT', `${base}/v1/pacts/default/tasks/${taskId}/claim`),
   )
   t.is(claimed.task.status, 'claimed')
 
@@ -129,6 +149,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   const completed = JSON.parse(
     await curl(
       '-sf',
+      ...auth,
       '-X',
       'PUT',
       `${base}/v1/pacts/default/tasks/${taskId}/complete`,
@@ -146,6 +167,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   await new Promise((r) => setTimeout(r, 5))
   await curl(
     '-sf',
+    ...auth,
     '-X',
     'POST',
     `${base}/v1/pacts/default/messages`,
@@ -157,7 +179,11 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   await waitFor(
     async () =>
       JSON.parse(
-        await curl('-sf', `${base}/v1/pacts/default/messages?since=${encodeURIComponent(cutoff)}`),
+        await curl(
+          '-sf',
+          ...auth,
+          `${base}/v1/pacts/default/messages?since=${encodeURIComponent(cutoff)}`,
+        ),
       ).entries,
     (arr: any[]) => arr.length >= 1,
   )
@@ -165,7 +191,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   // The jq projection documented in CLAUDE.md must still match the
   // response shape we emit.
   const projected = JSON.parse(
-    await curl('-sf', `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`),
+    await curl('-sf', ...auth, `${base}/v1/pacts/default/knowledge?topic=routing&limit=20`),
   ).entries.map((entry: any) => ({
     id: entry.id,
     ts: entry.timestamp,
@@ -178,10 +204,11 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
 })
 
 test('claiming a task someone else already owns returns the documented 409', async (t) => {
-  const { base } = await bootDaemon(t)
+  const { base, auth } = await bootDaemon(t)
   const { id } = JSON.parse(
     await curl(
       '-sf',
+      ...auth,
       '-X',
       'POST',
       `${base}/v1/pacts/default/tasks`,
@@ -192,16 +219,18 @@ test('claiming a task someone else already owns returns the documented 409', asy
     ),
   )
   await waitFor(
-    async () => JSON.parse(await curl('-sf', `${base}/v1/pacts/default/tasks?status=open`)).entries,
+    async () =>
+      JSON.parse(await curl('-sf', ...auth, `${base}/v1/pacts/default/tasks?status=open`)).entries,
     (arr: any[]) => arr.some((tt) => tt.id === id),
   )
-  await curl('-sf', '-X', 'PUT', `${base}/v1/pacts/default/tasks/${id}/claim`)
+  await curl('-sf', ...auth, '-X', 'PUT', `${base}/v1/pacts/default/tasks/${id}/claim`)
 
   // Second claim must surface the documented error envelope. -s + -w
   // gives us status code; -o pipes body to a temp file we then parse.
   const errFile = path.join(os.tmpdir(), `openpact-cc-${Date.now()}.json`)
   const code = await curl(
     '-s',
+    ...auth,
     '-o',
     errFile,
     '-w',

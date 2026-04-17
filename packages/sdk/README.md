@@ -51,7 +51,7 @@ const recent = await pact.messages.list({ since: '2026-04-14T00:00:00.000Z' })
 
 // Status
 const status = await pact.status()
-const peers = await pact.peers()
+const agents = await pact.agents()
 ```
 
 ## Managing pacts

@@ -312,7 +312,7 @@ This is the heart of the project. Get this right before touching anything else.
   ```
   GET  /v1/ping                                -> { ok: true }
   GET  /v1/status                              -> { pact_id, peer_handle, role, public_key, agents, entries, is_member, is_indexer, synced }
-  GET  /v1/agents                              -> [{ id, remote_key, online }]
+  GET  /v1/agents                              -> [{ id, remote_key, role, display_name, online, is_self }]  (self first)
   GET  /v1/knowledge?topic=X&limit=N           -> [entries]
   POST /v1/knowledge                           -> { id, timestamp }
   GET  /v1/tasks?status=open|claimed|complete  -> [reduced TaskState]
@@ -638,6 +638,33 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   tiny `example.py` demo; pytest exercising the loader
 - [x] `examples/claude-code/`: paste-into-project `CLAUDE.md` snippet
   using plain curl + jq (no SDK runtime dep)
+- [x] `openpact install claude-code`: CLI verb that writes
+  SessionStart + UserPromptSubmit hook entries into the project's
+  `.claude/settings.json`. The hooks call `openpact hook
+  session-start|prompt-submit`, which use `@openpact/sdk` to emit
+  `{ hookSpecificOutput: { hookEventName, additionalContext } }` on
+  stdout (JSON output format per Claude Code's hook spec). SessionStart
+  injects pact orientation (name, purpose, peers, open tasks, recent
+  peer messages); UserPromptSubmit injects only new peer activity
+  since the last turn. Cursor lives at
+  `<hostDir>/hooks/<sha256(cwd+pactId).slice(0,16)>.json`. First run
+  of prompt-submit is a silent bootstrap; on daemon errors the hook
+  exits 0 with no injection so a missing daemon never blocks a session.
+  Hook entries carry an `openpact-managed:v1` marker so re-installs
+  find and replace our groups without touching user-written hooks on
+  the same event.
+- [x] CLI write verbs for humans at a terminal:
+  `openpact message <content> [--priority]`,
+  `openpact record <content> --topic <t> [--confidence] [--source]`,
+  `openpact task add|claim|complete|release|list`, and
+  `openpact skill install <id> [--yes]`. Every verb goes through
+  `@openpact/sdk` directly, honours `--pact <alias>` + `OPENPACT_PACT`,
+  and surfaces typed errors (`TaskAlreadyClaimed`, `NotCreator`,
+  `SkillChecksumMismatch`, `DaemonNotRunning`) with plain-English
+  hints. `skill install` matches `openpact remove`'s typed-confirmation
+  pattern (`--yes` in CI; typed prompt on a TTY). Agents keep writing
+  via the paste-in CLAUDE.md recipe, the SDK, or MCP — the CLI verbs
+  are the terminal surface, not a replacement.
 - [x] `examples/shell/`: plain bash scripts (`recall.sh`, `record.sh`,
   `tasks.sh`, `send.sh`) demonstrating read/write via curl + jq
 

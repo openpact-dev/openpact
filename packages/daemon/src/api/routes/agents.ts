@@ -14,9 +14,10 @@ import { resolvePact } from '../pact-resolver'
 interface AgentInfo {
   id: string
   remote_key: string
-  role: 'indexer' | 'member'
+  role: 'creator' | 'indexer' | 'member'
   display_name: string | null
   online: boolean
+  is_self: boolean
 }
 
 /**
@@ -65,14 +66,32 @@ export default async function agentsRoute(
     const pact = await resolvePact(daemon, req)
     const view = pact.view
     const autobase = pact.autobase
-    if (!autobase || !view) return []
-
     const selfKeyHex = pact.publicKey ?? ''
-    const nameByAgent = await buildDisplayNameIndex(view)
 
+    // Self is emitted first and does not depend on the view being up:
+    // we know our own role/handle/display name from the pact instance.
+    // Emitting it here means consumers see a stable "self row" from the
+    // moment the pact is resolved, even before autobase/hypercore have
+    // finished bootstrap.
+    const agents: AgentInfo[] = []
+    if (pact.isMember && selfKeyHex) {
+      const selfRole: 'creator' | 'indexer' | 'member' =
+        pact.role === 'creator' ? 'creator' : pact.isIndexer ? 'indexer' : 'member'
+      agents.push({
+        id: pact.peerHandle ?? derive(b4a.from(selfKeyHex, 'hex') as Buffer),
+        remote_key: selfKeyHex,
+        role: selfRole,
+        display_name: pact.displayName ?? null,
+        online: true,
+        is_self: true,
+      })
+    }
+
+    if (!autobase || !view) return agents
+
+    const nameByAgent = await buildDisplayNameIndex(view)
     const onlineSet = pact.pactKey ? daemon.onlineMembers(pact.pactKey) : new Set<string>()
 
-    const agents: AgentInfo[] = []
     const range = { gte: MEMBER_PREFIX, lt: MEMBER_RANGE_END }
     for await (const row of view.createReadStream(range)) {
       const keyHex = typeof row?.key === 'string' ? row.key.slice(MEMBER_PREFIX.length) : ''
@@ -87,6 +106,7 @@ export default async function agentsRoute(
         role,
         display_name: nameByAgent.get(agentId) ?? null,
         online,
+        is_self: false,
       })
     }
     return agents

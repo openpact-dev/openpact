@@ -35,10 +35,10 @@
       "params": { "pactId": { "type": "string", "description": "alias or 64-hex pact key" } }
     },
     {
-      "name": "list_peers",
-      "description": "Peers currently connected to this host (any pact).",
+      "name": "list_agents",
+      "description": "Agents in this pact (self plus every admitted remote member). Includes an is_self flag on the local peer.",
       "method": "GET",
-      "path": "/v1/pacts/:pactId/peers",
+      "path": "/v1/pacts/:pactId/agents",
       "params": { "pactId": { "type": "string" } }
     },
     {

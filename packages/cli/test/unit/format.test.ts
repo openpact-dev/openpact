@@ -131,12 +131,13 @@ test('formatAgents: empty list', (t) => {
 test('formatAgents: tabular rows', (t) => {
   const out = strip(
     formatAgents([
-      { id: 'anon-krait-7f2d9999', remote_key: 'abcdef0123456789', online: true },
+      { id: 'anon-krait-7f2d9999', remote_key: 'abcdef0123456789', online: true, is_self: true },
       { id: 'anon-cobra-3e910000', remote_key: 'fedcba9876543210', online: false },
     ]),
   )
   t.ok(out.includes('HANDLE'))
   t.ok(out.includes('anon-krait-7f2d9999'))
+  t.ok(out.includes('(you)'), 'self row is marked with (you)')
   t.ok(out.includes('online'))
   t.ok(out.includes('offline'))
 })
