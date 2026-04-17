@@ -1,5 +1,5 @@
 import { buildQuery, type OpenPactClient } from '../client'
-import type { AppendResult, KnowledgeEntry, KnowledgePayload, ListOpts, ListPage } from '../types'
+import type { KnowledgeEntry, KnowledgePayload, ListOpts, ListPage } from '../types'
 import { paginate } from './paginate'
 
 export interface KnowledgeListOpts extends ListOpts {
@@ -24,8 +24,8 @@ export function knowledgeResource(client: OpenPactClient) {
       return paginate<KnowledgeEntry, KnowledgeListOpts>(list, opts)
     },
     /** POST /v1/pacts/:pactId/knowledge — share a discovery with the pact. */
-    create(payload: KnowledgePayload): Promise<AppendResult> {
-      return client.json<AppendResult>(client.pactPath('/knowledge'), 'POST', payload)
+    create(payload: KnowledgePayload): Promise<KnowledgeEntry> {
+      return client.json<KnowledgeEntry>(client.pactPath('/knowledge'), 'POST', payload)
     },
   }
 }

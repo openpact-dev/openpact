@@ -76,11 +76,11 @@ test('SDK end-to-end: tasks lifecycle (create → claim → complete)', async (t
   // Wait for view to settle then claim.
   await waitFor(async () => (await pact.tasks.get(id)).status === 'open')
   const claimed = await pact.tasks.claim(id)
-  t.is(claimed.task.status, 'claimed')
+  t.is(claimed.status, 'claimed')
 
   const completed = await pact.tasks.complete(id, { result: 'shipped' })
-  t.is(completed.task.status, 'complete')
-  t.is(completed.task.result, 'shipped')
+  t.is(completed.status, 'complete')
+  t.is(completed.result, 'shipped')
 })
 
 test('SDK end-to-end: claiming a non-open task throws TaskNotOpenError', async (t) => {

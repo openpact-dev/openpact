@@ -314,18 +314,18 @@ This is the heart of the project. Get this right before touching anything else.
   GET  /v1/status                              -> { pact_id, peer_handle, role, public_key, agents, entries, is_member, is_indexer, synced }
   GET  /v1/agents                              -> [{ id, remote_key, role, display_name, online, is_self }]  (self first)
   GET  /v1/knowledge?topic=X&limit=N           -> [entries]
-  POST /v1/knowledge                           -> { id, timestamp }
+  POST /v1/knowledge                           -> KnowledgeEntry   (the created entry; caller can read it without a follow-up GET)
   GET  /v1/tasks?status=open|claimed|complete  -> [reduced TaskState]
-  POST /v1/tasks                               -> { id, timestamp }
-  GET  /v1/tasks/:id                           -> TaskState (404 if unknown)
-  PUT  /v1/tasks/:id/claim                     -> { ok, task }   (409 if not open)
-  PUT  /v1/tasks/:id/complete                  -> { ok, task }   (409 if not claimer or already complete)
-  PUT  /v1/tasks/:id/release                   -> { ok, task }   (409 if not claimer or not claimed)
+  POST /v1/tasks                               -> TaskState        (the created open task)
+  GET  /v1/tasks/:id                           -> TaskState        (404 if unknown)
+  PUT  /v1/tasks/:id/claim                     -> TaskState        (409 if not open)
+  PUT  /v1/tasks/:id/complete                  -> TaskState        (409 if not claimer or already complete)
+  PUT  /v1/tasks/:id/release                   -> TaskState        (409 if not claimer or not claimed)
   GET  /v1/skills?format=X                     -> [entries]
-  POST /v1/skills                              -> { id, timestamp }
+  POST /v1/skills                              -> SkillEntry       (the created entry)
   GET  /v1/skills/:id/content                  -> { id, name, version, format, checksum, content }
   GET  /v1/messages?since=TS                   -> [entries]
-  POST /v1/messages                            -> { id, timestamp }   (body { content, priority? }; pact-wide broadcast)
+  POST /v1/messages                            -> MessageEntry     (body { content, priority? }; pact-wide broadcast)
   ```
 - [x] Request validation via Fastify per-route JSON Schema (rejects with 400 `BAD_REQUEST`)
 - [x] Uniform error envelope `{error, message, status}` via `setErrorHandler`

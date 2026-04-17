@@ -2,7 +2,7 @@ import test from 'brittle'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
 
-test('POST /v1/messages: broadcast passes', async (t) => {
+test('POST /v1/messages: broadcast echoes the created message entry', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
@@ -13,7 +13,12 @@ test('POST /v1/messages: broadcast passes', async (t) => {
     payload: { content: 'heads up' },
   })
   t.is(res.statusCode, 200)
-  t.ok(typeof JSON.parse(res.body).id === 'string')
+  const body = JSON.parse(res.body)
+  t.ok(typeof body.id === 'string')
+  t.is(body.type, 'message')
+  t.is(body.agent_id, daemon.peerHandle)
+  t.is(body.payload.content, 'heads up')
+  t.ok(typeof body.timestamp === 'string')
 })
 
 test('POST /v1/messages: legacy `to` field is silently dropped (broadcast-only semantics)', async (t) => {

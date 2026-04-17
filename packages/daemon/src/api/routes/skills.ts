@@ -174,7 +174,14 @@ export default async function skillsRoute(
         display_name: pact.displayName,
         payload,
       })
-      return { id: result.id, timestamp }
+      return {
+        id: result.id,
+        type: 'skill',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      }
     },
   )
 

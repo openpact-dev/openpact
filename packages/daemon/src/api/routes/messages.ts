@@ -80,7 +80,14 @@ export default async function messagesRoute(
         display_name: pact.displayName,
         payload,
       })
-      return { id: result.id, timestamp }
+      return {
+        id: result.id,
+        type: 'message',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      }
     },
   )
 }

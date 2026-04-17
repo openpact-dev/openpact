@@ -65,10 +65,10 @@ def test_task_lifecycle(client: OpenPactClient) -> None:
         )
     )
     claimed = client.call("claim_task", id=task_id)
-    assert claimed["task"]["status"] == "claimed"
+    assert claimed["status"] == "claimed"
     completed = client.call("complete_task", id=task_id, result="shipped")
-    assert completed["task"]["status"] == "complete"
-    assert completed["task"]["result"] == "shipped"
+    assert completed["status"] == "complete"
+    assert completed["result"] == "shipped"
 
 
 def test_lost_claim_race_raises(client: OpenPactClient) -> None:

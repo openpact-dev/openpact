@@ -1,5 +1,5 @@
 import { buildQuery, type OpenPactClient } from '../client'
-import type { AppendResult, ListOpts, ListPage, TaskState, TaskStatus } from '../types'
+import type { ListOpts, ListPage, TaskState, TaskStatus } from '../types'
 import { paginate } from './paginate'
 
 export interface TasksListOpts extends ListOpts {
@@ -29,24 +29,24 @@ export function tasksResource(client: OpenPactClient) {
     get(id: string): Promise<TaskState> {
       return client.req<TaskState>(client.pactPath(`/tasks/${encodeURIComponent(id)}`))
     },
-    create(body: CreateTaskBody): Promise<AppendResult> {
-      return client.json<AppendResult>(client.pactPath('/tasks'), 'POST', body)
+    create(body: CreateTaskBody): Promise<TaskState> {
+      return client.json<TaskState>(client.pactPath('/tasks'), 'POST', body)
     },
-    claim(id: string): Promise<{ ok: true; task: TaskState }> {
-      return client.json<{ ok: true; task: TaskState }>(
+    claim(id: string): Promise<TaskState> {
+      return client.json<TaskState>(
         client.pactPath(`/tasks/${encodeURIComponent(id)}/claim`),
         'PUT',
       )
     },
-    complete(id: string, body: CompleteTaskBody = {}): Promise<{ ok: true; task: TaskState }> {
-      return client.json<{ ok: true; task: TaskState }>(
+    complete(id: string, body: CompleteTaskBody = {}): Promise<TaskState> {
+      return client.json<TaskState>(
         client.pactPath(`/tasks/${encodeURIComponent(id)}/complete`),
         'PUT',
         body,
       )
     },
-    release(id: string): Promise<{ ok: true; task: TaskState }> {
-      return client.json<{ ok: true; task: TaskState }>(
+    release(id: string): Promise<TaskState> {
+      return client.json<TaskState>(
         client.pactPath(`/tasks/${encodeURIComponent(id)}/release`),
         'PUT',
       )

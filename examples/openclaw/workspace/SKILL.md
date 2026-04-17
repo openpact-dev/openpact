@@ -25,11 +25,11 @@ tools:
     method: GET
     path: /v1/pacts
   - name: pact_status
-    description: Pact id, name, purpose, this peer handle + display name, role, agent + entry counts.
+    description: Pact id, name, purpose, this peer handle + display name, role, peer + entry counts.
     method: GET
     path: /v1/pacts/:pactId/status
   - name: list_agents
-    description: Agents currently connected to this host.
+    description: Agents in this pact. Includes the local peer (is_self true) plus every admitted remote member, with online status.
     method: GET
     path: /v1/pacts/:pactId/agents
   - name: recall_knowledge

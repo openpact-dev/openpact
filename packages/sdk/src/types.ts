@@ -129,11 +129,6 @@ export interface AgentPayload {
   is_self?: boolean
 }
 
-export interface AppendResult {
-  id: string
-  timestamp: string
-}
-
 /**
  * Options common to every paginated list call. Per-resource opts types
  * extend this with their own filters.

@@ -45,7 +45,7 @@ test('claim_task: lost race surfaces TASK_NOT_OPEN', async (t) => {
 
 test('complete_task: defaults result to null when omitted', async (t) => {
   const pact = fakePact()
-  pact.tasks.complete.resolveWith({ task: { id: 'a-1', status: 'complete' } })
+  pact.tasks.complete.resolveWith({ id: 'a-1', status: 'complete' })
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'complete_task')
   await handler({ id: 'a-1' })
@@ -54,7 +54,7 @@ test('complete_task: defaults result to null when omitted', async (t) => {
 
 test('complete_task: forwards a provided result string', async (t) => {
   const pact = fakePact()
-  pact.tasks.complete.resolveWith({ task: { id: 'a-1', status: 'complete' } })
+  pact.tasks.complete.resolveWith({ id: 'a-1', status: 'complete' })
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'complete_task')
   await handler({ id: 'a-1', result: 'PR #42 merged' })
@@ -63,7 +63,7 @@ test('complete_task: forwards a provided result string', async (t) => {
 
 test('release_task: passes id through', async (t) => {
   const pact = fakePact()
-  pact.tasks.release.resolveWith({ task: { id: 'a-1', status: 'open' } })
+  pact.tasks.release.resolveWith({ id: 'a-1', status: 'open' })
   const server = buildServer(pact as any)
   const { handler } = getRegisteredTool(server, 'release_task')
   await handler({ id: 'a-1' })

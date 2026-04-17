@@ -2,7 +2,7 @@ import test from 'brittle'
 import { createApi } from '../../../src/api'
 import { tmpDaemon } from '../../helpers/tmp-daemon'
 
-test('POST /v1/knowledge: happy path', async (t) => {
+test('POST /v1/knowledge: echoes the created knowledge entry', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
@@ -15,6 +15,10 @@ test('POST /v1/knowledge: happy path', async (t) => {
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
   t.ok(/^[0-9a-f]{8}-\d+$/.test(body.id), 'id matches entry-id format')
+  t.is(body.type, 'knowledge')
+  t.is(body.agent_id, daemon.peerHandle)
+  t.is(body.payload.topic, 'sales')
+  t.is(body.payload.content, 'Tuesdays convert')
   t.ok(typeof body.timestamp === 'string')
 })
 

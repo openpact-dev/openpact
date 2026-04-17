@@ -143,7 +143,7 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
   const claimed = JSON.parse(
     await curl('-sf', ...auth, '-X', 'PUT', `${base}/v1/pacts/default/tasks/${taskId}/claim`),
   )
-  t.is(claimed.task.status, 'claimed')
+  t.is(claimed.status, 'claimed')
 
   // complete
   const completed = JSON.parse(
@@ -159,8 +159,8 @@ test('CLAUDE.md curl recipes work end-to-end against the daemon', async (t) => {
       JSON.stringify({ result: 'PR #123 merged' }),
     ),
   )
-  t.is(completed.task.status, 'complete')
-  t.is(completed.task.result, 'PR #123 merged')
+  t.is(completed.status, 'complete')
+  t.is(completed.result, 'PR #123 merged')
 
   // broadcast message
   const cutoff = new Date().toISOString()

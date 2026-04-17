@@ -83,11 +83,11 @@ test('tasks.sh: create → list → claim → complete', async (t) => {
   )
 
   const claimed = JSON.parse(await sh(base, 'tasks.sh', 'claim', id))
-  t.is(claimed.task.status, 'claimed')
+  t.is(claimed.status, 'claimed')
 
   const completed = JSON.parse(await sh(base, 'tasks.sh', 'complete', id, 'shipped'))
-  t.is(completed.task.status, 'complete')
-  t.is(completed.task.result, 'shipped')
+  t.is(completed.status, 'complete')
+  t.is(completed.result, 'shipped')
 })
 
 test('send.sh broadcasts a message', async (t) => {

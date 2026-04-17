@@ -72,22 +72,25 @@ test('tasks.get: 404 → NotFoundError', async (t) => {
   await t.exception(() => r.get('zzzz-9'), NotFoundError)
 })
 
-test('tasks.create: POSTs title + description', async (t) => {
-  const m = mockFetch({ status: 200, body: { id: 'aaaaaaaa-1', timestamp: 'now' } })
+test('tasks.create: POSTs title + description, parses TaskState response', async (t) => {
+  const m = mockFetch({ status: 200, body: taskState })
   const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.create({ title: 'Build it', description: 'badly' })
+  const res = await r.create({ title: 'Build it', description: 'badly' })
   t.is(m.calls[0].method, 'POST')
   t.alike(JSON.parse(m.calls[0].body!), { title: 'Build it', description: 'badly' })
+  t.is(res.id, 'aaaaaaaa-1')
+  t.is(res.status, 'open')
 })
 
-test('tasks.claim: PUT, parses task on success', async (t) => {
+test('tasks.claim: PUT, returns TaskState on success', async (t) => {
   const m = mockFetch({
     status: 200,
-    body: { ok: true, task: { ...taskState, status: 'claimed', claimed_by: 'me' } },
+    body: { ...taskState, status: 'claimed', claimed_by: 'me' },
   })
   const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
   const res = await r.claim('aaaaaaaa-1')
-  t.is(res.task.status, 'claimed')
+  t.is(res.status, 'claimed')
+  t.is(res.claimed_by, 'me')
   t.is(m.calls[0].method, 'PUT')
   t.is(m.calls[0].url, 'http://127.0.0.1:7666/v1/pacts/default/tasks/aaaaaaaa-1/claim')
 })
@@ -101,14 +104,16 @@ test('tasks.claim: 409 TASK_NOT_OPEN → TaskNotOpenError', async (t) => {
   await t.exception(() => r.claim('aaaaaaaa-1'), TaskNotOpenError)
 })
 
-test('tasks.complete: posts result body', async (t) => {
+test('tasks.complete: posts result body, returns TaskState', async (t) => {
   const m = mockFetch({
     status: 200,
-    body: { ok: true, task: { ...taskState, status: 'complete', result: 'shipped' } },
+    body: { ...taskState, status: 'complete', result: 'shipped' },
   })
   const r = tasksResource(new OpenPactClient({ fetch: m.fetch, pactId: 'default' }))
-  await r.complete('aaaaaaaa-1', { result: 'shipped' })
+  const res = await r.complete('aaaaaaaa-1', { result: 'shipped' })
   t.alike(JSON.parse(m.calls[0].body!), { result: 'shipped' })
+  t.is(res.status, 'complete')
+  t.is(res.result, 'shipped')
 })
 
 test('tasks.complete: 409 TASK_ALREADY_COMPLETE → TaskAlreadyCompleteError', async (t) => {

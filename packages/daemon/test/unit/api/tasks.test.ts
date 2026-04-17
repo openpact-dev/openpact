@@ -8,7 +8,7 @@ async function postTask(app: any, body: Record<string, unknown>) {
   return JSON.parse(res.body)
 }
 
-test('POST /v1/tasks: creates open task', async (t) => {
+test('POST /v1/tasks: creates open task, echoes TaskState', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)
   t.teardown(() => app.close())
@@ -19,7 +19,12 @@ test('POST /v1/tasks: creates open task', async (t) => {
     payload: { title: 'Build landing page' },
   })
   t.is(res.statusCode, 200)
-  t.ok(/^[0-9a-f]{8}-\d+$/.test(JSON.parse(res.body).id))
+  const body = JSON.parse(res.body)
+  t.ok(/^[0-9a-f]{8}-\d+$/.test(body.id))
+  t.is(body.title, 'Build landing page')
+  t.is(body.status, 'open')
+  t.is(body.claimed_by, null)
+  t.ok(Array.isArray(body.history) && body.history.length === 1)
 })
 
 test('POST /v1/tasks: missing title returns 400', async (t) => {
@@ -86,8 +91,8 @@ test('PUT /v1/tasks/:id/claim: open → claimed', async (t) => {
   const res = await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
-  t.is(body.task.status, 'claimed')
-  t.is(body.task.claimed_by, daemon.peerHandle)
+  t.is(body.status, 'claimed')
+  t.is(body.claimed_by, daemon.peerHandle)
 })
 
 test('PUT /v1/tasks/:id/claim: double claim same peer → 409 TASK_NOT_OPEN', async (t) => {
@@ -116,8 +121,8 @@ test('PUT /v1/tasks/:id/complete: claimer completes', async (t) => {
   })
   t.is(res.statusCode, 200)
   const body = JSON.parse(res.body)
-  t.is(body.task.status, 'complete')
-  t.is(body.task.result, 'shipped')
+  t.is(body.status, 'complete')
+  t.is(body.result, 'shipped')
 })
 
 test('PUT /v1/tasks/:id/complete: skip-claim from open allowed', async (t) => {
@@ -132,7 +137,7 @@ test('PUT /v1/tasks/:id/complete: skip-claim from open allowed', async (t) => {
     payload: { result: 'done' },
   })
   t.is(res.statusCode, 200)
-  t.is(JSON.parse(res.body).task.status, 'complete')
+  t.is(JSON.parse(res.body).status, 'complete')
 })
 
 test('PUT /v1/tasks/:id/release: claimer reverts to open', async (t) => {
@@ -144,7 +149,7 @@ test('PUT /v1/tasks/:id/release: claimer reverts to open', async (t) => {
   await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/claim` })
   const res = await app.inject({ method: 'PUT', url: `/v1/pacts/default/tasks/${id}/release` })
   t.is(res.statusCode, 200)
-  t.is(JSON.parse(res.body).task.status, 'open')
+  t.is(JSON.parse(res.body).status, 'open')
 })
 
 test('PUT /v1/tasks/:id/release: 409 NOT_CLAIMED on open task', async (t) => {

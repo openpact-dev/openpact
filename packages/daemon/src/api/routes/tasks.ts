@@ -112,7 +112,8 @@ export default async function tasksRoute(
         display_name: pact.displayName,
         payload: { ...payload, status: 'open' },
       })
-      return { id: result.id, timestamp }
+      await pact.update()
+      return await waitForView(pact, daemon, result.id, result.id)
     },
   )
 
@@ -154,7 +155,7 @@ export default async function tasksRoute(
         `lost claim race; current claimer ${after.claimed_by}`,
       )
     }
-    return { ok: true, task: after }
+    return after
   })
 
   app.put<{ Params: IdParams; Body: { result?: string | null } }>(
@@ -189,8 +190,7 @@ export default async function tasksRoute(
         },
       })
       await pact.update()
-      const after = await waitForView(pact, daemon, taskId, append.id)
-      return { ok: true, task: after }
+      return await waitForView(pact, daemon, taskId, append.id)
     },
   )
 
@@ -218,8 +218,7 @@ export default async function tasksRoute(
       payload: { title: before.title, status: 'open', claimed_by: null },
     })
     await pact.update()
-    const after = await waitForView(pact, daemon, taskId, append.id)
-    return { ok: true, task: after }
+    return await waitForView(pact, daemon, taskId, append.id)
   })
 }
 

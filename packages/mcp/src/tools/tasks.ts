@@ -73,7 +73,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     async ({ id }) =>
       safeHandler(async () => {
         const result = await pact.tasks.claim(id)
-        return summaryAndJson(`Claimed task ${id}.`, result.task)
+        return summaryAndJson(`Claimed task ${id}.`, result)
       }),
   )
 
@@ -95,7 +95,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     async ({ id, result }) =>
       safeHandler(async () => {
         const r = await pact.tasks.complete(id, { result: result ?? null })
-        return summaryAndJson(`Completed task ${id}.`, r.task)
+        return summaryAndJson(`Completed task ${id}.`, r)
       }),
   )
 
@@ -112,7 +112,7 @@ export function registerTasksTools(server: McpServer, pact: OpenPact): void {
     async ({ id }) =>
       safeHandler(async () => {
         const r = await pact.tasks.release(id)
-        return summaryAndJson(`Released task ${id} back to open.`, r.task)
+        return summaryAndJson(`Released task ${id} back to open.`, r)
       }),
   )
 }

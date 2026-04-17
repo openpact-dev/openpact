@@ -80,7 +80,6 @@ export type { PactSummary, PactListPayload, CreatePactBody, JoinPactBody } from 
 export type { InviteSummary, MintInviteOpts, MintInviteResult } from './resources/invites'
 export { computeSkillChecksum, SKILL_CHECKSUM_LABEL } from './resources/skills'
 export type {
-  AppendResult,
   BaseEntry,
   EntryType,
   KnowledgeEntry,

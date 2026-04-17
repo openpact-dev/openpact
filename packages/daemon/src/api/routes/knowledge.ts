@@ -76,7 +76,14 @@ export default async function knowledgeRoute(
         display_name: pact.displayName,
         payload,
       })
-      return { id: result.id, timestamp }
+      return {
+        id: result.id,
+        type: 'knowledge',
+        timestamp,
+        agent_id: pact.peerHandle!,
+        display_name: pact.displayName,
+        payload,
+      }
     },
   )
 }

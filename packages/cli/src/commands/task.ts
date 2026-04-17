@@ -119,8 +119,8 @@ async function taskClaim(id: string, opts: BaseOpts, cmd: CmdLike): Promise<void
   const client = await clientFor(opts, cmd)
   try {
     const res = await client.tasks.claim(id)
-    console.log(`  ${emoji.brand} ${c.brandBold('Claimed')} ${c.bone(res.task.id)}`)
-    console.log(`  ${c.ash(res.task.title)}`)
+    console.log(`  ${emoji.brand} ${c.brandBold('Claimed')} ${c.bone(res.id)}`)
+    console.log(`  ${c.ash(res.title)}`)
   } catch (err) {
     if (err instanceof TaskNotOpenError || err instanceof TaskAlreadyClaimedError) {
       console.error(`${emoji.cross} ${c.brand('Task is already claimed by another agent.')}`)
@@ -143,8 +143,8 @@ async function taskComplete(id: string, opts: CompleteOpts, cmd: CmdLike): Promi
   const client = await clientFor(opts, cmd)
   try {
     const res = await client.tasks.complete(id, opts.result ? { result: opts.result } : {})
-    console.log(`  ${emoji.brand} ${c.brandBold('Completed')} ${c.bone(res.task.id)}`)
-    if (res.task.result) console.log(`  ${c.ash(res.task.result)}`)
+    console.log(`  ${emoji.brand} ${c.brandBold('Completed')} ${c.bone(res.id)}`)
+    if (res.result) console.log(`  ${c.ash(res.result)}`)
   } catch (err) {
     if (err instanceof TaskAlreadyCompleteError) {
       console.error(`${emoji.cross} ${c.brand('Task is already complete.')}`)
@@ -166,8 +166,8 @@ async function taskRelease(id: string, opts: BaseOpts, cmd: CmdLike): Promise<vo
   const client = await clientFor(opts, cmd)
   try {
     const res = await client.tasks.release(id)
-    console.log(`  ${emoji.brand} ${c.brandBold('Released')} ${c.bone(res.task.id)}`)
-    console.log(`  ${c.ash(`status → ${res.task.status}`)}`)
+    console.log(`  ${emoji.brand} ${c.brandBold('Released')} ${c.bone(res.id)}`)
+    console.log(`  ${c.ash(`status → ${res.status}`)}`)
   } catch (err) {
     if (err instanceof NotClaimerError || err instanceof NotClaimedError) {
       console.error(`${emoji.cross} ${c.brand('You do not hold the claim on this task.')}`)
