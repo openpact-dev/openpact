@@ -191,11 +191,14 @@ test('formatLogLine: message', (t) => {
       type: 'message',
       timestamp: '2026-04-14T10:00:00.000Z',
       agent_id: 'anon-krait-7f2d9999',
-      payload: { to: '*', content: 'hello' },
+      // Messages are pact-wide broadcasts; the misleading `to` field
+      // was dropped in 35c8faa. The log line just shows the content.
+      payload: { content: 'hello' },
       id: 'aaaaaaaa-4',
     }),
   )
-  t.ok(out.includes('to *: hello'))
+  t.ok(out.includes('hello'))
+  t.absent(out.includes(' to '), 'stale "to" label is gone')
 })
 
 test('formatLogLine: long content truncated', (t) => {

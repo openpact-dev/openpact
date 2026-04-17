@@ -39,7 +39,10 @@ export async function logCmd(
       const page = await fetchPage(client, type, limit)
       for (const entry of page) collected.push({ ...(entry as object), type } as LogEntry)
     }
-    collected.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    // Defensive sort: any entry with a missing/empty timestamp sinks
+    // to the front (earliest) so a single bad record can't crash the
+    // whole log listing via `undefined.localeCompare`.
+    collected.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
     const tail = collected.slice(-limit)
     if (tail.length === 0) {
       console.log(c.ash('(the pact is silent)'))
@@ -64,8 +67,34 @@ async function fetchPage(client: OpenPact, type: EntryType, limit: number): Prom
       return page.entries
     }
     case 'task': {
+      // tasks.list returns TaskState (the reduced view). Flatten each
+      // state into a LogEntry-shape so formatting stays uniform with
+      // the other types. `timestamp` / `updated_at` come from the
+      // reducer; `agent_id` is the creator from history[0].
       const page = await client.tasks.list({ limit })
-      return page.entries
+      return page.entries.map((t) => {
+        const state = t as {
+          id: string
+          title: string
+          status: string
+          claimed_by: string | null
+          timestamp: string
+          history?: Array<{ agent_id?: string; display_name?: string | null }>
+        }
+        const first = state.history?.[0]
+        return {
+          type: 'task',
+          timestamp: state.timestamp,
+          agent_id: first?.agent_id ?? '',
+          display_name: first?.display_name ?? null,
+          id: state.id,
+          payload: {
+            title: state.title,
+            status: state.status,
+            claimed_by: state.claimed_by,
+          },
+        }
+      })
     }
     case 'skill': {
       const page = await client.skills.list({ limit })

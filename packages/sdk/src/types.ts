@@ -74,6 +74,16 @@ export interface TaskState {
   description?: string
   status: TaskStatus
   claimed_by: string | null
+  /**
+   * ISO timestamp of the original task-create entry. Stable across
+   * the task's lifetime — treat as `created_at`.
+   */
+  timestamp: string
+  /**
+   * ISO timestamp of the most recent history entry (last state
+   * transition). Equals `timestamp` for never-updated tasks.
+   */
+  updated_at: string
   /** ISO timestamp of the entry that established the current `claimed` status (if any). */
   claimed_at: string | null
   /**

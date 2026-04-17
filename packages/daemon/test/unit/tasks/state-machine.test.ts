@@ -46,6 +46,48 @@ test('original-only history reduces to open', (t) => {
   t.is(s.expired_at, null)
 })
 
+test('timestamp + updated_at populated from history', (t) => {
+  // Original-only: both fields point at the create entry.
+  const original = REDUCE([ORIG])!
+  t.is(original.timestamp, ORIG.timestamp, 'timestamp mirrors the create entry')
+  t.is(original.updated_at, ORIG.timestamp, 'updated_at starts at timestamp')
+
+  // After a claim: timestamp unchanged, updated_at advances.
+  const claim = update(
+    'a000-2',
+    ALICE,
+    { title: 'do it', status: 'claimed', claimed_by: ALICE },
+    '2026-04-15T00:00:30Z',
+  )
+  const claimed = REDUCE([ORIG, claim])!
+  t.is(claimed.timestamp, ORIG.timestamp, 'timestamp still points at create entry')
+  t.is(claimed.updated_at, claim.timestamp, 'updated_at reflects the latest entry')
+})
+
+test('updated_at picks the chronologically latest timestamp, not the lex-last entry-id', (t) => {
+  // Two writers with interleaved entry ids vs. timestamps: ID sort
+  // would put `b000-1` before `c000-1`, but its timestamp is later.
+  // updated_at must follow time, not id sort order.
+  const later = {
+    id: 'b000-1',
+    type: 'task' as const,
+    timestamp: '2026-04-15T01:00:00Z',
+    agent_id: ALICE,
+    refs: [ORIG.id],
+    payload: { title: 'do it', status: 'claimed' as const, claimed_by: ALICE },
+  }
+  const earlier = {
+    id: 'c000-1',
+    type: 'task' as const,
+    timestamp: '2026-04-15T00:30:00Z',
+    agent_id: BOB,
+    refs: [ORIG.id],
+    payload: { title: 'do it', status: 'claimed' as const, claimed_by: BOB },
+  }
+  const s = REDUCE([ORIG, later, earlier])!
+  t.is(s.updated_at, later.timestamp, 'picked the max timestamp, not the last-by-id entry')
+})
+
 test('open → claimed: first claim wins', (t) => {
   const claim = update('a000-2', ALICE, { title: 'do it', status: 'claimed', claimed_by: ALICE })
   const s = REDUCE([ORIG, claim])!

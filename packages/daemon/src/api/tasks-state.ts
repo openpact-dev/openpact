@@ -24,6 +24,19 @@ export interface TaskState {
   status: TaskStatus
   claimed_by: string | null
   result: string | null
+  /**
+   * ISO timestamp of the original task-create entry. Stable across the
+   * task's lifetime. Populated from `history[0].timestamp` by the
+   * reducer; callers can treat this as the task's `created_at`.
+   */
+  timestamp: string
+  /**
+   * ISO timestamp of the most recent entry in the history — i.e. the
+   * last state transition. Use when you want "what happened last to
+   * this task" (claim, complete, release). Equals `timestamp` for
+   * never-updated tasks.
+   */
+  updated_at: string
   /** ISO timestamp of the entry that established the current `claimed` status (if any). */
   claimed_at: string | null
   /**
@@ -89,6 +102,16 @@ export function reduceTaskHistory(entries: TaskEntry[], opts: ReduceOpts = {}): 
     status: original.payload.status,
     claimed_by: original.payload.claimed_by ?? null,
     result: original.payload.result ?? null,
+    // `timestamp` / `updated_at` mirror the rest of the list-endpoint
+    // contract (knowledge/skill/message). updated_at picks the max
+    // timestamp from history rather than `ordered[-1]` so cross-writer
+    // histories (which sort by entry-id, not time) still surface the
+    // chronologically latest write.
+    timestamp: original.timestamp,
+    updated_at: ordered.reduce(
+      (max, e) => (e.timestamp > max ? e.timestamp : max),
+      original.timestamp,
+    ),
     claimed_at: null,
     expired_at: null,
     history: ordered,

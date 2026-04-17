@@ -17,6 +17,10 @@ interface TaskRow {
   claimed_by?: string | null
   claimed_at?: string | null
   result?: string | null
+  /** ISO timestamp of the task's original create entry. */
+  timestamp: string
+  /** ISO timestamp of the most recent history entry. */
+  updated_at: string
   history: Array<{ timestamp: string; agent_id: string; payload: any }>
 }
 
@@ -106,7 +110,6 @@ function TasksPage() {
 }
 
 function TaskCard({ task, index }: { task: TaskRow; index: number }) {
-  const lastEvent = task.history[task.history.length - 1]
   return (
     <button
       type="button"
@@ -125,12 +128,8 @@ function TaskCard({ task, index }: { task: TaskRow; index: number }) {
             ) : (
               <span>Unclaimed</span>
             )}
-            {lastEvent ? (
-              <>
-                <span class="opacity-50">·</span>
-                <span class="opacity-70">{task.id}</span>
-              </>
-            ) : null}
+            <span class="opacity-50">·</span>
+            <span class="opacity-70">{task.id}</span>
           </div>
         </div>
       </div>

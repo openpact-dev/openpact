@@ -150,7 +150,7 @@ function summarise(entry: LogEntry): string {
     case 'skill':
       return `${p.name}${c.ash('@')}${p.version} ${c.ash(`(${p.format})`)}`
     case 'message':
-      return `${c.ash('to')} ${p.to}: ${truncate(String(p.content ?? ''), 80)}`
+      return truncate(String(p.content ?? ''), 80)
     default:
       return JSON.stringify(p)
   }
