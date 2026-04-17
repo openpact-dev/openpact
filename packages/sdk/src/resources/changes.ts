@@ -31,6 +31,13 @@ export interface PollOpts {
   limit?: number
   /** Filter to a single entry type. Omit for all four user-facing types. */
   type?: EntryType
+  /**
+   * Seek sentinel. `'head'` returns an empty page carrying the
+   * current head cursor — the drain-to-HEAD shortcut for tail-only
+   * consumers. When set, `since` and `wait` are ignored by the
+   * daemon. Prefer `seekHead()` below for the typed helper.
+   */
+  from?: 'head'
 }
 
 export function changesResource(client: OpenPactClient) {
@@ -38,18 +45,48 @@ export function changesResource(client: OpenPactClient) {
     /**
      * `GET /v1/pacts/:pactId/changes` — cross-type change feed.
      *
+     * The feed is **chronological (oldest-first)** — a caller with
+     * no `since` sees the full history replayed, not the latest
+     * entry. That makes it a replay primitive, not a discovery one.
+     *
      * Two patterns:
      *   1. **Bootstrap + tail**: first call with no `since` returns
      *      everything; keep paging with the returned cursor until
      *      `has_more === false`. Then loop with `wait=30` on the last
-     *      cursor to receive new entries as they land.
-     *   2. **Tail-only**: do a cheap `poll({ limit: 1 })`, take its
-     *      cursor, then loop with that cursor + `wait=30` to skip
-     *      history and only surface new activity.
+     *      cursor to receive new entries as they land. Best when you
+     *      actually need the replay (auditor, backfill).
+     *   2. **Tail-only**: call `seekHead()` once to skip the replay,
+     *      then loop `poll({ since, wait })` to surface new activity
+     *      from that point forward. Best for agents that just want to
+     *      wake on peer activity.
+     *
+     * To **find** existing state (open tasks, recent messages,
+     * knowledge on a topic) use the typed list endpoints — `.tasks`,
+     * `.messages`, `.knowledge` — not this.
      */
     poll(opts: PollOpts = {}): Promise<ChangesPage> {
       return client.req<ChangesPage>(
         client.pactPath(`/changes${buildQuery(opts as Record<string, unknown>)}`),
+      )
+    },
+
+    /**
+     * One-shot seek to the current head of the feed. Returns a cursor
+     * you can pass to `poll({ since, wait })` to long-poll for new
+     * activity only, without replaying history.
+     *
+     *   const { cursor } = await pact.changes.seekHead()
+     *   while (true) {
+     *     const page = await pact.changes.poll({ since: cursor, wait: 30 })
+     *     if (page.entries.length) handle(page.entries)
+     *     cursor = page.cursor ?? cursor
+     *   }
+     */
+    seekHead(opts: { type?: EntryType } = {}): Promise<ChangesPage> {
+      return client.req<ChangesPage>(
+        client.pactPath(
+          `/changes${buildQuery({ from: 'head', type: opts.type } as Record<string, unknown>)}`,
+        ),
       )
     },
 

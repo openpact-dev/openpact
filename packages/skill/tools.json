@@ -276,7 +276,7 @@
     },
     {
       "name": "wait_for_changes",
-      "description": "Cross-type change feed with optional long-poll. Returns a page of entries that landed since the given `since` cursor, in chronological order; pass `wait` (seconds, 0-30) to block until new entries arrive or the window elapses. Use for event-driven coordination instead of sleeping + re-listing.",
+      "description": "Cross-type change feed for TAILING. Chronological (oldest-first): a call with no `since` replays history, not the latest entry. To tail only new activity, call once with from=head to get a cursor pinned to the current head, then loop with ?since=<that>&wait=30. Not a discovery primitive — to FIND existing tasks/messages/knowledge use the list endpoints (list_tasks, read_messages, recall_knowledge) with filters.",
       "method": "GET",
       "path": "/v1/pacts/:pactId/changes",
       "params": { "pactId": { "type": "string" } },
@@ -298,7 +298,12 @@
           "optional": true,
           "description": "restrict the feed to one entry type"
         },
-        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 }
+        "limit": { "type": "integer", "optional": true, "min": 1, "max": 1000 },
+        "from": {
+          "enum": ["head"],
+          "optional": true,
+          "description": "skip the chronological replay and return a cursor pinned to the current head; use as the seed for a tail loop"
+        }
       }
     },
     {

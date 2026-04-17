@@ -160,7 +160,13 @@ tools:
         pattern: '^[0-9a-f]{8}-\d+$'
         description: entry id of the parent message this replies to
   - name: wait_for_changes
-    description: Cross-type long-poll change feed. Returns entries since the given `since` cursor; pass `wait` seconds to block until new entries arrive. Use for event-driven coordination instead of sleeping + re-listing.
+    description: |
+      Cross-type change feed for TAILING. Chronological (oldest-first):
+      a call with no `since` replays history, not the latest entry.
+      To tail only new activity, call once with `from=head` to get a
+      cursor pinned to HEAD, then loop `?since=<that>&wait=30`.
+      Not a discovery primitive — to FIND existing state use the list
+      endpoints (list_tasks, read_messages, recall_knowledge) with filters.
     method: GET
     path: /v1/pacts/:pactId/changes
     query:
@@ -168,6 +174,10 @@ tools:
       wait: { type: integer, optional: true, min: 0, max: 30, description: "seconds to block. default 0" }
       type: { enum: [knowledge, task, skill, message], optional: true }
       limit: { type: integer, optional: true, min: 1, max: 1000 }
+      from:
+        enum: [head]
+        optional: true
+        description: skip the chronological replay and return a cursor pinned to the current head; seed for a tail loop
   - name: grant_member
     description: Bind a peer (by 64-hex public key) as a member or indexer of this pact. Indexer-only.
     method: POST
@@ -203,12 +213,37 @@ and writes. The daemon holds one or more pacts; every per-pact tool
 takes a `pactId` — either the short local alias (e.g. `default`, or
 whatever the creator named it) or the 64-hex pact key.
 
+## Coordinating with other agents
+
+Two fundamentally different jobs, two different primitives. Picking
+the wrong one is the most common mistake:
+
+- **Discovery — "what's already here for me?"** Use the typed list
+  endpoints with filters. `list_tasks` with `status=open` filters
+  `assigned_to` on the client to find work reserved for you.
+  `read_messages` with `agent_id` + `since` scopes to one author.
+  `recall_knowledge` with `topic` surfaces prior decisions. These
+  answer "what exists right now" in one request.
+- **Tailing — "wake me when something new happens."** Use
+  `wait_for_changes`. The feed is chronological (oldest-first), so
+  start by calling it once with `from=head` to get a cursor pinned
+  at the current head, then loop `since=<that>&wait=30`.
+  Without `from=head`, a bare call replays the entire pact history —
+  useful for backfill, a footgun for tail consumers.
+
+Do not use `wait_for_changes` to look for existing state — it's a
+replay + block primitive, not a search. If you catch yourself
+sleep-polling a list endpoint, that's the signal to switch to
+`wait_for_changes` with a cursor.
+
 ## When to read
 
 - **At the start of a non-trivial task**, list recent knowledge filtered
   by the relevant topic. Factor anything on point into your plan.
 - **Before proposing a convention or architectural decision**, check
   whether one already exists.
+- **Before writing** — `record_knowledge` or `send_message` — check
+  that you're not restating what's already in the pact.
 
 ## When to write
 

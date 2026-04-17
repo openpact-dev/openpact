@@ -20,7 +20,7 @@ export function registerChangesTools(server: McpServer, pact: OpenPact): void {
     'wait_for_changes',
     {
       description:
-        'Cross-type change feed with optional long-poll. Returns entries that landed on the pact since the given `since` cursor, in chronological order. Pass `wait` (seconds, 0-30) to block until new entries arrive or the window elapses. Use for event-driven agent coordination instead of polling individual list endpoints. First call with no `since` seeds the cursor; subsequent calls loop with the returned cursor + a wait to tail forever. Optionally filter by `type`.',
+        'Cross-type change feed for tailing. The feed is CHRONOLOGICAL (oldest-first); a call with no `since` replays history, not the latest entry. To skip the replay and tail only new activity, call with `from="head"` first to get a cursor pinned to the current head, then loop `?since=<that>&wait=30`. Not a discovery primitive — to FIND existing tasks/messages/knowledge use list_tasks / read_messages / recall_knowledge with filters instead.',
       inputSchema: {
         since: z
           .string()
@@ -42,6 +42,12 @@ export function registerChangesTools(server: McpServer, pact: OpenPact): void {
           .optional()
           .describe('Restrict the feed to one entry type.'),
         limit: z.number().int().min(1).max(1000).optional(),
+        from: z
+          .enum(['head'])
+          .optional()
+          .describe(
+            'Set to "head" to skip history entirely and return a cursor pinned to the current head. Use this once as the seed for a tail loop.',
+          ),
       },
     },
     async (opts) => safeHandler(async () => jsonContent(await pact.changes.poll(opts))),

@@ -25,6 +25,65 @@ test('GET /v1/changes: empty pact + wait=0 returns empty page', async (t) => {
   t.is(body.has_more, false)
 })
 
+test('GET /v1/changes?from=head: empty pact returns null cursor, no entries', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  const { status, body } = await inject(app, '/v1/pacts/default/changes?from=head')
+  t.is(status, 200)
+  t.alike(body.entries, [])
+  t.is(body.cursor, null)
+  t.is(body.has_more, false)
+})
+
+test('GET /v1/changes?from=head: populated pact returns cursor pinned at head', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  await post(app, '/v1/pacts/default/knowledge', { topic: 'routing', content: 'first' })
+  await post(app, '/v1/pacts/default/messages', { content: 'second' })
+  await post(app, '/v1/pacts/default/tasks', { title: 'third' })
+  await daemon.update()
+
+  const head = (await inject(app, '/v1/pacts/default/changes?from=head')).body
+  t.alike(head.entries, [], 'from=head returns no entries, just the cursor')
+  t.ok(typeof head.cursor === 'string' && head.cursor.includes('|'))
+
+  // A subsequent poll with since=<head>&wait=0 must return nothing —
+  // head is past everything.
+  const empty = (
+    await inject(app, `/v1/pacts/default/changes?since=${encodeURIComponent(head.cursor)}&wait=0`)
+  ).body
+  t.is(empty.entries.length, 0)
+
+  // A new write lands ahead of the head cursor.
+  const k = await post(app, '/v1/pacts/default/knowledge', { topic: 'routing', content: 'fourth' })
+  await daemon.update()
+
+  const next = (
+    await inject(app, `/v1/pacts/default/changes?since=${encodeURIComponent(head.cursor)}&wait=0`)
+  ).body
+  t.is(next.entries.length, 1)
+  t.is(next.entries[0].id, k.id)
+})
+
+test('GET /v1/changes?from=head&type=task: head respects the type filter', async (t) => {
+  const { daemon } = await tmpDaemon(t, { start: false })
+  const app = createApi(daemon)
+  t.teardown(() => app.close())
+
+  // A message is written AFTER the task; the head-of-tasks cursor
+  // must still pin at the task, not the message.
+  const taskRes = await post(app, '/v1/pacts/default/tasks', { title: 't' })
+  await post(app, '/v1/pacts/default/messages', { content: 'm' })
+  await daemon.update()
+
+  const head = (await inject(app, '/v1/pacts/default/changes?from=head&type=task')).body
+  t.ok(head.cursor?.endsWith(`|${taskRes.id}`), `head cursor pins at task id: ${head.cursor}`)
+})
+
 test('GET /v1/changes: returns entries across types in chronological order', async (t) => {
   const { daemon } = await tmpDaemon(t, { start: false })
   const app = createApi(daemon)

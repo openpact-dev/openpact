@@ -27,6 +27,14 @@ interface ChangesQuery {
   wait?: number
   limit?: number
   type?: EntryType
+  /**
+   * Seek sentinel. `from=head` returns `{ entries: [], cursor: <head> }`
+   * immediately — skips the drain-to-HEAD pagination the chronological
+   * feed would otherwise require. Clients that want to tail new
+   * activity only (not replay history) should call `/changes?from=head`
+   * once, then loop `?since=<that-cursor>&wait=N`.
+   */
+  from?: 'head'
 }
 
 interface ParsedCursor {
@@ -91,6 +99,44 @@ interface ChangesPage {
  * advanced past that timestamp won't see them. Agents that need
  * exact-once semantics across peers should dedupe by id on their side.
  */
+/**
+ * Return a cursor pinned to the current head of the feed across the
+ * requested types, without streaming any entries. Uses one `peek` per
+ * type prefix (reverse-scan limit 1), so it's O(types) b-tree seeks
+ * rather than O(n) rows — cheap enough that agents can call it on
+ * session start without worrying about pact size.
+ *
+ * "Head" = the (timestamp, id) pair of the latest entry across the
+ * requested types. If no entries exist yet, returns `null` so the
+ * caller's next `?since=null&wait=N` collapses to "wait for anything".
+ */
+async function headCursor(view: View, types: EntryType[]): Promise<string | null> {
+  let best: { timestamp: string; id: string } | null = null
+  for (const type of types) {
+    const range = { gte: `${type}/`, lt: `${type}0` }
+    const hit = (
+      typeof view.peek === 'function'
+        ? await view.peek(range, { reverse: true })
+        : await firstOfStream(view.createReadStream(range, { reverse: true }))
+    ) as { value?: { timestamp?: string; id?: string } } | null
+    const v = hit?.value
+    if (!v || typeof v.timestamp !== 'string' || typeof v.id !== 'string') continue
+    if (
+      !best ||
+      v.timestamp > best.timestamp ||
+      (v.timestamp === best.timestamp && v.id > best.id)
+    ) {
+      best = { timestamp: v.timestamp, id: v.id }
+    }
+  }
+  return best ? encodeCursor(best) : null
+}
+
+async function firstOfStream<T>(stream: AsyncIterable<T>): Promise<T | null> {
+  for await (const v of stream) return v
+  return null
+}
+
 async function readChangesOnce(
   view: View,
   types: EntryType[],
@@ -134,6 +180,7 @@ export default async function changesRoute(
             wait: { type: 'integer', minimum: 0, maximum: MAX_WAIT_SECONDS },
             limit: { type: 'integer', minimum: 1, maximum: MAX_LIMIT },
             type: { enum: USER_FACING as unknown as string[] },
+            from: { enum: ['head'] },
           },
         },
       },
@@ -145,6 +192,16 @@ export default async function changesRoute(
       const waitSec = req.query.wait ?? 0
       const types = req.query.type ? [req.query.type] : USER_FACING
       const fallbackCursor = req.query.since ?? null
+
+      // `?from=head` short-circuits the drain-to-HEAD dance entirely:
+      // returns an empty page carrying the current head cursor. Intended
+      // as the seed call for a tail loop ("give me tomorrow's stuff,
+      // not today's replay"). Ignores `since`/`wait` — there's no
+      // history to deliver and no reason to block.
+      if (req.query.from === 'head') {
+        const head = await headCursor(pact.view, types)
+        return { entries: [], cursor: head, has_more: false }
+      }
 
       const first = await readChangesOnce(pact.view, types, cursor, limit, fallbackCursor)
       if (first.entries.length > 0 || waitSec === 0) {
