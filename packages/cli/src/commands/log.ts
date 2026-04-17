@@ -1,6 +1,6 @@
 import { OpenPact, DaemonNotRunningError } from '@openpact/sdk'
 import { resolveDataDir, type GlobalCliOpts } from '../lib/data-dir'
-import { resolveCurrentPact } from '../lib/pact-select'
+import { resolveCurrentPact, NoPactsError } from '../lib/pact-select'
 import { formatLogLine, type LogEntry } from '../lib/format'
 import { c, emoji } from '../lib/theme'
 
@@ -19,7 +19,19 @@ export async function logCmd(
   cmd: { optsWithGlobals(): GlobalCliOpts },
 ): Promise<void> {
   const dir = resolveDataDir(cmd.optsWithGlobals())
-  const pactId = await resolveCurrentPact(dir, opts.pact)
+  let pactId: string
+  try {
+    pactId = await resolveCurrentPact(dir, opts.pact)
+  } catch (err) {
+    if (err instanceof NoPactsError) {
+      // No pacts on this host → nothing to log. Render the same
+      // welcoming banner as `op start` so the user knows the next
+      // step rather than seeing a raw 404.
+      console.log(c.ash('No pacts yet. Run `openpact init` or `openpact join <token>` to add one.'))
+      return
+    }
+    throw err
+  }
   const client = new OpenPact({ port: Number(opts.port ?? 7666), pactId, hostDir: dir })
   const limit = Number(opts.limit ?? 20)
 
