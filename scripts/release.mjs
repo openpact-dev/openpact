@@ -7,8 +7,12 @@
  * Bumps every publishable package.json + the private site package.json,
  * rewrites workspace `*` deps to `^<version>` in the public packages,
  * updates the site version constant, promotes CHANGELOG.md's
- * [Unreleased] section to [<version>] - <today>, then commits and tags.
- * Does not push.
+ * [Unreleased] section to [<version>] - <today>, then commits.
+ *
+ * The script does NOT tag and does NOT push. The skill runs this on a
+ * release/v<version> branch, opens a PR, and (only after the PR merges
+ * into main and CI is green there) tags the merge commit on main and
+ * pushes the tag to trigger the release workflow.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -61,24 +65,44 @@ function main() {
 
   git(['add', '--', CHANGELOG, SITE_VERSION_FILE, ...ALL_BUMPED_PACKAGES])
   git(['commit', '-m', `release: v${version}`])
-  git(['tag', '-a', `v${version}`, '-m', `v${version}`])
 
+  const branch = currentBranch()
   process.stdout.write(
     [
       ``,
-      `Staged, committed, and tagged v${version}.`,
-      `Next step:   git push --follow-tags`,
-      `The release workflow publishes on the tag push.`,
+      `Staged and committed release: v${version} on ${branch}.`,
+      `No tag created and nothing pushed.`,
+      `Next steps (handled by the /openpact-release skill):`,
+      `  1. git push -u origin ${branch}`,
+      `  2. gh pr create --base main --title "release: v${version}"`,
+      `  3. After the PR merges and main's CI is green:`,
+      `       git checkout main && git pull --ff-only`,
+      `       git tag -a v${version} -m "v${version}" && git push origin v${version}`,
+      `     The tag push triggers .github/workflows/release.yml.`,
       ``,
     ].join('\n')
   )
 }
 
 function preflight(version) {
-  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-  if (branch !== 'main') fail(`release must run on main; currently on ${branch}`)
-  const tag = git(['tag', '-l', `v${version}`]).trim()
-  if (tag) fail(`tag v${version} already exists`)
+  const branch = currentBranch()
+  if (branch === 'main') {
+    fail(
+      `release must run on a release/v<version> branch, not main. ` +
+        `Create one with: git checkout -b release/v${version}`
+    )
+  }
+  if (!branch.startsWith('release/')) {
+    fail(`current branch "${branch}" does not look like release/v<version>`)
+  }
+  const localTag = git(['tag', '-l', `v${version}`]).trim()
+  if (localTag) fail(`tag v${version} already exists locally`)
+  const remoteTag = git(['ls-remote', '--tags', 'origin', `refs/tags/v${version}`]).trim()
+  if (remoteTag) fail(`tag v${version} already exists on origin`)
+}
+
+function currentBranch() {
+  return git(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
 }
 
 // Pure: rewrites the top-level "version" field of a package.json string.
