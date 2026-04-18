@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/cli/
-generated: 2026-04-18T12:39:47.607Z
+generated: 2026-04-18T12:57:54.738Z
 ---
 
 # CLI reference

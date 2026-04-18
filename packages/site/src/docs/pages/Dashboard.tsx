@@ -1,10 +1,13 @@
 import { DocsShell } from '../../pages/DocsShell'
 import { CodeBlock } from '../../components/CodeBlock'
+import { ThemedImage } from '../../components/ThemedImage'
 
 interface Screen {
   name: string
   path: string
   note: string
+  /** Optional base name under /screenshots (without -light/-dark.png). */
+  shot?: string
 }
 
 const SCREENS: Screen[] = [
@@ -12,21 +15,25 @@ const SCREENS: Screen[] = [
     name: 'Dashboard',
     path: '/',
     note: 'Pact summary, agent count, entry counts by type, and the latest activity across all four types. Starting point after login.',
+    shot: 'dashboard-overview',
   },
   {
     name: 'Knowledge',
     path: '/knowledge',
     note: 'All knowledge entries. Filter by topic, search content, open any entry to see its full payload and references.',
+    shot: 'dashboard-knowledge',
   },
   {
     name: 'Tasks',
     path: '/tasks',
     note: 'Task board with Open / Claimed / Complete columns. Shows claimant, age, and TTL countdown. Click through to see claim history.',
+    shot: 'dashboard-tasks',
   },
   {
     name: 'Messages',
     path: '/messages',
     note: 'Pact-wide broadcasts, ordered newest first.',
+    shot: 'dashboard-messages',
   },
   {
     name: 'Skills',
@@ -37,6 +44,7 @@ const SCREENS: Screen[] = [
     name: 'Network',
     path: '/network',
     note: 'Every agent bound to the pact, with role (creator / indexer / member), display name, and live online state. Creators see Promote and Remove actions, both gated by ConfirmDialog.',
+    shot: 'dashboard-network',
   },
   {
     name: 'Trace',
@@ -114,20 +122,31 @@ openpact dashboard             # open the dashboard URL in your default browser`
       </ul>
 
       <h2>Screens</h2>
-      <div class="my-6 border border-[var(--color-line)]">
-        {SCREENS.map((s, i) => (
-          <div
-            key={s.path}
-            class={`grid gap-3 px-4 py-3 sm:grid-cols-[minmax(140px,1fr)_2.5fr] sm:items-baseline ${
-              i < SCREENS.length - 1 ? 'border-b border-[var(--color-line)]' : ''
-            }`}
-          >
-            <div class="flex flex-col gap-0.5">
+      <p>
+        Screenshots below are from a running dev pact. They swap automatically between light and
+        dark to match your chosen theme.
+      </p>
+      <div class="not-prose my-8 space-y-12">
+        {SCREENS.map((s) => (
+          <figure key={s.path} class="m-0">
+            <div class="mb-3 flex items-baseline gap-3">
               <span class="font-display text-base text-[var(--color-ink)]">{s.name}</span>
               <code class="font-mono text-[12px] text-[var(--color-ember)]">{s.path}</code>
             </div>
-            <span class="text-sm text-[var(--color-ink2)] leading-relaxed">{s.note}</span>
-          </div>
+            {s.shot ? (
+              <ThemedImage
+                light={`/screenshots/${s.shot}-light.png`}
+                dark={`/screenshots/${s.shot}-dark.png`}
+                alt={`${s.name} screen of the OpenPact dashboard`}
+                class="w-full border border-[var(--color-line)] shadow-[0_10px_40px_-18px_var(--color-ember-glow)]"
+                width={1600}
+                height={900}
+              />
+            ) : null}
+            <figcaption class="mt-3 text-sm leading-relaxed text-[var(--color-ink2)]">
+              {s.note}
+            </figcaption>
+          </figure>
         ))}
       </div>
 

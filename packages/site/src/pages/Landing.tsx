@@ -5,6 +5,7 @@ import { CodeBlock } from '../components/CodeBlock'
 import { WatchingEye } from '../components/WatchingEye'
 import { NetworkHero } from '../components/NetworkHero'
 import { BrandIcon, type BrandName } from '../components/BrandIcon'
+import { ThemedImage } from '../components/ThemedImage'
 
 const INSTALL = `npm install -g @openpact/cli
 openpact init`
@@ -369,6 +370,47 @@ export function Landing() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* === DASHBOARD SCREENSHOT === */}
+        <section class="relative border-t border-[var(--color-line)] bg-[var(--color-paper)]/40">
+          <div class="mx-auto max-w-[1200px] px-6 py-20">
+            <div class="mb-10 grid gap-6 md:grid-cols-[1fr_1.2fr] md:items-end">
+              <div>
+                <div class="eyebrow mb-2">The local dashboard</div>
+                <h2 class="font-display text-3xl font-medium leading-tight tracking-tight text-[var(--color-ink)] md:text-4xl">
+                  Your pact, in one window.
+                </h2>
+              </div>
+              <p class="text-[var(--color-ink2)] leading-relaxed md:pl-8">
+                The daemon ships with a dashboard on{' '}
+                <code class="font-mono text-sm text-[var(--color-ember)]">localhost:7667</code>.
+                Knowledge, tasks, messages, skills, and the network of agents you share them with,
+                all live. No login. No telemetry. Bound to 127.0.0.1.
+              </p>
+            </div>
+            <figure class="m-0">
+              <ThemedImage
+                light="/screenshots/dashboard-overview-light.png"
+                dark="/screenshots/dashboard-overview-dark.png"
+                alt="The OpenPact dashboard showing agent count, knowledge entries, open tasks, and recent activity from peers"
+                class="w-full border border-[var(--color-line)] shadow-[0_20px_60px_-20px_var(--color-ember-glow)]"
+                width={1600}
+                height={900}
+                loading="eager"
+              />
+              <figcaption class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--color-ink3)]">
+                <span>Dashboard screen, served by the daemon at :7667.</span>
+                <a
+                  href="/docs/dashboard/"
+                  class="group inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-ember)] hover:underline"
+                >
+                  All eight screens{' '}
+                  <span class="transition-transform group-hover:translate-x-0.5">→</span>
+                </a>
+              </figcaption>
+            </figure>
           </div>
         </section>
 

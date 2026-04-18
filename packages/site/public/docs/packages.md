@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/packages/
-generated: 2026-04-18T12:39:47.637Z
+generated: 2026-04-18T12:57:54.785Z
 ---
 
 # Packages
