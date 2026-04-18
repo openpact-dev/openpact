@@ -6,6 +6,8 @@ Versioning is lockstep across every public package: one tag, one version across 
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-18
+
 ### Added
 
 - Daemon core: Hypercore + Autobase + Hyperswarm + Hyperbee + Corestore, with a Fastify REST surface bound to `127.0.0.1:7666`. No central server sits in the data path.

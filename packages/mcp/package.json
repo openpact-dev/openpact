@@ -1,6 +1,6 @@
 {
   "name": "@openpact/mcp",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Model Context Protocol server for the OpenPact daemon",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
@@ -40,11 +40,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@openpact/sdk": "*",
+    "@openpact/sdk": "^0.1.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@openpact/daemon": "*",
+    "@openpact/daemon": "^0.1.0",
     "publint": "^0.2.12"
   }
 }

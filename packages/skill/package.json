@@ -1,6 +1,6 @@
 {
   "name": "@openpact/skill",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Portable agent skill for the OpenPact daemon (SKILL.md + machine-readable tools.json)",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
@@ -24,7 +24,7 @@
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/integration/**/*.test.ts'"
   },
   "devDependencies": {
-    "@openpact/daemon": "*",
+    "@openpact/daemon": "^0.1.0",
     "publint": "^0.2.12"
   }
 }

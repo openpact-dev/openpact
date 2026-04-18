@@ -1,6 +1,6 @@
 {
   "name": "@openpact/sdk",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "TypeScript client for the OpenPact daemon REST API",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
@@ -40,7 +40,7 @@
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'"
   },
   "devDependencies": {
-    "@openpact/daemon": "*",
+    "@openpact/daemon": "^0.1.0",
     "publint": "^0.2.12"
   }
 }
