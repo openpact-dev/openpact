@@ -53,7 +53,7 @@ Out:
    - Prints next step: `git push --follow-tags`.
 
 3. `CHANGELOG.md` (repo root, Keep-a-Changelog)
-   - Seeded with an empty `## [Unreleased]` section at the top and a populated `## [0.1.0] - <date>` section beneath it, summarising everything that has shipped up to this release. First-release content comes from reading `docs/OPENPACT_BUILD_PLAN.md` and git history.
+   - Seeded with a populated `## [Unreleased]` section covering everything that has shipped up to and including what will become v0.1.0. Content comes from reading `docs/OPENPACT_BUILD_PLAN.md` and git history. When the release script runs for v0.1.0, it promotes this section to `## [0.1.0] - <date>` and inserts a fresh empty `## [Unreleased]` above, matching the flow every future release will follow.
 
 4. `.claude/skills/openpact-release/SKILL.md`
    - The checklist the skill follows. Lives inside the repo so it travels with the release process.
