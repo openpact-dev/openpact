@@ -1,6 +1,6 @@
 {
   "name": "@openpact/site",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Marketing + docs site for openpact.dev",
   "license": "SEE LICENSE IN LICENSE",
