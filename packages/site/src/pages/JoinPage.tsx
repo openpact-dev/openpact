@@ -188,9 +188,9 @@ function ValidInvite({ decoded, token }: { decoded: DecodedToken; token: string 
 
         <Step n="II" title="Start the daemon">
           <p class="text-[var(--color-ink2)] mb-3 leading-relaxed">
-            Initialise your local host (once) then start the daemon.
+            Run the daemon on this host. Leave it running in a terminal, or background it.
           </p>
-          <CodeBlock title="quickstart" code={'openpact init\nopenpact start'} />
+          <CodeBlock title="start" code={'openpact start'} />
         </Step>
 
         <Step n="III" title="Redeem the invite" last>
