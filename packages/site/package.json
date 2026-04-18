@@ -19,6 +19,7 @@
     "dev": "vite",
     "prebuild": "node scripts/sync-agent-skills.mjs && tsx scripts/generate-markdown.mts",
     "build": "rm -rf dist && vite build",
+    "postbuild": "tsx scripts/prerender.mts",
     "preview": "vite preview --port 7668"
   },
   "dependencies": {

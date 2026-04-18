@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/
-generated: 2026-04-17T16:23:04.108Z
+generated: 2026-04-18T12:12:31.550Z
 ---
 
 # OpenPact
