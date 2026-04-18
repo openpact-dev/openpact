@@ -71,7 +71,7 @@ export function FeedRow({ entry, index = 0 }: { entry: Entry; index?: number }) 
     <button
       type="button"
       onClick={() => dialog.open(entry.id)}
-      class="group animate-etch grid w-full grid-cols-[78px_1px_1fr] items-stretch gap-0 px-5 py-2.5 text-left transition-colors hover:bg-[var(--color-mist)]/40"
+      class="group animate-etch grid w-full grid-cols-[78px_1px_minmax(0,1fr)] items-stretch gap-0 px-5 py-2.5 text-left transition-colors hover:bg-[var(--color-mist)]/40"
       style={{ animationDelay: `${index * 35}ms` }}
       data-testid="entry-card"
     >
