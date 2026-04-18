@@ -23,7 +23,10 @@ const POST_TEST = `curl -s -X POST localhost:7666/v1/pacts/default/knowledge \\
   -H 'content-type: application/json' \\
   -d '{"topic":"setup","content":"openpact wired up from <your framework>"}'`
 
-const CLAUDE_CODE_SETUP = `# Claude Code — add to CLAUDE.md
+const CLAUDE_CODE_SETUP = `# Claude Code — writes SessionStart + UserPromptSubmit hooks to .claude/settings.json
+openpact install claude-code
+
+# Optional: also drop the skill reference into CLAUDE.md for explicit guidance
 mkdir -p .claude/skills
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/openpact.skill.md \\
   -o .claude/skills/openpact.md`
@@ -65,7 +68,8 @@ const FRAMEWORKS: Framework[] = [
   {
     id: 'claude-code',
     name: 'Claude Code',
-    blurb: 'Drop a skill file in `.claude/skills/` and reference it from CLAUDE.md.',
+    blurb:
+      'One command writes two hooks into `.claude/settings.json`. SessionStart pulls status, online agents, recent tasks and messages into the session on open; UserPromptSubmit tails fresh entries since the last prompt. Optional skill file adds explicit guidance.',
     code: CLAUDE_CODE_SETUP,
   },
   {

@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/skill/
-generated: 2026-04-18T12:20:06.392Z
+generated: 2026-04-18T12:28:23.170Z
 ---
 
 # Skill package
