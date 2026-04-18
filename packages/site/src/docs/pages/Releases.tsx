@@ -21,6 +21,31 @@ interface Release {
  */
 const RELEASES: Release[] = [
   {
+    version: 'v0.1.2',
+    date: '2026-04-18',
+    tag: 'Patch',
+    summary:
+      'Unbreaks `npx -y @openpact/mcp`: the shipped bin was a no-op. Adds default-pact discovery, list_pacts + switch_pact tools, a CLI upgrade-hint on start, and a cleaner OpenClaw example built around MCP.',
+    changes: {
+      added: [
+        '@openpact/cli prints a one-time upgrade hint on `openpact start` when a newer release is on npm. Cached for 24h at <dataDir>/version-check.json, short registry timeout, silent on network failure. Skipped in CI, under OPENPACT_DISABLE_VERSION_CHECK=1, and for dev-placeholder versions.',
+        '@openpact/mcp: list_pacts and switch_pact tools. An agent can discover every pact on the host and retarget the MCP server at a different one mid-session without restarting. switch_pact accepts a local alias or a 64-hex pact_id; unknown names surface a NO_SUCH_PACT error without mutating state.',
+        '@openpact/mcp auto-discovers a default pact at startup. If --pact-id is not passed, the server calls pact.pacts.list() and adopts the daemon currentAlias, so `npx -y @openpact/mcp` works without any flag on a normal install.',
+        '@openpact/sdk: OpenPact.setPactId(id) lets callers retarget a client in place. Resource helpers read the current pactId on every call, so a switch takes effect immediately.',
+      ],
+      changed: [
+        'OpenClaw example repositioned around @openpact/mcp as the canonical tool layer with SKILL.md as the guidance layer. Install path corrected to skills/openpact/SKILL.md (verified on OpenClaw 2026.4.15).',
+        'Site: smoother for-agents onboarding flow, real dashboard screenshots with automatic light/dark swap, prerender every route into static HTML so agents and search engines see full content without running JS.',
+      ],
+      fixed: [
+        "@openpact/mcp bin (openpact-mcp) was a no-op in 0.1.1. The shim did require('../dist/cjs/cli.js') but cli.js only bootstrapped main() inside `if (require.main === module)`, which is false when loaded via the bin. The process started, ran zero code, and exited silently. The bin now imports and calls main() directly. A new integration test spawns the real bin via StdioClientTransport as a regression guard.",
+        '@openpact/cli: `openpact --version` now reports the real package version instead of the 0.0.0 placeholder.',
+        'Site: mobile overflow on the landing page and a working lightbox for the dashboard screenshots. /join hydration mismatch and hero positioning.',
+        'Dashboard: wide-markdown overflow and the source dev-loop script.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.1',
     date: '2026-04-18',
     tag: 'Patch',

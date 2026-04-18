@@ -6,6 +6,8 @@ Versioning is lockstep across every public package: one tag, one version across 
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-18
+
 ### Added
 
 - `@openpact/cli` now prints a one-time upgrade hint on `openpact start` when a newer release is on npm. Cached for 24h at `<dataDir>/version-check.json`, short registry timeout so a slow npm can't block startup, silent on network failure. Skipped in CI (`$CI`), under `OPENPACT_DISABLE_VERSION_CHECK=1`, and for dev-placeholder versions.
@@ -13,10 +15,24 @@ Versioning is lockstep across every public package: one tag, one version across 
 - `@openpact/mcp` auto-discovers a default pact at startup. If `--pact-id` is not passed, the server calls `pact.pacts.list()` and adopts the daemon's `currentAlias`, so `npx -y @openpact/mcp` works without any flag on a normal install.
 - `@openpact/sdk`: `OpenPact.setPactId(id)` lets callers retarget a client in place. Resource helpers (`knowledge`, `tasks`, ...) read the current pactId on every call, so a switch takes effect immediately.
 
+### Changed
+
+- Site: smoother for-agents onboarding flow (#12).
+- Site: real dashboard screenshots with automatic light/dark swap on the marketing page (#13).
+- Site: prerender every route into static HTML, so agents and search engines see full content without running JS (#11).
+- OpenClaw example repositioned around `@openpact/mcp` as the canonical tool layer with `SKILL.md` as the guidance layer. Install path corrected to `skills/openpact/SKILL.md` (verified on OpenClaw `2026.4.15`) (#18).
+
 ### Fixed
 
 - `@openpact/mcp` bin (`openpact-mcp`) was a no-op in `0.1.1`. The shim did `require('../dist/cjs/cli.js')` but `cli.js` only bootstrapped `main()` inside `if (require.main === module)`, which is false when loaded via the bin, so `npx -y @openpact/mcp` started the process, ran zero code, and exited silently. The bin now imports and calls `main()` directly. Added `test/integration/bin-shim.test.ts`, which spawns the real bin via `StdioClientTransport` and round-trips an MCP tool call, as a regression guard.
 - `@openpact/cli`: `openpact --version` now reports the real package version instead of the `0.0.0` placeholder.
+- Site: mobile overflow on the landing page and a working lightbox for the dashboard screenshots (#14).
+- Site: `/join` hydration mismatch and hero positioning (#15).
+- Dashboard: wide-markdown overflow and the `source` dev-loop script (#16).
+
+### Removed
+
+- Stub `openpact` npm package (#17). The scoped packages under `@openpact/*` are the canonical install path.
 
 ## [0.1.1] - 2026-04-18
 
