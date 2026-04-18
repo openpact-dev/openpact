@@ -1,6 +1,6 @@
 import { DocsShell } from '../../pages/DocsShell'
 import { CodeBlock } from '../../components/CodeBlock'
-import { ThemedImage } from '../../components/ThemedImage'
+import { LightboxImage } from '../../components/LightboxImage'
 
 interface Screen {
   name: string
@@ -134,7 +134,7 @@ openpact dashboard             # open the dashboard URL in your default browser`
               <code class="font-mono text-[12px] text-[var(--color-ember)]">{s.path}</code>
             </div>
             {s.shot ? (
-              <ThemedImage
+              <LightboxImage
                 light={`/screenshots/${s.shot}-light.png`}
                 dark={`/screenshots/${s.shot}-dark.png`}
                 alt={`${s.name} screen of the OpenPact dashboard`}

@@ -79,8 +79,8 @@ export function DocsShell({ currentSlug, eyebrow, title, lede, children }: Props
     <>
       <Header current="docs" />
       <main class="relative z-10">
-        <div class="mx-auto grid max-w-[1200px] gap-10 px-6 py-10 md:grid-cols-[220px_1fr] md:py-14">
-          <aside class="md:sticky md:top-20 md:self-start">
+        <div class="mx-auto grid max-w-[1200px] gap-10 px-6 py-10 md:grid-cols-[220px_minmax(0,1fr)] md:py-14">
+          <aside class="min-w-0 md:sticky md:top-20 md:self-start">
             <div class="eyebrow mb-3">Docs</div>
             <nav class="flex flex-col gap-1 border-l border-[var(--color-line)]">
               {DOC_NAV.map((d) => {
@@ -103,7 +103,7 @@ export function DocsShell({ currentSlug, eyebrow, title, lede, children }: Props
             </nav>
           </aside>
 
-          <article class="prose max-w-[720px] animate-etch">
+          <article class="prose min-w-0 max-w-[720px] animate-etch">
             {eyebrow ? <div class="eyebrow mb-2">{eyebrow}</div> : null}
             <h1 class="!mb-3">{title}</h1>
             {lede ? (

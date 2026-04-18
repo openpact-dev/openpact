@@ -21,7 +21,7 @@ interface Props {
 export function Header({ current }: Props) {
   return (
     <header class="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-canvas)]/80 backdrop-blur-md">
-      <div class="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-6 py-3.5">
+      <div class="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-3.5 sm:gap-6 sm:px-6">
         <div class="flex items-center gap-2.5">
           <a href="/" class="group flex items-center gap-2.5" aria-label="OpenPact home">
             <WatchingEye size={28} />
@@ -49,7 +49,7 @@ export function Header({ current }: Props) {
                 href={item.href}
                 target={item.external ? '_blank' : undefined}
                 rel={item.external ? 'noopener noreferrer' : undefined}
-                class={`group relative px-3 py-1.5 text-sm font-medium transition-colors hover:text-[var(--color-ember)] ${
+                class={`group relative px-2 py-1.5 text-sm font-medium transition-colors hover:text-[var(--color-ember)] sm:px-3 ${
                   active ? 'text-[var(--color-ember)]' : 'text-[var(--color-ink2)]'
                 }`}
               >

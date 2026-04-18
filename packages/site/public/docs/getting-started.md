@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/getting-started/
-generated: 2026-04-18T12:57:54.713Z
+generated: 2026-04-18T13:18:00.700Z
 ---
 
 # Getting started
