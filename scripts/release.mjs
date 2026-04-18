@@ -26,7 +26,6 @@ const PUBLIC_PACKAGES = [
   'packages/skill/package.json',
   'packages/dashboard/package.json',
   'packages/cli/package.json',
-  'packages/openpact/package.json',
 ]
 
 // Private but bumped so the site build can read the release version.

@@ -40,7 +40,7 @@
     "dev:log": "node scripts/dev-cli.mjs log",
     "dev:dashboard": "node scripts/dev-cli.mjs dashboard",
     "dev:invite": "node scripts/dev-cli.mjs invite",
-    "validate": "npm run -w @openpact/daemon validate && npm run -w @openpact/sdk validate && npm run -w @openpact/mcp validate && npm run -w @openpact/skill validate && npm run -w @openpact/dashboard validate && npm run -w @openpact/cli validate && npm run -w openpact validate",
+    "validate": "npm run -w @openpact/daemon validate && npm run -w @openpact/sdk validate && npm run -w @openpact/mcp validate && npm run -w @openpact/skill validate && npm run -w @openpact/dashboard validate && npm run -w @openpact/cli validate",
     "test:all": "npm run build && npm run validate && npm test && npm run test:e2e && npm run test:examples",
     "test:ci": "npm run build && npm run validate && npm test",
     "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:all && node scripts/check-apply-coverage.js",
@@ -74,7 +74,6 @@
       "**/test/**",
       "**/node_modules/**",
       "**/*.d.ts",
-      "packages/openpact/**",
       "packages/sdk/src/types.ts",
       "packages/dashboard/src/**",
       "packages/site/**"
