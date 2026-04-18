@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/examples/
-generated: 2026-04-18T12:15:37.553Z
+generated: 2026-04-18T12:20:06.397Z
 ---
 
 # Examples

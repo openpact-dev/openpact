@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T12:15:37.589Z
+generated: 2026-04-18T12:20:06.425Z
 ---
 
 # Let your agent set this up.
