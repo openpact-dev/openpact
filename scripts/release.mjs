@@ -36,6 +36,12 @@ const ALL_BUMPED_PACKAGES = [...PUBLIC_PACKAGES, ...PRIVATE_BUMPED_PACKAGES]
 const CHANGELOG = 'CHANGELOG.md'
 const SITE_VERSION_FILE = 'packages/site/src/version.ts'
 
+// Not mutated by this script, but the /openpact-release skill edits it
+// (step 4: prepend the release entry) before invoking the script. Stage
+// it so those edits land in the same release commit instead of leaving
+// the working tree dirty after commit.
+const RELEASES_PAGE = 'packages/site/src/docs/pages/Releases.tsx'
+
 main()
 
 function main() {
@@ -63,7 +69,7 @@ function main() {
 
   mutate(join(repoRoot, CHANGELOG), (c) => promoteChangelog(c, version, today))
 
-  git(['add', '--', CHANGELOG, SITE_VERSION_FILE, ...ALL_BUMPED_PACKAGES])
+  git(['add', '--', CHANGELOG, SITE_VERSION_FILE, RELEASES_PAGE, ...ALL_BUMPED_PACKAGES])
   git(['commit', '-m', `release: v${version}`])
 
   const branch = currentBranch()
