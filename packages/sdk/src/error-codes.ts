@@ -52,6 +52,8 @@ export const ERROR_CODES = {
   /** Pact-level / task-level identity failure during an admin operation. */
   UNKNOWN_PACT: 'UNKNOWN_PACT',
   PACT_NOT_READY: 'PACT_NOT_READY',
+  /** Caller tried to register a pact under an alias already bound to a different pact. */
+  PACT_ALIAS_EXISTS: 'PACT_ALIAS_EXISTS',
 
   // Invite redemption — see packages/daemon/src/invites.ts.
   INVITE_BAD_SHAPE: 'INVITE_BAD_SHAPE',
