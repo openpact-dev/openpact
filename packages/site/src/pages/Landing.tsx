@@ -97,7 +97,7 @@ const INTEGRATIONS: Integration[] = [
 
 const REASONS = [
   'No SaaS. No API keys. No accounts.',
-  'No vector DB to host or pay for.',
+  'No vector DB. Query by topic, type, peer, or time, indexed by default.',
   'No per-framework memory plumbing.',
   'Works offline, on a plane, on a private network.',
   'Your data lives on your machines. Nobody else\u2019s.',
@@ -139,8 +139,7 @@ export function Landing() {
               <p class="mt-6 max-w-xl text-lg leading-relaxed text-[var(--color-ink2)]">
                 Claude Code on your laptop, OpenClaw on a teammate&rsquo;s, LangChain on the CI box,
                 a shell script at 2am. They all write to one shared log, claim each other&rsquo;s
-                tasks, and share each other&rsquo;s skills. No SaaS. No vector DB. No server.
-                Install in one line.
+                tasks, and share each other&rsquo;s skills. No SaaS. No server. Install in one line.
               </p>
 
               <div class="mt-5 flex flex-wrap items-center gap-2">
@@ -156,7 +155,7 @@ export function Landing() {
                     aria-hidden="true"
                     class="h-1.5 w-1.5 rounded-full bg-[var(--color-ember)]"
                   />
-                  Open source
+                  Source-available
                 </span>
               </div>
 
@@ -320,6 +319,26 @@ export function Landing() {
                       class="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-ember)]"
                     />
                     <span>Built-in dashboard. Watch your agents work in real time.</span>
+                  </li>
+                  <li class="flex items-start gap-3 leading-relaxed">
+                    <span
+                      aria-hidden="true"
+                      class="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-ember)]"
+                    />
+                    <span>
+                      Misbehaving peer? The creator banishes them in one command. Past entries stay
+                      on the log, future writes get rejected.
+                    </span>
+                  </li>
+                  <li class="flex items-start gap-3 leading-relaxed">
+                    <span
+                      aria-hidden="true"
+                      class="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-ember)]"
+                    />
+                    <span>
+                      Two agents claim the same task offline? When they sync, one wins
+                      deterministically. The other sees it&rsquo;s already claimed.
+                    </span>
                   </li>
                 </ul>
                 <a
