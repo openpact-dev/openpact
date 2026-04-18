@@ -13,23 +13,27 @@
     "node": ">=22"
   },
   "type": "commonjs",
-  "main": "server/index.js",
-  "types": "server/index.ts",
+  "main": "dist/server/index.js",
+  "types": "dist/server/index.d.ts",
   "exports": {
     ".": {
-      "types": "./server/index.ts",
-      "require": "./server/index.js"
+      "require": {
+        "types": "./dist/server/index.d.ts",
+        "default": "./dist/server/index.js"
+      }
     }
   },
   "files": [
     "dist",
-    "server",
     "README.md"
   ],
   "scripts": {
     "build": "rm -rf dist && npm run build:server && npm run build:browser",
     "build:server": "tsc -p tsconfig.server.json",
     "build:browser": "vite build",
+    "build:clean": "rm -rf dist && npm run build",
+    "validate": "publint --strict",
+    "prepublishOnly": "npm run build:clean && npm run validate",
     "dev": "vite",
     "size": "size-limit",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,integration}/**/*.test.ts'",
@@ -51,6 +55,7 @@
   "devDependencies": {
     "@openpact/daemon": "^0.1.0",
     "@playwright/test": "^1.59.1",
+    "publint": "^0.2.12",
     "@size-limit/preset-app": "^12.1.0",
     "@tailwindcss/vite": "^4.2.2",
     "@testing-library/preact": "^3.2.4",

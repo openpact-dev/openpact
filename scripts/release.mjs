@@ -25,6 +25,7 @@ const PUBLIC_PACKAGES = [
   'packages/mcp/package.json',
   'packages/skill/package.json',
   'packages/dashboard/package.json',
+  'packages/cli/package.json',
   'packages/openpact/package.json',
 ]
 
