@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T13:18:00.839Z
+generated: 2026-04-18T16:50:46.046Z
 ---
 
 # Let your agent set this up.
@@ -84,13 +84,17 @@ curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages
 
 ### OpenClaw
 
-Copy the drift-guarded workspace into \`.openclaw/\`. It is kept in sync in the repo.
+Drop the canonical \`SKILL.md\` into \`skills/openpact/\` for the agent guidance layer (verified on OpenClaw 2026.4.15). If your OpenClaw build speaks MCP, also register \`@openpact/mcp\` for first-class tools.
 
 ```
-# OpenClaw — drop the ready-made workspace
-git clone --depth 1 https://github.com/openpact-dev/openpact.git /tmp/op-workspace
-cp -r /tmp/op-workspace/examples/openclaw/.openclaw .openclaw
-rm -rf /tmp/op-workspace
+# OpenClaw — install the skill into your workspace
+npm i -D @openpact/skill
+mkdir -p skills/openpact
+cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md
+
+# Verify: should report source: openclaw-workspace
+openclaw skills info openpact
+openclaw skills check
 ```
 
 ### LangChain / CrewAI / Python

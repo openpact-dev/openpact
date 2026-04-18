@@ -519,7 +519,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
 - [x] Each tool maps directly to a daemon REST endpoint (no SDK
   runtime dep — works everywhere fetch/curl works)
 - [x] README install snippets per runtime:
-  - OpenClaw: `openclaw skill install node_modules/@openpact/skill/SKILL.md`
+  - OpenClaw: `cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md` (workspace-relative; verified on OpenClaw `2026.4.15`)
   - Cursor / Windsurf: drop `SKILL.md` into the rules dir
   - Claude Code: link to the curl recipe in `examples/claude-code/`
   - LangChain (Python): code sketch that loads `tools.json` and

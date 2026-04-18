@@ -184,6 +184,10 @@ tsconfig: `module: commonjs`, `strict: true`, `noImplicitAny: false` (Hyper stac
 
 `@openpact/sdk` ships dual CJS + ESM; `@openpact/mcp` is CJS-only. Both rebuild as part of `test:all`.
 
+## New branch for new work
+
+Before the first edit of any task, create a fresh branch from `main`: `git checkout -b <type>/<slug>` (`fix/`, `feat/`, `docs/`, `chore/` — matches the repo's commit convention). Never accumulate edits on `main` or reuse an unrelated feature branch from the previous task. If you realize mid-task that you're still on `main`, switch immediately with `git checkout -b <branch>` — the uncommitted edits carry over.
+
 ## No "pre-existing" issues
 
 There are **no** pre-existing issues in this repo that are acceptable to leave alone. If `typecheck`, `lint`, or a test fails, even in a package you weren't touching, even if it was failing on `main` before your change, you fix it as part of the current change. Same for stale docs, dead code, wrong paths, flaky tests. Do not defer, do not mark "out of scope". If the fix would balloon scope, stop and raise it with the user.

@@ -38,10 +38,14 @@ mkdir -p .cursor/rules
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages/skill/dist/cursor.mdc \\
   -o .cursor/rules/openpact.mdc`
 
-const OPENCLAW_SETUP = `# OpenClaw — drop the ready-made workspace
-git clone --depth 1 https://github.com/openpact-dev/openpact.git /tmp/op-workspace
-cp -r /tmp/op-workspace/examples/openclaw/.openclaw .openclaw
-rm -rf /tmp/op-workspace`
+const OPENCLAW_SETUP = `# OpenClaw \u2014 install the skill into your workspace
+npm i -D @openpact/skill
+mkdir -p skills/openpact
+cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md
+
+# Verify: should report source: openclaw-workspace
+openclaw skills info openpact
+openclaw skills check`
 
 const LANGCHAIN_SETUP = `pip install httpx  # or the loader from examples/langchain/
 # Then in your agent code:
@@ -83,7 +87,8 @@ const FRAMEWORKS: Framework[] = [
   {
     id: 'openclaw',
     name: 'OpenClaw',
-    blurb: 'Copy the drift-guarded workspace into `.openclaw/`. It is kept in sync in the repo.',
+    blurb:
+      'Drop the canonical `SKILL.md` into `skills/openpact/` for the agent guidance layer (verified on OpenClaw 2026.4.15). If your OpenClaw build speaks MCP, also register `@openpact/mcp` for first-class tools.',
     code: OPENCLAW_SETUP,
   },
   {
