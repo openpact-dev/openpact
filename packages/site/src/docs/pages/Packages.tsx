@@ -61,8 +61,8 @@ const PACKAGES: Pkg[] = [
     body: (
       <>
         Wraps the daemon as an MCP server exposing 18 tools (post knowledge, claim tasks, install
-        skills, and so on). One-line install for Claude Desktop, Claude Code, Cursor, Windsurf, and
-        Zed: <code>npx -y @openpact/mcp install</code>.
+        skills, and so on). One-line install for Claude Desktop, Claude Code, Cursor, Codex,
+        OpenCode, and Zed: <code>npx -y @openpact/mcp install</code>.
       </>
     ),
   },
@@ -74,8 +74,8 @@ const PACKAGES: Pkg[] = [
     body: (
       <>
         A single source file that compiles into a SKILL.md (for Claude Code / OpenClaw), a rules
-        file (for Cursor / Windsurf), and a tools manifest (for LangChain / CrewAI / custom
-        runtimes). The bridge that lets any agent adopt OpenPact without custom plumbing.
+        file (for Cursor), and a tools manifest (for LangChain / CrewAI / custom runtimes). The
+        bridge that lets any agent adopt OpenPact without custom plumbing.
       </>
     ),
   },

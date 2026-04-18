@@ -505,7 +505,7 @@ This is the heart of the project. Get this right before touching anything else.
 
 ### 2.1 Generic agent skill ✅
 
-A portable instructions package any LLM-driven agent runtime can load to learn how to use OpenPact. Ships as `@openpact/skill` (path `packages/skill/`). For runtimes that consume markdown rules files (OpenClaw, Cursor, Windsurf) the canonical `SKILL.md` (markdown + YAML frontmatter) is the install. For runtimes that codegen tools (LangChain, CrewAI, AutoGen, custom) the same surface is mirrored in `tools.json`. For MCP-speaking clients use `@openpact/mcp` instead.
+A portable instructions package any LLM-driven agent runtime can load to learn how to use OpenPact. Ships as `@openpact/skill` (path `packages/skill/`). For runtimes that consume markdown rules files (OpenClaw, Cursor) the canonical `SKILL.md` (markdown + YAML frontmatter) is the install. For runtimes that codegen tools (LangChain, CrewAI, AutoGen, custom) the same surface is mirrored in `tools.json`. For MCP-speaking clients use `@openpact/mcp` instead.
 
 - [x] Create `packages/skill/` with `SKILL.md` + `tools.json` (no
   build step — the package ships markdown + JSON files and a README)
@@ -520,7 +520,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   runtime dep — works everywhere fetch/curl works)
 - [x] README install snippets per runtime:
   - OpenClaw: `cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md` (workspace-relative; verified on OpenClaw `2026.4.15`)
-  - Cursor / Windsurf: drop `SKILL.md` into the rules dir
+  - Cursor: drop `SKILL.md` into the rules dir
   - Claude Code: link to the curl recipe in `examples/claude-code/`
   - LangChain (Python): code sketch that loads `tools.json` and
     builds `StructuredTool` instances at boot
@@ -813,7 +813,7 @@ A portable instructions package any LLM-driven agent runtime can load to learn h
   passing) — `npm publish` is the maintainer's call
 - [x] Published-ready `@openpact/mcp` (Model Context Protocol server,
   one-line install for Claude Desktop / Claude Code / Cursor /
-  Windsurf / Zed)
+  Codex / OpenCode / Zed)
 - [x] 4 example integrations with READMEs and smoke tests (Claude Code,
   OpenClaw, LangChain, shell)
 - [x] Task coordination with claim/release/TTL (state machine + TTL
@@ -1419,7 +1419,7 @@ matrix; one slot is enough for the v0.1 surface.
 - [x] `/docs/` — curated docs authored as JSX under a shared TOC shell with prev/next nav. Five pages: `overview`, `getting-started`, `cli`, `rest-api`, `architecture`. (Earlier `brand` doc removed; brand lives in `docs/OPENPACT_BRAND.md` on GitHub.)
 - [x] **Mermaid diagrams on `/docs/architecture/`** — five figures (system overview, inside-a-daemon, write path sequence, task state machine, writer promotion sequence). Mermaid is dynamic-imported so it only loads on that one page. Diagrams re-render on theme change
 - [x] `/join/?key=<64-hex>&pact=<name>&from=<display_name>` — URL-parameter invite flow that renders copy-pasteable install + `openpact join` commands; client-side key regex mirrors `packages/cli/src/commands/join.ts:19`
-- [x] `/for-agents/` — a setup playbook aimed at AI coding agents. Paste the prompt at the top into any agent (Claude Code, Cursor, Windsurf, OpenClaw, LangChain, MCP clients, shell) and it will install OpenPact and wire it into its own runtime. Numbered steps, per-framework wiring blocks, machine-readable reference links
+- [x] `/for-agents/` — a setup playbook aimed at AI coding agents. Paste the prompt at the top into any agent (Claude Code, Cursor, Codex, OpenCode, OpenClaw, LangChain, MCP clients, shell) and it will install OpenPact and wire it into its own runtime. Numbered steps, per-framework wiring blocks, machine-readable reference links
 - [x] Themed 404 page
 - [x] Design language copied verbatim from the dashboard (style.css, WatchingEye, Panel, ThemeDial, `openpact:theme` localStorage key); light + dark themes
 - [x] SEO: per-page `<title>` / meta / canonical / OpenGraph / Twitter Card, JSON-LD `SoftwareApplication` on the landing, `favicon.svg`, `robots.txt`, `sitemap.xml`, 1200×630 `og-image.png`

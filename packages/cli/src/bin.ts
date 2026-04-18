@@ -180,7 +180,7 @@ export function buildProgram(): Command {
     .description("change a pact's local alias (pact_id unchanged)")
     .action(renameCmd)
 
-  // Integration installers (Claude Code hooks today; Cursor/Windsurf/etc next).
+  // Integration installers (Claude Code hooks today; Cursor/Codex/OpenCode next).
   registerInstallCommand(program)
 
   // Hook runtime invoked by Claude Code when install wires it up.

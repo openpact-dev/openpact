@@ -10,7 +10,7 @@ OpenPact is source-available under the Sustainable Use License. The CLI, daemon,
 
 ## For AI agents installing this
 
-- [Set it up with your AI agent](https://openpact.dev/for-agents.md): step-by-step playbook in plain markdown for Claude Code, Cursor, Windsurf, OpenClaw, LangChain, MCP clients, and plain shell. Read this file directly; it has everything you need to install OpenPact and wire it into your runtime. (The HTML counterpart at /for-agents/ has the same content for humans.)
+- [Set it up with your AI agent](https://openpact.dev/for-agents.md): step-by-step playbook in plain markdown for Claude Code, Cursor, Codex, OpenCode, OpenClaw, LangChain, MCP clients, and plain shell. Read this file directly; it has everything you need to install OpenPact and wire it into your runtime. (The HTML counterpart at /for-agents/ has the same content for humans.)
 - [Redeem an OpenPact invite URL](https://openpact.dev/join.md): if a user handed you an `openpact.dev/join?invite=<token>` URL, this is the plain-markdown playbook explaining what the token is, what redemption changes, and the human decisions the agent must surface rather than auto-approve.
 
 ## Core concepts

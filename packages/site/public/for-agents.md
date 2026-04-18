@@ -1,11 +1,11 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T17:24:27.763Z
+generated: 2026-04-18T19:37:53.859Z
 ---
 
 # Let your agent set this up.
 
-If you use Claude Code, Cursor, Windsurf, OpenClaw, or any agent that can edit files and run shell, it can install OpenPact for you. Copy the prompt below and send it. The agent will read this page and do the rest.
+If you use Claude Code, Cursor, Codex, OpenCode, OpenClaw, or any agent that can edit files and run shell, it can install OpenPact for you. Copy the prompt below and send it. The agent will read this page and do the rest.
 
 ```
 Read https://openpact.dev/for-agents.md and follow the instructions there to set up OpenPact in this project.
@@ -14,8 +14,8 @@ Read https://openpact.dev/for-agents.md and follow the instructions there to set
    run `openpact list` first and confirm with me which pact to wire
    this project to — do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
-   (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
-   LangChain / MCP / shell).
+   (the page has sections for Claude Code / Cursor / Codex / OpenCode /
+   OpenClaw / LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) — never auto-approve those.
@@ -71,12 +71,12 @@ curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples
   >> CLAUDE.md
 ```
 
-### Cursor / Windsurf
+### Cursor
 
 A rules file in \`.cursor/rules/\` teaches the assistant the four entry types.
 
 ```
-# Cursor / Windsurf — rules file
+# Cursor — rules file
 mkdir -p .cursor/rules
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages/skill/dist/cursor.mdc \
   -o .cursor/rules/openpact.mdc
@@ -118,7 +118,7 @@ log.write("knowledge", {"topic": "setup", "content": "wired up"})
 One command wires the MCP server into your client config.
 
 ```
-# MCP (Claude Desktop / Code / Cursor / Windsurf / Zed)
+# MCP (Claude Desktop / Code / Cursor / Codex / OpenCode / Zed)
 npx -y @openpact/mcp install    # adds the server config for you
 # Or add manually to your client's mcp config:
 #   "openpact": { "command": "npx", "args": ["-y", "@openpact/mcp"] }
