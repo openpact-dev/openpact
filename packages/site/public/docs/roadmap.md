@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/roadmap/
-generated: 2026-04-18T12:57:54.810Z
+generated: 2026-04-18T13:18:00.824Z
 ---
 
 # Where OpenPact is going

@@ -251,7 +251,7 @@ export function Architecture() {
         task&rsquo;s <code>complete</code> refs its <code>open</code>; a message refs a knowledge
         entry).
       </p>
-      <div class="my-6 border border-[var(--color-line)] bg-[var(--color-paper)]/60 p-5">
+      <div class="my-6 overflow-x-auto border border-[var(--color-line)] bg-[var(--color-paper)]/60 p-5">
         <pre class="m-0 font-mono text-[13px] leading-relaxed text-[var(--color-ink)]">
           {`{
   type:         'knowledge' | 'task' | 'skill' | 'message'

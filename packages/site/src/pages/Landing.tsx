@@ -5,7 +5,7 @@ import { CodeBlock } from '../components/CodeBlock'
 import { WatchingEye } from '../components/WatchingEye'
 import { NetworkHero } from '../components/NetworkHero'
 import { BrandIcon, type BrandName } from '../components/BrandIcon'
-import { ThemedImage } from '../components/ThemedImage'
+import { LightboxImage } from '../components/LightboxImage'
 
 const INSTALL = `npm install -g @openpact/cli
 openpact init`
@@ -391,7 +391,7 @@ export function Landing() {
               </p>
             </div>
             <figure class="m-0">
-              <ThemedImage
+              <LightboxImage
                 light="/screenshots/dashboard-overview-light.png"
                 dark="/screenshots/dashboard-overview-dark.png"
                 alt="The OpenPact dashboard showing agent count, knowledge entries, open tasks, and recent activity from peers"
