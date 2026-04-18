@@ -15,6 +15,8 @@ In:
 - A hand-curated root `CHANGELOG.md` in Keep-a-Changelog format.
 - A GitHub Actions workflow that publishes on `v*` tags with npm provenance.
 - A `scripts/release.mjs` helper that bumps versions, rewrites the changelog, commits, and tags locally.
+- Keeping the visible version badge in the site header (`packages/site/src/components/Header.tsx`) in sync with the release. The release script updates it. The exact mechanism (shared constant, Vite `define`, or direct string edit) is resolved during implementation.
+- Adding a new entry to the site's releases page (`packages/site/src/docs/pages/Releases.tsx`) for the version being shipped. The skill prompts the operator to confirm the summary text before committing.
 - A skill that walks the operator through pre-flight, curation, bump, push, verify, and announce.
 
 Out:
@@ -43,7 +45,9 @@ Out:
 2. `scripts/release.mjs`
    - Signature: `node scripts/release.mjs <version>` where `<version>` is a semver string.
    - Validates: working tree clean, current branch `main`, local `main` matches `origin/main`, no existing `v<version>` tag.
-   - Edits every publishable `package.json` (the six listed above) to the new version. Leaves private packages alone.
+   - Edits every publishable `package.json` (the six listed above) to the new version. Leaves private packages alone, with one exception: `@openpact/site` also gets its version field bumped so the site build can pick up the release version. The `site` package stays `private: true` and is never published.
+   - Updates the visible version in the site header to reflect the new release. The release script is the single place that knows how to do this. Implementation may introduce a shared constant or Vite-injected define so the edit is not a fragile string substitution.
+   - Prepends a new entry to `packages/site/src/docs/pages/Releases.tsx` for the release being shipped. The entry mirrors the `CHANGELOG.md` section written in step (3).
    - Rewrites `CHANGELOG.md`: renames the top `## [Unreleased]` heading to `## [<version>] - <YYYY-MM-DD>` and inserts a fresh empty `## [Unreleased]` above it.
    - `git add` the touched files, commits `release: v<version>`, tags `v<version>`. Does not push.
    - Prints next step: `git push --follow-tags`.
