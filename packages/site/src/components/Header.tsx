@@ -1,5 +1,6 @@
 import { WatchingEye } from './WatchingEye'
 import { ThemeDial } from './ThemeDial'
+import { SITE_VERSION } from '../version'
 
 interface NavItem {
   href: string
@@ -33,7 +34,7 @@ export function Header({ current }: Props) {
             class="hidden items-center border-[0.5px] border-[var(--color-ember)] px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ember)] transition-colors hover:bg-[var(--color-ember)]/10 sm:inline-flex"
             title="View release notes"
           >
-            v0.1 alpha
+            {SITE_VERSION}
           </a>
         </div>
 

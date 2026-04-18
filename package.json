@@ -34,7 +34,8 @@
     "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:all && node scripts/check-apply-coverage.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint packages examples && prettier --check packages examples",
-    "format": "prettier --write packages examples"
+    "format": "prettier --write packages examples",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
