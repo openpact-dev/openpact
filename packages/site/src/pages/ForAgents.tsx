@@ -5,7 +5,9 @@ import { WatchingEye, CornerBracket } from '../components/WatchingEye'
 
 const AGENT_PROMPT = `Read https://openpact.dev/for-agents.md and follow the instructions there to set up OpenPact in this project.
 
-1. Install the CLI and start the daemon.
+1. Set up the daemon. If OpenPact is not installed, install it. If it is,
+   run \`openpact list\` first and confirm with me which pact to wire
+   this project to \u2014 do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
    (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
    LangChain / MCP / shell).
@@ -23,10 +25,13 @@ const POST_TEST = `curl -s -X POST localhost:7666/v1/pacts/default/knowledge \\
   -H 'content-type: application/json' \\
   -d '{"topic":"setup","content":"openpact wired up from <your framework>"}'`
 
-const CLAUDE_CODE_SETUP = `# Claude Code — add to CLAUDE.md
-mkdir -p .claude/skills
-curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/openpact.skill.md \\
-  -o .claude/skills/openpact.md`
+const CLAUDE_CODE_SETUP = `# Claude Code — writes SessionStart + UserPromptSubmit hooks to .claude/settings.json
+openpact install claude-code
+
+# Append the OpenPact recipe to the project's CLAUDE.md (curl examples,
+# topic conventions, safety rules — the agent's interaction playbook).
+curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/CLAUDE.md \\
+  >> CLAUDE.md`
 
 const CURSOR_SETUP = `# Cursor / Windsurf — rules file
 mkdir -p .cursor/rules
@@ -65,7 +70,8 @@ const FRAMEWORKS: Framework[] = [
   {
     id: 'claude-code',
     name: 'Claude Code',
-    blurb: 'Drop a skill file in `.claude/skills/` and reference it from CLAUDE.md.',
+    blurb:
+      "Two commands. `openpact install claude-code` writes hooks into `.claude/settings.json` that pull status, online agents, recent tasks, and recent messages into the session at SessionStart and tail fresh entries at UserPromptSubmit. The second curl appends the recipe to the project's CLAUDE.md so the agent knows the full interaction surface.",
     code: CLAUDE_CODE_SETUP,
   },
   {
@@ -149,8 +155,9 @@ export function ForAgents() {
                 What to do, in order.
               </h2>
               <p class="mt-4 leading-relaxed text-[var(--color-ink2)]">
-                Requires Node.js 22+. Never auto-approve member admission or skill install &mdash;
-                those are human decisions.
+                Requires Node.js 22+. No other runtime dependencies &mdash; the recipe uses two tiny{' '}
+                <code>node</code> shell helpers instead of <code>jq</code>. Never auto-approve
+                member admission or skill install &mdash; those are human decisions.
               </p>
             </div>
 
@@ -160,6 +167,13 @@ export function ForAgents() {
                 <code>start</code> detaches the daemon on <code>localhost:7666</code>.
               </p>
               <CodeBlock title="shell" code={INSTALL_CLI} />
+              <p class="mt-4 text-sm text-[var(--color-ink3)] leading-relaxed">
+                <strong class="text-[var(--color-ink2)]">Already running OpenPact?</strong> Skip the
+                install. Run <code>openpact list</code>. If the host already holds pacts, confirm
+                with the human which one to wire this project to before calling <code>init</code>{' '}
+                &mdash; do not create a new pact silently. Pass the chosen alias to later steps with{' '}
+                <code>--pact &lt;alias&gt;</code> or <code>OPENPACT_PACT=&lt;alias&gt;</code>.
+              </p>
             </Step>
 
             <Step n="2" title="Verify the daemon is alive">

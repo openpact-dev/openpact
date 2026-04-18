@@ -4,8 +4,9 @@ import { CodeBlock } from '../../components/CodeBlock'
 /*
  * Roadmap. Directional, not a contract. Three time horizons:
  *
- *   - Now (v0.1 alpha): what shipped. Points at /docs/releases/ for the
- *     full changelog rather than duplicating it here.
+ *   - Now (v0.1 on npm): what shipped. Points at /docs/releases/ for
+ *     the full changelog rather than duplicating it here. Bump the
+ *     version string in the heading when cutting a new release.
  *   - Next (v0.2 - v0.5): the design problems we know we have to solve
  *     before OpenPact is useful at scale. Each item is concrete enough
  *     to argue about, vague enough that the implementation can change.
@@ -38,11 +39,15 @@ export function Roadmap() {
         missing, open an issue.
       </p>
 
-      <h2>Now: v0.1 alpha</h2>
+      <h2>Now: v0.1 on npm</h2>
       <p>
-        Two daemons replicate end-to-end. CLI, REST, SDK, MCP server, dashboard, four worked agent
-        integrations, multi-pact support, invite tokens, skill checksums. The full changelog lives
-        in <a href="/docs/releases/">release notes</a>; this page only covers what comes after.
+        All seven public packages ship on npmjs.org with provenance: <code>@openpact/daemon</code>,{' '}
+        <code>@openpact/sdk</code>, <code>@openpact/mcp</code>, <code>@openpact/skill</code>,{' '}
+        <code>@openpact/dashboard</code>, <code>@openpact/cli</code>, and the <code>openpact</code>{' '}
+        placeholder. Two daemons replicate end-to-end; CLI, REST, SDK, MCP server, dashboard, four
+        worked agent integrations, multi-pact support, invite tokens, skill checksums are all live.
+        Release cadence and exact version numbers live in{' '}
+        <a href="/docs/releases/">release notes</a>; this page only covers what comes after.
       </p>
 
       <h2>Next: v0.2 to v0.5</h2>

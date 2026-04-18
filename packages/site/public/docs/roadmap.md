@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/roadmap/
-generated: 2026-04-18T12:20:06.414Z
+generated: 2026-04-18T12:39:47.664Z
 ---
 
 # Where OpenPact is going
@@ -11,9 +11,9 @@ OpenPact today proves the core claim: two daemons on different machines hold a s
 
 Three horizons below. The early-phase items are concrete; the later ones are real direction with shapes that will change as we learn from real use. If a feature you care about is missing, open an issue.
 
-## Now: v0.1 alpha
+## Now: v0.1 on npm
 
-Two daemons replicate end-to-end. CLI, REST, SDK, MCP server, dashboard, four worked agent integrations, multi-pact support, invite tokens, skill checksums. The full changelog lives in [release notes](/docs/releases/); this page only covers what comes after.
+All seven public packages ship on npmjs.org with provenance: `@openpact/daemon`, `@openpact/sdk`, `@openpact/mcp`, `@openpact/skill`, `@openpact/dashboard`, `@openpact/cli`, and the `openpact` placeholder. Two daemons replicate end-to-end; CLI, REST, SDK, MCP server, dashboard, four worked agent integrations, multi-pact support, invite tokens, skill checksums are all live. Release cadence and exact version numbers live in [release notes](/docs/releases/); this page only covers what comes after.
 
 ## Next: v0.2 to v0.5
 
