@@ -103,6 +103,18 @@ const RECONCILE_INTERVAL_MS = 30_000
  * so legacy convenience proxies (`daemon.append`, `daemon.view`,
  * etc.) keep working.
  */
+/** Domain error thrown by joinPact for caller-visible failures. */
+export class JoinPactError extends Error {
+  readonly code: ErrorCode
+  readonly status: number
+  constructor(code: ErrorCode, message: string, status: number) {
+    super(message)
+    this.code = code
+    this.status = status
+    this.name = 'JoinPactError'
+  }
+}
+
 export class Daemon extends EventEmitter {
   readonly hostDir: string
   port: number
@@ -284,8 +296,22 @@ export class Daemon extends EventEmitter {
     const cfg = await this._loadRegistry()
     const alias = opts.alias ?? `joined-${opts.joinKey.slice(0, 8)}`
     validateAlias(alias)
-    if (cfg.pacts.some((p) => p.alias === alias)) {
-      throw new Error(`a pact named ${alias} already exists on this host`)
+    const existing = cfg.pacts.find((p) => p.alias === alias)
+    if (existing) {
+      // Idempotent re-join: if the caller is asking for the same pact
+      // (same pactId) under the same alias, return the already-open
+      // pact. Lets the user retry `openpact join <token>` after a
+      // transient failure (e.g. indexer not yet reachable) without
+      // tripping on the alias they just registered.
+      if (existing.pactId.toLowerCase() === opts.joinKey.toLowerCase()) {
+        const already = this._pacts.get(alias) ?? (await this.openPact(alias))
+        return { pact: already, alias }
+      }
+      throw new JoinPactError(
+        'PACT_ALIAS_EXISTS',
+        `alias "${alias}" is already taken by a different pact on this host`,
+        409,
+      )
     }
     const pactDir = pactConfigDir(this.hostDir, alias)
     await fs.mkdir(pactDir, { recursive: true })
@@ -836,7 +862,16 @@ export class Daemon extends EventEmitter {
               (r) => !r.ok && r.code !== 'INVITE_NOT_INDEXER' && r.code !== 'UNKNOWN_PACT',
             )
             if (terminal) return done(terminal)
-            done(responses[0])
+            // Every peer we reached is a non-indexer (or doesn't know
+            // this pact yet). Semantically identical to "no indexer
+            // reachable right now" — surface the retryable code so the
+            // CLI join loop keeps trying until a real indexer connects.
+            done({
+              corr: req.corr,
+              ok: false,
+              code: ERROR_CODES.NO_INDEXER_REACHABLE,
+              message: 'no connected peer is an indexer for this pact',
+            })
           }
         })
       }

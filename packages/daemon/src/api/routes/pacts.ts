@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import type { Daemon } from '../../daemon'
+import { JoinPactError, type Daemon } from '../../daemon'
 import { HttpError } from '../errors'
 import { DISPLAY_NAME_MAX, PACT_NAME_MAX, PACT_PURPOSE_MAX, loadPactConfig } from '../../config'
 
@@ -179,13 +179,21 @@ export default async function pactsRoute(
         'POST /v1/pacts/join requires explicit { "confirm": true }',
       )
     }
-    const { pact, alias } = await daemon.joinPact({
-      alias: req.body.alias,
-      joinKey: req.body.key,
-      displayName: req.body.display_name ?? null,
-      pactName: req.body.pact_name ?? null,
-      pactPurpose: req.body.pact_purpose ?? null,
-    })
+    let pact, alias
+    try {
+      ;({ pact, alias } = await daemon.joinPact({
+        alias: req.body.alias,
+        joinKey: req.body.key,
+        displayName: req.body.display_name ?? null,
+        pactName: req.body.pact_name ?? null,
+        pactPurpose: req.body.pact_purpose ?? null,
+      }))
+    } catch (e) {
+      if (e instanceof JoinPactError) {
+        throw new HttpError(e.status, e.code, e.message)
+      }
+      throw e
+    }
     return {
       ok: true,
       alias,
