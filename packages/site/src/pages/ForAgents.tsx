@@ -10,8 +10,7 @@ const AGENT_PROMPT = `Read https://openpact.dev/for-agents.md and follow the ins
    this project to \u2014 do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
    (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
-   LangChain / MCP / shell). You may need \`jq\` installed locally for
-   the recipe's curl examples.
+   LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) \u2014 never auto-approve those.`
@@ -29,7 +28,7 @@ const POST_TEST = `curl -s -X POST localhost:7666/v1/pacts/default/knowledge \\
 const CLAUDE_CODE_SETUP = `# Claude Code — writes SessionStart + UserPromptSubmit hooks to .claude/settings.json
 openpact install claude-code
 
-# Append the OpenPact recipe to the project's CLAUDE.md (curl + jq examples,
+# Append the OpenPact recipe to the project's CLAUDE.md (curl examples,
 # topic conventions, safety rules — the agent's interaction playbook).
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/CLAUDE.md \\
   >> CLAUDE.md`
@@ -156,10 +155,9 @@ export function ForAgents() {
                 What to do, in order.
               </h2>
               <p class="mt-4 leading-relaxed text-[var(--color-ink2)]">
-                Requires Node.js 22+ and <code>jq</code> for the recipe&rsquo;s curl examples (
-                <code>apt install jq</code> on Debian/Ubuntu, <code>brew install jq</code> on
-                macOS). Never auto-approve member admission or skill install &mdash; those are human
-                decisions.
+                Requires Node.js 22+. No other runtime dependencies &mdash; the recipe uses two tiny{' '}
+                <code>node</code> shell helpers instead of <code>jq</code>. Never auto-approve
+                member admission or skill install &mdash; those are human decisions.
               </p>
             </div>
 

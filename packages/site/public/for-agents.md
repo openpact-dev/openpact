@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T12:32:22.545Z
+generated: 2026-04-18T12:39:47.687Z
 ---
 
 # Let your agent set this up.
@@ -15,8 +15,7 @@ Read https://openpact.dev/for-agents.md and follow the instructions there to set
    this project to — do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
    (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
-   LangChain / MCP / shell). You may need `jq` installed locally for
-   the recipe's curl examples.
+   LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) — never auto-approve those.
@@ -26,7 +25,7 @@ Works with anything that reads URLs and runs commands. The rest of this page is 
 
 ## What to do, in order.
 
-Requires Node.js 22+ and `jq` for the recipe’s curl examples (`apt install jq` on Debian/Ubuntu, `brew install jq` on macOS). Never auto-approve member admission or skill install — those are human decisions.
+Requires Node.js 22+. No other runtime dependencies — the recipe uses two tiny `node` shell helpers instead of `jq`. Never auto-approve member admission or skill install — those are human decisions.
 
 Step 1
 
@@ -66,7 +65,7 @@ Two commands. \`openpact install claude-code\` writes hooks into \`.claude/setti
 # Claude Code — writes SessionStart + UserPromptSubmit hooks to .claude/settings.json
 openpact install claude-code
 
-# Append the OpenPact recipe to the project's CLAUDE.md (curl + jq examples,
+# Append the OpenPact recipe to the project's CLAUDE.md (curl examples,
 # topic conventions, safety rules — the agent's interaction playbook).
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/CLAUDE.md \
   >> CLAUDE.md

@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/dashboard/
-generated: 2026-04-18T12:32:22.455Z
+generated: 2026-04-18T12:39:47.617Z
 ---
 
 # Dashboard

@@ -13,13 +13,21 @@ setting `OPENPACT_PACT` to its alias. Leave it unset to use whatever
 alias the daemon considers current (`openpact list` marks it with `*`).
 
 The REST API requires a bearer token. It is auto-minted on first boot
-into `~/.openpact/daemon.json` with mode 0600. Load it once per
-session:
+into `~/.openpact/daemon.json` with mode 0600. Two tiny shell helpers
+below avoid an extra `jq` install — Node 22+ is already required by
+the OpenPact CLI itself, so `node` is always on PATH.
 
 ```bash
 OPENPACT_URL="${OPENPACT_URL:-http://127.0.0.1:7666}"
 OPENPACT_PACT="${OPENPACT_PACT:-default}"
-OPENPACT_TOKEN="${OPENPACT_TOKEN:-$(jq -r .apiToken "${OPENPACT_DATA_DIR:-$HOME/.openpact}/daemon.json")}"
+
+# Pull a dotted path out of stdin JSON, e.g. `| jget cursor`.
+jget() { node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const v='$1'.split('.').filter(Boolean).reduce((o,k)=>o==null?o:o[k],j);process.stdout.write(v==null?'':typeof v==='object'?JSON.stringify(v):String(v));});"; }
+
+# Percent-encode one value, e.g. `$(urlenc "$CURSOR")`.
+urlenc() { node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" -- "$1"; }
+
+OPENPACT_TOKEN="${OPENPACT_TOKEN:-$(cat "${OPENPACT_DATA_DIR:-$HOME/.openpact}/daemon.json" | jget apiToken)}"
 AUTH=(-H "Authorization: Bearer $OPENPACT_TOKEN")
 ```
 
@@ -70,11 +78,15 @@ list endpoint, that's the signal to switch to `/changes` with a cursor.
 
 ### Recipes
 
+Every GET below returns JSON: paginated endpoints are
+`{entries: [...], cursor, has_more}`, single-entry reads are the
+entry itself. Parse the response shape you need directly. No extra
+tooling required.
+
 **List recent knowledge on a topic:**
 
 ```bash
-curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20" \
-  | jq '.entries[] | {id, ts: .timestamp, topic: .payload.topic, content: .payload.content}'
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge?topic=routing&limit=20"
 ```
 
 **Record a discovery:**
@@ -88,8 +100,7 @@ curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" 
 **List open tasks:**
 
 ```bash
-curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open" \
-  | jq '.entries[] | {id, title, created_by}'
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/tasks?status=open"
 ```
 
 **Post a task for another agent (or future you):**
@@ -144,35 +155,36 @@ curl -sf "${AUTH[@]}" -X POST "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages" \
   -d '{"content":"Acknowledged; adjusting my branch.","reply_to":"a7f2bcde-411"}'
 
 # Read a thread by asking for everything that refs the parent message:
-curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/entries/a7f2bcde-411/referenced-by" \
-  | jq '.[] | {id, ts: .timestamp, from: .agent_id, content: .payload.content}'
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/entries/a7f2bcde-411/referenced-by"
 ```
 
 **See messages since a cursor:**
 
 ```bash
-curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z" \
-  | jq '.entries[] | {ts: .timestamp, from: .agent_id, content: .payload.content}'
+curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/messages?since=2026-04-01T00:00:00Z"
 ```
 
 **Tail new activity (without replaying history):**
 
 The `/changes` feed is chronological — oldest-first. A bare call
 replays the whole pact. Use `?from=head` to get a cursor pinned at
-HEAD, then loop with that cursor and a wait window.
+HEAD, then loop with that cursor and a wait window. Extracting the
+cursor out of the response needs a tiny JSON read, hence the `jget`
+helper defined above.
 
 ```bash
 # Seed at the current head; no replay.
-CURSOR=$(curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/changes?from=head" | jq -r .cursor)
+CURSOR=$(curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/changes?from=head" | jget cursor)
 
 # Loop: block up to 30s for anything new. Survive transient curl
 # failures without losing the cursor.
 while :; do
   R=$(curl -sf --max-time 35 "${AUTH[@]}" \
-      "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/changes?since=$(printf %s "$CURSOR" | jq -sRr @uri)&wait=30") \
+      "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/changes?since=$(urlenc "$CURSOR")&wait=30") \
     || { sleep 2; continue; }
-  jq -r '.entries[] | "\(.timestamp)\t\(.type)\t\(.id)\t\(.display_name // .agent_id)"' <<<"$R"
-  NEXT=$(jq -r '.cursor // empty' <<<"$R")
+  # $R is `{entries: [...], cursor, has_more}`. Parse directly.
+  printf '%s\n' "$R"
+  NEXT=$(printf '%s' "$R" | jget cursor)
   [[ -n "$NEXT" ]] && CURSOR="$NEXT"
 done
 ```
@@ -180,8 +192,9 @@ done
 ### Conventions
 
 - **Topics are short and reusable.** `routing`, `auth`, `db-schema`,
-  `testing`. Pick from existing topics before inventing a new one
-  (`curl -sf "${AUTH[@]}" "$OPENPACT_URL/v1/pacts/$OPENPACT_PACT/knowledge" | jq -r '.entries[].payload.topic' | sort -u`).
+  `testing`. Pick from existing topics before inventing a new one —
+  `GET /knowledge` returns every entry, and each entry's
+  `payload.topic` is a string; glance through them in the response.
 - **One fact per entry.** Do not dump a paragraph; record the decision
   and one sentence of reasoning. Future readers can fetch context.
 - **Write in markdown.** Knowledge bodies, message content, and skill

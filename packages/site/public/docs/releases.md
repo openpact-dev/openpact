@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/releases/
-generated: 2026-04-18T12:32:22.502Z
+generated: 2026-04-18T12:39:47.656Z
 ---
 
 # Release notes
