@@ -21,6 +21,21 @@ interface Release {
  */
 const RELEASES: Release[] = [
   {
+    version: 'v0.1.3',
+    date: '2026-04-18',
+    tag: 'Patch',
+    summary:
+      'Unbreaks pacts of more than three peers. A joiner whose daemon reached non-indexer members first was getting a hard INVITE_NOT_INDEXER, and retrying tripped an alias-already-taken 500. Both fixed, plus a creator + 7 sequential joiners regression test.',
+    changes: {
+      fixed: [
+        '@openpact/daemon: joiners failed hard when their daemon was only connected to non-indexer members at the moment of invite redemption. redeemThroughPeers now collapses the all-INVITE_NOT_INDEXER case to NO_INDEXER_REACHABLE, which the CLI retry loop already classifies as transient.',
+        '@openpact/daemon: daemon.joinPact is now idempotent when the alias maps to the same pactId. Retrying `openpact join <token>` after a transient failure no longer hits "internal daemon error" from an alias collision. A new PACT_ALIAS_EXISTS (409) error code covers true collisions against a different pact.',
+        'Site: join instructions no longer tell people to run `openpact init` before `openpact join`, which would leave them on two unrelated pacts.',
+      ],
+      changed: ['Docs: dropped Windsurf references.'],
+    },
+  },
+  {
     version: 'v0.1.2',
     date: '2026-04-18',
     tag: 'Patch',
