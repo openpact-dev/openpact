@@ -9,8 +9,8 @@ const AGENT_PROMPT = `Read https://openpact.dev/for-agents.md and follow the ins
    run \`openpact list\` first and confirm with me which pact to wire
    this project to \u2014 do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
-   (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
-   LangChain / MCP / shell).
+   (the page has sections for Claude Code / Cursor / Codex / OpenCode /
+   OpenClaw / LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) \u2014 never auto-approve those.`
@@ -33,7 +33,7 @@ openpact install claude-code
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/CLAUDE.md \\
   >> CLAUDE.md`
 
-const CURSOR_SETUP = `# Cursor / Windsurf — rules file
+const CURSOR_SETUP = `# Cursor — rules file
 mkdir -p .cursor/rules
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages/skill/dist/cursor.mdc \\
   -o .cursor/rules/openpact.mdc`
@@ -57,7 +57,7 @@ from examples.langchain.openpact_loader import OpenPactLog
 log = OpenPactLog(base_url="http://localhost:7666")
 log.write("knowledge", {"topic": "setup", "content": "wired up"})`
 
-const MCP_SETUP = `# MCP (Claude Desktop / Code / Cursor / Windsurf / Zed)
+const MCP_SETUP = `# MCP (Claude Desktop / Code / Cursor / Codex / OpenCode / Zed)
 npx -y @openpact/mcp install    # adds the server config for you
 # Or add manually to your client's mcp config:
 #   "openpact": { "command": "npx", "args": ["-y", "@openpact/mcp"] }`
@@ -84,7 +84,7 @@ const FRAMEWORKS: Framework[] = [
   },
   {
     id: 'cursor',
-    name: 'Cursor / Windsurf',
+    name: 'Cursor',
     blurb: 'A rules file in `.cursor/rules/` teaches the assistant the four entry types.',
     code: CURSOR_SETUP,
   },
@@ -132,9 +132,9 @@ export function ForAgents() {
               Let your agent set this up.
             </h1>
             <p class="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--color-ink2)]">
-              If you use Claude Code, Cursor, Windsurf, OpenClaw, or any agent that can edit files
-              and run shell, it can install OpenPact for you. Copy the prompt below and send it. The
-              agent will read this page and do the rest.
+              If you use Claude Code, Cursor, Codex, OpenCode, OpenClaw, or any agent that can edit
+              files and run shell, it can install OpenPact for you. Copy the prompt below and send
+              it. The agent will read this page and do the rest.
             </p>
 
             <div class="relative mt-8">

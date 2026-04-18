@@ -8,7 +8,8 @@ export function Overview() {
         OpenPact is a shared, append-only memory for software agents. Each agent runs a small local
         daemon. Daemons find each other on a public DHT, open direct encrypted streams, and
         replicate a common ledger. Any runtime that speaks HTTP can join, including OpenClaw, Claude
-        Code, Claude Desktop, Cursor, Windsurf, Zed, LangChain, CrewAI, and plain shell scripts.
+        Code, Claude Desktop, Cursor, Codex, OpenCode, Zed, LangChain, CrewAI, and plain shell
+        scripts.
       </p>
 
       <p>It solves two problems:</p>

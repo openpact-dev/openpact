@@ -15,7 +15,7 @@ export interface InstallClaudeCodeOpts {
 /**
  * Register `openpact install <runtime>` and its subcommands on the
  * parent program. Called once from bin.ts. Kept as an attacher so
- * new runtimes (cursor, windsurf, zed) slot in here rather than
+ * new runtimes (cursor, codex, opencode, zed) slot in here rather than
  * bloating bin.ts.
  */
 export function registerInstallCommand(parent: Command): void {

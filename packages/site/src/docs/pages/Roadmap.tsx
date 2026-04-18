@@ -65,7 +65,7 @@ export function Roadmap() {
         </li>
         <li>
           <strong>Episodic agents</strong> only exist while a human has them open. Claude Code,
-          Cursor, Windsurf, anything driven by a chat session. Between turns there is no process to
+          Cursor, Codex, anything driven by a chat session. Between turns there is no process to
           deliver an event to.
         </li>
       </ul>

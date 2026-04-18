@@ -3,8 +3,8 @@
 A [Model Context Protocol](https://modelcontextprotocol.io) server that
 wraps a running [OpenPact](https://openpact.dev) daemon. Add one config
 block to your MCP-speaking client (Claude Desktop, Claude Code, Cursor,
-Windsurf, Zed, etc.) and the agent gets first-class tools for shared
-memory, task coordination, and skill sharing across pact peers.
+Codex, OpenCode, Zed, etc.) and the agent gets first-class tools for
+shared memory, task coordination, and skill sharing across pact peers.
 
 ## What you get
 
@@ -83,16 +83,30 @@ Edit `~/.cursor/mcp.json` (user-level) or `.cursor/mcp.json` (project):
 }
 ```
 
-### Windsurf
+### Codex
 
-Edit `~/.codeium/windsurf/mcp_config.json`:
+Edit `~/.codex/config.toml` (per-user) to add the server:
+
+```toml
+[mcp_servers.openpact]
+command = "npx"
+args = ["-y", "@openpact/mcp"]
+```
+
+Restart Codex. `/mcp` in a session lists the OpenPact tools.
+
+### OpenCode
+
+Edit `~/.config/opencode/opencode.json` (or the project-level
+`.opencode.json`) and add to `mcp`:
 
 ```json
 {
-  "mcpServers": {
+  "mcp": {
     "openpact": {
-      "command": "npx",
-      "args": ["-y", "@openpact/mcp"]
+      "type": "local",
+      "command": ["npx", "-y", "@openpact/mcp"],
+      "enabled": true
     }
   }
 }
@@ -122,7 +136,7 @@ openclaw mcp add openpact -- npx -y @openpact/mcp
 ```
 
 Or add the equivalent entry by hand to OpenClaw's MCP config (same
-shape as Claude Desktop / Cursor / Windsurf — `mcpServers.openpact`).
+shape as Claude Desktop / Cursor — `mcpServers.openpact`).
 See [`examples/openclaw`](https://github.com/openpact-dev/openpact/tree/main/examples/openclaw)
 for the full setup that also installs the `@openpact/skill` guidance
 layer. Verified on OpenClaw `2026.4.15`.

@@ -3,14 +3,14 @@
 A portable agent skill for the OpenPact daemon. Two files:
 
 - **`SKILL.md`** — markdown + YAML frontmatter that any LLM-driven
-  runtime (OpenClaw, Cursor rules, Windsurf rules, Claude Code,
+  runtime (OpenClaw, Cursor rules, Claude Code, Codex, OpenCode,
   bespoke agents) can load as a system-prompt addition.
 - **`tools.json`** — the same tool surface in a machine-readable form
   for runtimes that codegen tools (LangChain, CrewAI, AutoGen,
   custom).
 
 If your runtime speaks **MCP** (Claude Desktop, Claude Code, Cursor,
-Windsurf, Zed), use [`@openpact/mcp`](https://www.npmjs.com/package/@openpact/mcp)
+Codex, OpenCode, Zed), use [`@openpact/mcp`](https://www.npmjs.com/package/@openpact/mcp)
 instead — MCP gives the agent first-class tools without prompt-level
 glue.
 
@@ -79,11 +79,6 @@ The frontmatter is ignored as plain text — Cursor reads the markdown
 body. The agent gets the conventions; you write a small wrapper to
 execute the curl recipes (or use the [Claude Code recipe](https://github.com/openpact-dev/openpact/blob/main/examples/claude-code/CLAUDE.md)
 for inspiration).
-
-### Windsurf
-
-Drop `SKILL.md` into `.windsurf/rules/openpact.md` (same shape as
-Cursor).
 
 ### Claude Code
 

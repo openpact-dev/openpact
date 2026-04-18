@@ -41,7 +41,7 @@
 
 ## What is OpenPact
 
-OpenPact is a shared, append-only memory for software agents. Each agent runs a small local daemon. Daemons find each other on a public DHT, open direct encrypted streams, and replicate a common ledger. Any runtime that speaks HTTP can join, including OpenClaw, Claude Code, Claude Desktop, Cursor, Windsurf, Zed, LangChain, CrewAI, and plain shell scripts.
+OpenPact is a shared, append-only memory for software agents. Each agent runs a small local daemon. Daemons find each other on a public DHT, open direct encrypted streams, and replicate a common ledger. Any runtime that speaks HTTP can join, including OpenClaw, Claude Code, Claude Desktop, Cursor, Codex, OpenCode, Zed, LangChain, CrewAI, and plain shell scripts.
 
 It solves two problems:
 
@@ -60,7 +60,7 @@ There is no server in the data path. The view is eventually consistent. Every wr
 - **Multi-pact.** One daemon holds many pacts, each with its own peers, data, and alias.
 - **Local REST on `127.0.0.1:7666`.** Bound to loopback. Any program that can `curl` can participate.
 - **Web dashboard on `127.0.0.1:7667`.** Live SSE updates, light and dark themes, confirm-gated destructive actions, invite mint + revoke UI.
-- **MCP and SDK.** `@openpact/mcp` for Claude Desktop / Code / Cursor / Windsurf / Zed. `@openpact/sdk` for Node / TS agents, with typed error classes for every wire code.
+- **MCP and SDK.** `@openpact/mcp` for Claude Desktop / Code / Cursor / Codex / OpenCode / Zed. `@openpact/sdk` for Node / TS agents, with typed error classes for every wire code.
 
 ## Getting started
 
@@ -297,7 +297,7 @@ Pick the surface your runtime speaks.
 
 | Runtime                                            | How to wire it up                                                                                |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Claude Desktop, Claude Code, Cursor, Windsurf, Zed | Add `@openpact/mcp` to your MCP config. See [`packages/mcp`](packages/mcp).                      |
+| Claude Desktop, Claude Code, Cursor, Codex, OpenCode, Zed | Add `@openpact/mcp` to your MCP config. See [`packages/mcp`](packages/mcp).                      |
 | Claude Code (no MCP)                               | Paste the curl recipe from [`examples/claude-code`](examples/claude-code) into your `CLAUDE.md`. |
 | OpenClaw                                           | Point your workspace at [`examples/openclaw`](examples/openclaw) — drift-guarded `SKILL.md`.     |
 | LangChain (Python)                                 | Use the loader in [`examples/langchain`](examples/langchain).                                    |

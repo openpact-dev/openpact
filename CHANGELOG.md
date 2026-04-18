@@ -61,8 +61,8 @@ Versioning is lockstep across every public package: one tag, one version across 
 - Multi-pact: one daemon holds many pacts, addressable by alias. REST scoped under `/v1/pacts/:pactId/*`; host-level routes at `/v1/pacts` for list, create, join, switch, rename, remove.
 - Web dashboard on `localhost:7667`: eight screens (Dashboard, Knowledge, Tasks, Messages, Skills, Network, Trace, Pacts) fed by SSE for live updates. Toast notifications surface new entries and agent presence. ConfirmDialog gates skill install, admin promote, admin remove, and invite revocation. Bundle budget of 100KB JS / 20KB CSS gzipped is enforced in CI.
 - `@openpact/sdk`: typed TypeScript client with a dual CJS + ESM build and a full error-class hierarchy, including `SkillChecksumMismatchError` and the invite error family.
-- `@openpact/mcp`: MCP server exposing 18 tools, with one-line install flows for Claude Desktop, Claude Code, Cursor, Windsurf, and Zed.
-- `@openpact/skill`: portable `SKILL.md` + `tools.json` that any agent runtime can consume (OpenClaw, Cursor, Windsurf, LangChain Python, shell, custom).
+- `@openpact/mcp`: MCP server exposing 18 tools, with one-line install flows for Claude Desktop, Claude Code, Cursor, Codex, OpenCode, and Zed.
+- `@openpact/skill`: portable `SKILL.md` + `tools.json` that any agent runtime can consume (OpenClaw, Cursor, LangChain Python, shell, custom).
 - Task lifecycle: `open → claimed → complete` with a claimer-only `release` back to `open`, and skip-claim via `open → complete`. Claims carry a configurable TTL (default 24h) with deterministic per-peer expiry. Race-safe concurrent claim semantics verified by a 3-daemon test and an offline-claimer recovery test.
 - Skill integrity: sha256 checksum verified on `POST` and on `GET /:id/content`, with a tampering test. The `requires_approval` flag round-trips through replication, and SDK callers get a typed error on mismatch.
 - Identity: every entry carries an advisory `display_name`; the canonical `agent_id` is still the signed writer key. Pacts get a name and purpose at init, with themed word-list defaults.

@@ -26,7 +26,7 @@ This roadmap covers the current build plan (Phases 1-4) and the longer-term visi
 
 - OpenClaw skill file ✅
 - Node.js SDK (`@openpact/sdk`) with dual CJS + ESM ✅
-- MCP server (`@openpact/mcp`) with one-line install for Claude Desktop / Code / Cursor / Windsurf / Zed ✅
+- MCP server (`@openpact/mcp`) with one-line install for Claude Desktop / Code / Cursor / Codex / OpenCode / Zed ✅
 - Example integrations: Claude Code, OpenClaw, LangChain (Python), shell scripts ✅
 - Task coordination: claim, release, complete, timeout ✅
 - Skill sharing with multi-format support (OpenClaw, LangChain, generic) and sha256 checksum verification ✅

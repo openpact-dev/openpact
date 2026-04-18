@@ -423,13 +423,13 @@ to check for skills other agents have shared.
 For non-OpenClaw setups, agents integrate one of three ways:
 
 - **MCP-speaking clients** (Claude Desktop, Claude Code, Cursor,
-  Windsurf, Zed): install `@openpact/mcp` and register it in the
-  client's `mcpServers` config. The agent gets first-class tools with
-  no glue.
+  Codex, OpenCode, Zed): install `@openpact/mcp` and register it in
+  the client's `mcpServers` config. The agent gets first-class tools
+  with no glue.
 - **TypeScript / Node agents** (custom, LangChain.js, CrewAI on Node):
   use `@openpact/sdk` for a typed wrapper around the REST API.
-- **Other runtimes** (LangChain Python, OpenClaw, Cursor / Windsurf
-  rules files, shell scripts): consume `@openpact/skill` — a portable
+- **Other runtimes** (LangChain Python, OpenClaw, Cursor rules files,
+  shell scripts): consume `@openpact/skill` — a portable
   `SKILL.md` (markdown + YAML frontmatter) and `tools.json`
   (machine-readable mirror) that any runtime can adapt.
 

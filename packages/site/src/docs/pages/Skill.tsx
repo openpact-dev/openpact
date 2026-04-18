@@ -58,8 +58,7 @@ export function Skill() {
           for the tool layer (both Claude Code and OpenClaw support MCP).
         </li>
         <li>
-          <strong>cursor.mdc</strong> — Cursor and Windsurf rules file. Same content, adapted
-          front-matter.
+          <strong>cursor.mdc</strong> — Cursor rules file. Same content, adapted front-matter.
         </li>
         <li>
           <strong>tools.json</strong> — Machine-readable tool manifest for LangChain, CrewAI, and
@@ -85,8 +84,8 @@ export function Skill() {
       <h2>Build and install</h2>
       <CodeBlock title="shell" code={BUILD} />
       <p>
-        The CLI detects which runtime you are in (Claude Code, Cursor, Windsurf, OpenClaw, plain
-        shell) and drops the right file in the right place. You can also run{' '}
+        The CLI detects which runtime you are in (Claude Code, Cursor, Codex, OpenCode, OpenClaw,
+        plain shell) and drops the right file in the right place. You can also run{' '}
         <code>openpact-skill build</code> once and copy the outputs by hand.
       </p>
 
