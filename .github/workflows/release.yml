@@ -59,6 +59,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Publish @openpact/cli
+        run: npm publish -w @openpact/cli --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish openpact
         run: npm publish -w openpact --access public --provenance
         env:

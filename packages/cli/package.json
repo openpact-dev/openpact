@@ -1,16 +1,33 @@
 {
   "name": "@openpact/cli",
-  "version": "0.0.0",
-  "private": true,
-  "description": "OpenPact CLI: openpact <verb>",
+  "version": "0.1.0",
+  "description": "OpenPact CLI: the openpact command-line interface for the local daemon.",
   "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://openpact.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openpact-dev/openpact.git",
+    "directory": "packages/cli"
+  },
+  "type": "commonjs",
+  "main": "dist/cjs/bin.js",
+  "types": "dist/cjs/bin.d.ts",
   "bin": {
     "openpact": "bin/openpact.js"
   },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.cjs.json",
+    "build:clean": "rm -rf dist && npm run build",
+    "validate": "publint --strict",
+    "prepublishOnly": "npm run build:clean && npm run validate",
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,e2e}/**/*.test.ts'"
   },
   "dependencies": {
@@ -23,6 +40,7 @@
     "prompts": "^2.4.2"
   },
   "devDependencies": {
-    "@types/prompts": "^2.4.9"
+    "@types/prompts": "^2.4.9",
+    "publint": "^0.2.12"
   }
 }
