@@ -14,6 +14,11 @@ export interface Route {
   // Landing has a hand-authored /llms.txt overview already. /join is an
   // interactive invite-redeem UI that would not produce useful markdown.
   markdown?: { path: string }
+  // Opt out of static prerendering when the initial client render depends
+  // on query params or storage that aren't available at build time.
+  // Hydrating a divergent initial render over baked-in HTML causes
+  // Preact reconcile mismatches that scramble the DOM.
+  prerender?: boolean
 }
 
 export const ROUTES: Route[] = [
@@ -112,6 +117,7 @@ export const ROUTES: Route[] = [
     module: 'src/pages/JoinPage.tsx',
     export: 'JoinPage',
     distHtml: 'join/index.html',
+    prerender: false,
   },
   {
     url: '/404',

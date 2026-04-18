@@ -41,8 +41,16 @@ async function renderRoute(route: Route): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  process.stdout.write(`prerender: ${ROUTES.length} routes\n`)
+  const prerenderable = ROUTES.filter((r) => r.prerender !== false)
+  const skipped = ROUTES.length - prerenderable.length
+  process.stdout.write(
+    `prerender: ${prerenderable.length} routes${skipped ? ` (${skipped} skipped)` : ''}\n`,
+  )
   for (const route of ROUTES) {
+    if (route.prerender === false) {
+      process.stdout.write(`  - ${route.url} (skipped, render-only)\n`)
+      continue
+    }
     await renderRoute(route)
   }
   process.stdout.write(`prerender: done\n`)
