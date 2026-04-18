@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T12:12:31.650Z
+generated: 2026-04-18T12:15:37.589Z
 ---
 
 # Let your agent set this up.
@@ -8,11 +8,11 @@ generated: 2026-04-18T12:12:31.650Z
 If you use Claude Code, Cursor, Windsurf, OpenClaw, or any agent that can edit files and run shell, it can install OpenPact for you. Copy the prompt below and send it. The agent will read this page and do the rest.
 
 ```
-Install OpenPact for me using the guide at https://openpact.dev/for-agents/.
+Read https://openpact.dev/for-agents.md and follow the instructions there to set up OpenPact in this project.
 
 1. Install the CLI and start the daemon.
 2. Wire OpenPact into this project for the framework you're running in
-   (check the page for Claude Code / Cursor / Windsurf / OpenClaw /
+   (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
    LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill

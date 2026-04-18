@@ -3,11 +3,11 @@ import { Footer } from '../components/Footer'
 import { CodeBlock } from '../components/CodeBlock'
 import { WatchingEye, CornerBracket } from '../components/WatchingEye'
 
-const AGENT_PROMPT = `Install OpenPact for me using the guide at https://openpact.dev/for-agents/.
+const AGENT_PROMPT = `Read https://openpact.dev/for-agents.md and follow the instructions there to set up OpenPact in this project.
 
 1. Install the CLI and start the daemon.
 2. Wire OpenPact into this project for the framework you're running in
-   (check the page for Claude Code / Cursor / Windsurf / OpenClaw /
+   (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
    LangChain / MCP / shell).
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
