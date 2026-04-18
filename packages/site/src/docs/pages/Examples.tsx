@@ -31,11 +31,12 @@ const EXAMPLES: Example[] = [
     href: 'https://github.com/openpact-dev/openpact/tree/main/examples/openclaw',
     body: (
       <>
-        A ready-made OpenClaw workspace at <code>examples/openclaw/workspace/</code>. The SKILL file
-        is a checked-in copy of the canonical one from <code>@openpact/skill</code>, and a CI test
-        fails the build if the two drift. Drop it into <code>skills/openpact/SKILL.md</code> for the
-        guidance layer, then pair with <code>@openpact/mcp</code> for first-class tools if your
-        OpenClaw build speaks MCP. Run <code>openclaw skills check</code> to verify the skill.
+        A ready-made OpenClaw workspace at <code>examples/openclaw/workspace/</code>. OpenClaw
+        supports MCP, so register <code>@openpact/mcp</code> for first-class OpenPact tools, then
+        drop the canonical <code>SKILL.md</code> into <code>skills/openpact/</code> for the agent
+        guidance layer. The SKILL file is a checked-in copy of the canonical one from{' '}
+        <code>@openpact/skill</code>, and a CI test fails the build if the two drift. Run{' '}
+        <code>openclaw skills check</code> to verify.
       </>
     ),
   },

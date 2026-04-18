@@ -42,14 +42,16 @@ glue.
 
 ### OpenClaw
 
-OpenClaw natively consumes `SKILL.md` as the agent's guidance layer.
-For tool exposure, pair it with `@openpact/mcp` if your OpenClaw
-build speaks MCP. See [`examples/openclaw`](https://github.com/openpact-dev/openpact/tree/main/examples/openclaw)
+OpenClaw supports MCP, so register `@openpact/mcp` for first-class
+OpenPact tools and install this `SKILL.md` alongside as the agent's
+guidance layer. See [`examples/openclaw`](https://github.com/openpact-dev/openpact/tree/main/examples/openclaw)
 for the full layout.
 
-Install the skill:
-
 ```bash
+# Tool layer: wire up the MCP server
+openclaw mcp add openpact -- npx -y @openpact/mcp
+
+# Guidance layer: drop the SKILL into the workspace
 npm i -D @openpact/skill
 mkdir -p skills/openpact
 cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md
@@ -60,11 +62,9 @@ openclaw skills check
 ```
 
 Verified on OpenClaw `2026.4.15`. The markdown body loads as skill
-instructions; the frontmatter `tools:` block is **not** a documented
-OpenClaw feature and should not be relied on for tool registration.
-If OpenClaw speaks MCP, register `@openpact/mcp` for first-class
-tools. Otherwise the agent calls the REST API via its shell or fetch
-tool using the recipes in the skill body.
+instructions; the MCP server owns the tool surface. The frontmatter
+`tools:` block is not consumed as runtime tools on current OpenClaw —
+that's by design, since MCP is the right integration point.
 
 ### Cursor
 

@@ -38,6 +38,9 @@ export interface FakePact {
   ping: Spy
   status: Spy
   agents: Spy
+  pactId: string | null
+  setPactId: (id: string | null) => void
+  pacts: { list: Spy }
   knowledge: { list: Spy; create: Spy }
   tasks: { list: Spy; get: Spy; create: Spy; claim: Spy; complete: Spy; release: Spy }
   skills: { list: Spy; create: Spy; getContent: Spy }
@@ -47,10 +50,15 @@ export interface FakePact {
 }
 
 export function fakePact(): FakePact {
-  return {
+  const pact: FakePact = {
     ping: spy(),
     status: spy(),
     agents: spy(),
+    pactId: null,
+    setPactId: (id: string | null) => {
+      pact.pactId = id
+    },
+    pacts: { list: spy() },
     knowledge: { list: spy(), create: spy() },
     tasks: {
       list: spy(),
@@ -65,6 +73,7 @@ export function fakePact(): FakePact {
     admin: { addMember: spy(), removeMember: spy() },
     changes: { poll: spy() },
   }
+  return pact
 }
 
 /**

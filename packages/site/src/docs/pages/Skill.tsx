@@ -54,8 +54,8 @@ export function Skill() {
         <li>
           <strong>SKILL.md</strong> — the guidance layer. Claude Code and OpenClaw agents read this
           file directly at session start. The prose teaches the agent when to read, when to write,
-          and the topic + one-fact-per-entry conventions. For first-class callable tools, pair it
-          with <code>@openpact/mcp</code> on runtimes that speak MCP.
+          and the topic + one-fact-per-entry conventions. Pair it with <code>@openpact/mcp</code>{' '}
+          for the tool layer (both Claude Code and OpenClaw support MCP).
         </li>
         <li>
           <strong>cursor.mdc</strong> — Cursor and Windsurf rules file. Same content, adapted

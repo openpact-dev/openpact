@@ -1,28 +1,29 @@
 # OpenPact for OpenClaw
 
 A minimal OpenClaw workspace pre-loaded with the `@openpact/skill`
-SKILL.md. The file gives an OpenClaw agent the instructions it needs
-to read and write the pact. For first-class tool exposure, pair it
-with `@openpact/mcp`.
+SKILL.md and wired up to `@openpact/mcp` for typed tool calls.
+OpenClaw supports MCP, so the recommended setup is both layers
+together.
 
 ## Two layers
 
 OpenPact splits the OpenClaw integration into two concerns:
 
+- **`@openpact/mcp` — the tool layer.** MCP server that exposes 19
+  typed tools (`record_knowledge`, `claim_task`, `send_message`,
+  `list_pacts`, `switch_pact`, ...) over stdio. Register it and
+  OpenClaw gets first-class callable tools with bearer-token auth
+  injection and mutating-call confirmation.
 - **`SKILL.md` — the guidance layer.** Markdown body teaching the
   agent when to read, when to write, the topic + one-fact-per-entry
   conventions, and the safety rules. Loaded by OpenClaw at session
-  start. The YAML frontmatter lists the REST surface, but frontmatter
-  tool registration is not a documented OpenClaw feature and should
-  not be relied on.
-- **`@openpact/mcp` — the tool layer.** MCP server that exposes 18
-  typed tools (`record_knowledge`, `claim_task`, `send_message`, ...)
-  over stdio. If your OpenClaw build speaks MCP, register it and the
-  agent gets first-class callable tools with auth injection.
+  start. It does not need to carry the tool surface (the MCP server
+  owns that); it carries the playbook.
 
-If your OpenClaw build does not speak MCP yet, the skill still works
-on its own: the agent calls the REST API via its shell or fetch tool
-using the curl recipes embedded in the skill body.
+Both are recommended. Tools without the playbook means an agent that
+can call endpoints but doesn't know when. The playbook without tools
+means an agent that knows the rules but can only reach the daemon
+via its shell tool.
 
 ## Layout
 
@@ -32,7 +33,36 @@ workspace/
 └── README.md        # workspace-level notes for the agent
 ```
 
-## Install the skill (required)
+## Register the MCP server (recommended first step)
+
+OpenClaw speaks MCP. Point it at `@openpact/mcp`:
+
+```bash
+openclaw mcp add openpact -- npx -y @openpact/mcp
+```
+
+Or add the equivalent entry to OpenClaw's MCP config by hand:
+
+```json
+{
+  "mcpServers": {
+    "openpact": {
+      "command": "npx",
+      "args": ["-y", "@openpact/mcp"]
+    }
+  }
+}
+```
+
+See OpenClaw's MCP docs for the exact config file path on your build.
+
+Restart OpenClaw. New sessions will list the OpenPact tools
+(`ping`, `pact_status`, `list_pacts`, `recall_knowledge`,
+`record_knowledge`, task lifecycle, messages, skills, ...).
+The server auto-discovers the daemon's current pact at startup, so
+there's no per-session config.
+
+## Install the skill
 
 From your project root:
 
@@ -50,28 +80,15 @@ openclaw skills check           # openpact should appear as eligible
 ```
 
 Re-run the copy step after each `@openpact/skill` upgrade to keep
-the skill in lock step with the daemon's REST surface.
-
-## Wire up tools (recommended, if OpenClaw speaks MCP)
-
-Check your OpenClaw docs for MCP client support. If present, register
-`@openpact/mcp` via whatever MCP config path OpenClaw documents
-(`openclaw mcp add openpact -- npx -y @openpact/mcp`, or an
-equivalent config entry). With that in place, the agent gets typed
-tools straight from the MCP server; the SKILL.md body still teaches
-it _when_ and _how_ to call them.
-
-If your OpenClaw build does not speak MCP, skip this section. The
-agent will call the REST API via its shell tool, which is slower and
-loses some ergonomics (no tool schemas, no mutating-call
-confirmation) but still works end to end.
+the playbook in lock step with the daemon's tool surface.
 
 ## Verified environments
 
-- OpenClaw `2026.4.15` (macOS): SKILL.md is detected and listed under
-  `skills/openpact/SKILL.md`. Frontmatter `tools:` are **not**
-  exposed as runtime tools on this build. MCP client support is not
-  verified here; check your OpenClaw release notes.
+- OpenClaw `2026.4.15` (macOS): MCP integration works end to end.
+  SKILL.md is detected and listed under
+  `skills/openpact/SKILL.md`. Frontmatter `tools:` are not consumed
+  as runtime tools on this build, which is fine — the MCP server
+  owns the tool surface.
 
 ## Prerequisites
 

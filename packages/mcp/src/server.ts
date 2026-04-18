@@ -41,6 +41,8 @@ export const TOOL_NAMES = [
   'ping',
   'pact_status',
   'list_agents',
+  'list_pacts',
+  'switch_pact',
   'recall_knowledge',
   'record_knowledge',
   'list_tasks',

@@ -6,6 +6,18 @@ Versioning is lockstep across every public package: one tag, one version across 
 
 ## [Unreleased]
 
+### Added
+
+- `@openpact/cli` now prints a one-time upgrade hint on `openpact start` when a newer release is on npm. Cached for 24h at `<dataDir>/version-check.json`, short registry timeout so a slow npm can't block startup, silent on network failure. Skipped in CI (`$CI`), under `OPENPACT_DISABLE_VERSION_CHECK=1`, and for dev-placeholder versions.
+- `@openpact/mcp` gains `list_pacts` and `switch_pact` tools so an agent can discover every pact on the host and retarget the MCP server at a different one mid-session without restarting. `switch_pact` accepts a local alias or a 64-hex pact_id; unknown names surface a `NO_SUCH_PACT` error without mutating state.
+- `@openpact/mcp` auto-discovers a default pact at startup. If `--pact-id` is not passed, the server calls `pact.pacts.list()` and adopts the daemon's `currentAlias`, so `npx -y @openpact/mcp` works without any flag on a normal install.
+- `@openpact/sdk`: `OpenPact.setPactId(id)` lets callers retarget a client in place. Resource helpers (`knowledge`, `tasks`, ...) read the current pactId on every call, so a switch takes effect immediately.
+
+### Fixed
+
+- `@openpact/mcp` bin (`openpact-mcp`) was a no-op in `0.1.1`. The shim did `require('../dist/cjs/cli.js')` but `cli.js` only bootstrapped `main()` inside `if (require.main === module)`, which is false when loaded via the bin, so `npx -y @openpact/mcp` started the process, ran zero code, and exited silently. The bin now imports and calls `main()` directly. Added `test/integration/bin-shim.test.ts`, which spawns the real bin via `StdioClientTransport` and round-trips an MCP tool call, as a regression guard.
+- `@openpact/cli`: `openpact --version` now reports the real package version instead of the `0.0.0` placeholder.
+
 ## [0.1.1] - 2026-04-18
 
 ### Added

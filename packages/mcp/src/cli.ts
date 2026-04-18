@@ -121,21 +121,34 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv): Promise<numb
 
   const opts = resolveClientOpts(args, env)
   const pact = new OpenPact(opts)
+
+  // If the caller didn't pin a pact, default to the daemon's
+  // `currentAlias`. Matches the CLI's single-pact ergonomics — the
+  // agent doesn't need to know any alias up front to use the server.
+  // Best-effort: a cold daemon or empty host simply leaves pactId
+  // unset, exactly like before, and host-level tools still work.
+  if (!pact.pactId) {
+    try {
+      const pacts = await pact.pacts.list()
+      if (pacts.current) {
+        pact.setPactId(pacts.current)
+      }
+    } catch {
+      // Daemon may be unreachable at boot; that's fine. The first tool
+      // call will surface the real error.
+    }
+  }
+
   const server = buildServer(pact)
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  process.stderr.write(`openpact-mcp ready (daemon: ${pact.baseUrl})\n`)
+  process.stderr.write(
+    `openpact-mcp ready (daemon: ${pact.baseUrl}, pact: ${pact.pactId ?? 'none'})\n`,
+  )
   return 0
 }
 
-if (require.main === module) {
-  main(process.argv.slice(2), process.env).then(
-    (code) => {
-      if (code !== 0) process.exit(code)
-    },
-    (err) => {
-      process.stderr.write(`fatal: ${(err as Error).stack ?? err}\n`)
-      process.exit(1)
-    },
-  )
-}
+// The bin shim (`bin/openpact-mcp.js`) requires this module and calls
+// `main` directly. Do not bootstrap here: `require.main === module` is
+// false when loaded via the bin shim, and the previous bootstrap meant
+// the server exited silently when started as an MCP stdio server.
