@@ -1,6 +1,6 @@
 {
   "name": "@openpact/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenPact CLI: the openpact command-line interface for the local daemon.",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
@@ -31,9 +31,9 @@
     "test": "NODE_OPTIONS='--import tsx' brittle 'test/{unit,e2e}/**/*.test.ts'"
   },
   "dependencies": {
-    "@openpact/daemon": "*",
-    "@openpact/dashboard": "*",
-    "@openpact/sdk": "*",
+    "@openpact/daemon": "^0.1.1",
+    "@openpact/dashboard": "^0.1.1",
+    "@openpact/sdk": "^0.1.1",
     "commander": "^14.0.3",
     "open": "^11.0.0",
     "picocolors": "^1.1.1",

@@ -1,6 +1,6 @@
 {
   "name": "openpact",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Placeholder for the OpenPact CLI. Install @openpact/cli for the pre-release daemon CLI.",
   "homepage": "https://openpact.dev",
   "repository": {

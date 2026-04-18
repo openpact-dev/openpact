@@ -21,6 +21,26 @@ interface Release {
  */
 const RELEASES: Release[] = [
   {
+    version: 'v0.1.1',
+    date: '2026-04-18',
+    tag: 'Patch',
+    summary:
+      '@openpact/cli ships on npm for the first time. @openpact/dashboard republished with a working main.',
+    changes: {
+      added: [
+        '@openpact/cli is now on npmjs.org. `npm install -g @openpact/cli` works. Users get the `openpact` command on their PATH.',
+      ],
+      changed: [
+        '@openpact/cli moved to a tsc build (dist/cjs/*) instead of the tsx-shimmed source loader. Faster cold start and no implicit tsx runtime dependency.',
+      ],
+      fixed: [
+        '@openpact/dashboard@0.1.0 shipped with a broken main (pointed at server/index.js which was never emitted). Redirected main, types, and exports at dist/server/*, added publint --strict validate and prepublishOnly so it cannot regress.',
+        "Release script stages packages/site/src/docs/pages/Releases.tsx automatically so the skill's release-entry prepend lands in the release commit without an amend.",
+        'Root pretest, pretest:e2e, and pretypecheck now run the full `npm run build` so typecheck and tests can resolve cross-workspace types + compiled artefacts (needed once the cli entered the build graph).',
+      ],
+    },
+  },
+  {
     version: 'v0.1.0',
     date: '2026-04-18',
     tag: 'Initial release',
