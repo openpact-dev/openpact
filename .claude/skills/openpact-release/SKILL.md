@@ -1,11 +1,11 @@
 ---
 name: openpact-release
-description: Cut a new OpenPact release. Creates a release/v<version> branch, curates CHANGELOG.md and the site's Releases page entry, runs the bump script, opens a PR, waits for CI, merges, then tags the merge commit on main so the release workflow publishes all seven public packages to npm. Use when the user runs /openpact-release, asks to cut a release, or asks to publish OpenPact to npm. Argument is the semver version (e.g. 0.1.0).
+description: Cut a new OpenPact release. Creates a release/v<version> branch, curates CHANGELOG.md and the site's Releases page entry, runs the bump script, opens a PR, waits for CI, merges, then tags the merge commit on main so the release workflow publishes all six public packages to npm. Use when the user runs /openpact-release, asks to cut a release, or asks to publish OpenPact to npm. Argument is the semver version (e.g. 0.1.0).
 ---
 
 # openpact-release
 
-Cut a versioned release of OpenPact. Ship all seven public packages to npmjs.org in lockstep via a PR merge into main, then a tag push that triggers the release workflow.
+Cut a versioned release of OpenPact. Ship all six public packages to npmjs.org in lockstep via a PR merge into main, then a tag push that triggers the release workflow.
 
 ## Usage
 
@@ -15,7 +15,7 @@ If the user omits the version, ask for it before proceeding. Strip a leading `v`
 
 ## Packages in scope
 
-Published: `@openpact/daemon`, `@openpact/sdk`, `@openpact/mcp`, `@openpact/skill`, `@openpact/dashboard`, `@openpact/cli`, `openpact`.
+Published: `@openpact/daemon`, `@openpact/sdk`, `@openpact/mcp`, `@openpact/skill`, `@openpact/dashboard`, `@openpact/cli`.
 Bumped but not published: `@openpact/site`.
 
 ## The flow in one picture
@@ -162,7 +162,7 @@ Show the operator the PR URL (`gh pr view --json url -q .url`) and summarise:
 
 "PR #<n> is green and ready. Squash-merging this will:
 - Land the version bumps on main.
-- Trigger a tag push that publishes six packages to npm under the `openpact` org.
+- Trigger a tag push that publishes six packages to npm under the `@openpact` scope.
 
 Ready to merge and ship?"
 
@@ -209,16 +209,16 @@ If the workflow fails:
   ```
 - **After some packages published:** do not try to unpublish. Bump to the next patch and release again through the same flow. Note the skipped version in the next CHANGELOG.md entry.
 
-### 12. Verify the seven packages are live
+### 12. Verify the six packages are live
 
 ```bash
-for pkg in "@openpact/daemon" "@openpact/sdk" "@openpact/mcp" "@openpact/skill" "@openpact/dashboard" "@openpact/cli" "openpact"; do
+for pkg in "@openpact/daemon" "@openpact/sdk" "@openpact/mcp" "@openpact/skill" "@openpact/dashboard" "@openpact/cli"; do
   echo -n "$pkg: "
   npm view "$pkg@<version>" version 2>&1 || echo "NOT PUBLISHED"
 done
 ```
 
-All seven lines must match `<version>`. If any is missing, surface it to the operator.
+All six lines must match `<version>`. If any is missing, surface it to the operator.
 
 ### 13. Surface the GitHub Release URL
 
@@ -254,5 +254,5 @@ If the local daemon is not running, skip this step. Do not try to start it.
 If this is the first release ever:
 
 - npm organization `openpact` exists. Created by the operator at `npmjs.com/org/create`. Free tier. Public packages.
-- A granular npm automation token with publish rights on `@openpact/*` and `openpact`, added to the repo as secret `NPM_TOKEN`. (Operator has confirmed this.)
+- A granular npm automation token with publish rights on `@openpact/*`, added to the repo as secret `NPM_TOKEN`. (Operator has confirmed this.)
 - This skill's pre-flight catches missing prerequisites and stops.

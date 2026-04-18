@@ -557,12 +557,27 @@ input::placeholder {
 }
 
 /* Inline variant: strip the paragraph block spacing + font scale so the
-   rendered content flows like a single span alongside sibling text. */
+   rendered content flows like a single span alongside sibling text.
+   Long inline code or a peer-authored raw <pre> can otherwise push the
+   line-clamp row past its grid column, so force wrapping at anywhere. */
 .openpact-md--inline {
   font-size: inherit;
   line-height: inherit;
   color: inherit;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .openpact-md--inline code {
   font-size: 0.9em;
+}
+.openpact-md--inline pre {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: inherit;
 }

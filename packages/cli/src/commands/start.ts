@@ -49,8 +49,16 @@ export async function startCmd(
   const logPath = path.join(dir, 'daemon.log')
   const logFd = await fs.open(logPath, 'a')
 
+  const entry = process.argv[1] ?? ''
+  // Dev path: when the CLI is invoked through a TS entry (e.g.
+  // `npx tsx packages/cli/src/main.ts`), plain `node entry.ts` can't
+  // parse it. Prepend tsx's loader so the detached child uses the same
+  // runtime as the parent. Published installs use bin/openpact.js and
+  // take the no-op branch.
+  const isTsEntry = /\.[mc]?tsx?$/i.test(entry)
   const childArgs = [
-    process.argv[1], // bin/openpact.js
+    ...(isTsEntry ? ['--import', 'tsx'] : []),
+    entry,
     '--data-dir',
     dir,
     'start-foreground',

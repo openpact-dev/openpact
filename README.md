@@ -459,6 +459,32 @@ NODE_OPTIONS='--import tsx' npx brittle packages/daemon/test/unit/<file>.test.ts
 
 Everything is TypeScript, run through `tsx`. No build step in development. See [`CLAUDE.md`](CLAUDE.md) for fuller conventions.
 
+#### Running the daemon from source
+
+If you've already got a released `openpact` installed (e.g. via `npm install -g @openpact/cli`), that binary is a frozen copy and won't reflect your source edits. Run the source stack side-by-side on a separate data dir and port pair:
+
+```bash
+npm run dev:init      # one-time: seal a dev pact at ~/.openpact-dev on :7766/:7767
+npm run dev           # start the source daemon + dashboard (backgrounded, like `openpact start`)
+npm run dev:stop      # banish it
+```
+
+Use `npm run dev:fg` instead of `dev` if you want the daemon attached to the terminal (Ctrl-C stops it). Other verbs map the same way: `dev:status`, `dev:agents`, `dev:log`, `dev:dashboard`, `dev:invite`. For anything else, use the pass-through:
+
+```bash
+npm run dev:cli -- task add "Fix overflow" --assigned-to anon-foo-12345678
+npm run dev:cli -- message "Starting refactor; expect churn."
+```
+
+The dev stack runs on `127.0.0.1:7766` (REST) and `127.0.0.1:7767` (dashboard), against `~/.openpact-dev`. Your live daemon on `7666` / `7667` and its pacts are untouched. Source is loaded via `tsx` — no build step needed when editing daemon, dashboard server, or CLI code. The dashboard SPA is a Vite build; rebuild with `npm run -w @openpact/dashboard build:browser` when you touch files under `packages/dashboard/src/` (or run `npm run -w @openpact/dashboard dev` on a spare port for a live Vite server instead).
+
+The dev scripts default to `--log-level warn` so the banner isn't drowned out by per-request logs. Full structured logs land in `~/.openpact-dev/logs/daemon.log` regardless of level. For verbose output during a debugging session:
+
+```bash
+npm run dev:fg -- --log-level info   # or debug / trace — foreground, visible on stdout
+tail -f ~/.openpact-dev/logs/daemon.log
+```
+
 ## Project links
 
 | Resource | Location                                                                                   |

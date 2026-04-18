@@ -143,7 +143,7 @@ function DashboardPage() {
         </div>
       </div>
 
-      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Panel title="Recent activity" link={{ label: 'All knowledge', href: '/knowledge' }}>
           <ActivityFeed entries={feed} empty="No activity yet." />
         </Panel>

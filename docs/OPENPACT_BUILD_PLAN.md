@@ -218,12 +218,6 @@ GitHub Actions matrix:
 3. **e2e CI step is wrapped in `|| echo "no e2e tests yet"`** because brittle
    errors when its glob matches no files. TODO comment in `ci.yml` reminds
    to drop this fallback in 1.4 when real e2e tests land.
-4. **Added `packages/openpact/` placeholder package** (not in original plan)
-   to reserve the unscoped `openpact` name on npm. Publishes a tiny CLI stub
-   that points users to `@openpact/cli`. At v0.1.0, decide whether to flip
-   the canonical install to `npm i -g openpact` (meta-package depending on
-   daemon+cli) or keep it pointing to `@openpact/cli`. **Requires manual
-   `npm publish` from `packages/openpact/`** — not automated in CI.
 
 ### 1.2 Daemon core ✅ (commit `e4eb807`)
 
