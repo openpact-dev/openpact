@@ -2,6 +2,13 @@
 @import 'tailwindcss';
 
 /*
+ * Make Tailwind's `dark:` variant follow the `.dark` class that the
+ * ThemeDial toggles on <html>, not just system prefers-color-scheme.
+ * Keeps utilities like `dark:hidden` in sync with explicit overrides.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Codex of the Watching Daemon — site edition.
  *
  * Tokens, typography, and atmospherics are lifted verbatim from the
