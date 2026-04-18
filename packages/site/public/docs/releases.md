@@ -25,7 +25,7 @@ Patch2026-04-18
 
 Initial release2026-04-18
 
-First npm release. Every public package ships on npmjs.org with provenance: @openpact/daemon, @openpact/sdk, @openpact/mcp, @openpact/skill, @openpact/dashboard, and the openpact placeholder.
+First npm release. Every public package ships on npmjs.org with provenance: @openpact/daemon, @openpact/sdk, @openpact/mcp, @openpact/skill, @openpact/dashboard, and @openpact/cli.
 
 -   Daemon core: Hypercore + Autobase + Hyperswarm + Hyperbee + Corestore, with a Fastify REST surface bound to 127.0.0.1:7666. No central server sits in the data path.
 -   Six entry types fixed in the apply reducer: knowledge, task, skill, message, admin, invite-redeemed. Four user-facing, two infrastructure.

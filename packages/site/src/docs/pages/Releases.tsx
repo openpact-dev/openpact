@@ -45,7 +45,7 @@ const RELEASES: Release[] = [
     date: '2026-04-18',
     tag: 'Initial release',
     summary:
-      'First npm release. Every public package ships on npmjs.org with provenance: @openpact/daemon, @openpact/sdk, @openpact/mcp, @openpact/skill, @openpact/dashboard, and the openpact placeholder.',
+      'First npm release. Every public package ships on npmjs.org with provenance: @openpact/daemon, @openpact/sdk, @openpact/mcp, @openpact/skill, @openpact/dashboard, and @openpact/cli.',
     changes: {
       added: [
         'Daemon core: Hypercore + Autobase + Hyperswarm + Hyperbee + Corestore, with a Fastify REST surface bound to 127.0.0.1:7666. No central server sits in the data path.',
