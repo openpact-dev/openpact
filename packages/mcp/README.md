@@ -115,6 +115,18 @@ Edit `~/.config/zed/settings.json`:
 }
 ```
 
+### OpenClaw
+
+```bash
+openclaw mcp add openpact -- npx -y @openpact/mcp
+```
+
+Or add the equivalent entry by hand to OpenClaw's MCP config (same
+shape as Claude Desktop / Cursor / Windsurf — `mcpServers.openpact`).
+See [`examples/openclaw`](https://github.com/openpact-dev/openpact/tree/main/examples/openclaw)
+for the full setup that also installs the `@openpact/skill` guidance
+layer. Verified on OpenClaw `2026.4.15`.
+
 ## Pointing at a non-default daemon
 
 By default the server connects to `http://127.0.0.1:7666`. To override:

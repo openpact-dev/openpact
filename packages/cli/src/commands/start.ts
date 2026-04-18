@@ -8,6 +8,8 @@ import { startForegroundCmd } from './start-foreground'
 import { c, banner } from '../lib/theme'
 import { card } from '../lib/format'
 import { spinner } from '../lib/spinner'
+import { checkForUpdate, formatUpdateWarning } from '../lib/version-check'
+import { CLI_VERSION } from '../lib/cli-version'
 
 export interface StartOpts {
   foreground?: boolean
@@ -31,6 +33,18 @@ export async function startCmd(
   // Foreground path prints its own banner from startForegroundCmd.
   if (!opts.foreground) {
     process.stdout.write(banner())
+  }
+
+  // Non-blocking-ish registry check: cache-aware, short timeout, silent
+  // on failure, skipped in CI and under OPENPACT_DISABLE_VERSION_CHECK.
+  // Print the warning here (stderr) so it lands between the banner and
+  // the "started" line without mixing into the daemon's JSON logs.
+  try {
+    const result = await checkForUpdate({ current: CLI_VERSION, cacheDir: dir })
+    const warning = formatUpdateWarning(result)
+    if (warning) process.stderr.write(`${warning}\n`)
+  } catch {
+    // Version check is strictly best-effort; never let it derail start.
   }
 
   if (await pidFileLooksAlive(dir)) {

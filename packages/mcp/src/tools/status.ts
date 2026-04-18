@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { OpenPact } from '@openpact/sdk'
 import { z } from 'zod'
-import { jsonContent, registerTool, safeHandler } from '../format'
+import { errorContent, jsonContent, registerTool, safeHandler, summaryAndJson } from '../format'
 
 export function registerStatusTools(server: McpServer, pact: OpenPact): void {
   registerTool(
@@ -42,5 +42,50 @@ export function registerStatusTools(server: McpServer, pact: OpenPact): void {
       },
     },
     async ({ online }) => safeHandler(async () => jsonContent(await pact.agents({ online }))),
+  )
+
+  registerTool(
+    server,
+    'list_pacts',
+    {
+      description:
+        'List every pact on this host (alias, pact_id, role, is_current). Host-level — works without a pactId. Pair with `switch_pact` to retarget the server at a different pact.',
+      inputSchema: {},
+    },
+    async () => safeHandler(async () => jsonContent(await pact.pacts.list())),
+  )
+
+  registerTool(
+    server,
+    'switch_pact',
+    {
+      description:
+        "Retarget this MCP server at a different pact for the rest of the session. Pass the local alias (e.g. 'qr-testing') or the 64-hex pact_id. Changes only this server's in-memory scope; the daemon's own currentAlias (what the `openpact` CLI uses) is not touched. Call `list_pacts` first to see what is available.",
+      inputSchema: {
+        pactId: z
+          .string()
+          .min(1)
+          .describe('Local alias or 64-hex pact_id to target. Must exist on this host.'),
+      },
+    },
+    async ({ pactId }) =>
+      safeHandler(async () => {
+        const { pacts } = await pact.pacts.list()
+        const match = pacts.find((p) => p.alias === pactId || p.pact_id === pactId)
+        if (!match) {
+          return errorContent(
+            new Error(
+              `NO_SUCH_PACT: ${pactId} is not one of this host's pacts; call list_pacts to see available aliases`,
+            ),
+          )
+        }
+        pact.setPactId(match.alias)
+        return summaryAndJson(`switched to ${match.alias}`, {
+          alias: match.alias,
+          pact_id: match.pact_id,
+          pact_name: match.pact_name,
+          role: match.role,
+        })
+      }),
   )
 }

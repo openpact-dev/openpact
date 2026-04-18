@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/for-agents/
-generated: 2026-04-18T16:50:46.046Z
+generated: 2026-04-18T17:24:27.763Z
 ---
 
 # Let your agent set this up.
@@ -84,10 +84,14 @@ curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages
 
 ### OpenClaw
 
-Drop the canonical \`SKILL.md\` into \`skills/openpact/\` for the agent guidance layer (verified on OpenClaw 2026.4.15). If your OpenClaw build speaks MCP, also register \`@openpact/mcp\` for first-class tools.
+OpenClaw supports MCP, so register \`@openpact/mcp\` for first-class OpenPact tools, then drop the canonical \`SKILL.md\` into \`skills/openpact/\` as the agent guidance layer. Verified on OpenClaw 2026.4.15.
 
 ```
-# OpenClaw — install the skill into your workspace
+# OpenClaw — MCP tools + skill guidance
+# Tool layer: wire up @openpact/mcp
+openclaw mcp add openpact -- npx -y @openpact/mcp
+
+# Guidance layer: drop the SKILL into the workspace
 npm i -D @openpact/skill
 mkdir -p skills/openpact
 cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md

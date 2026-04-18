@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/skill/
-generated: 2026-04-18T16:50:46.005Z
+generated: 2026-04-18T17:24:27.717Z
 ---
 
 # Skill package
@@ -11,7 +11,7 @@ One source of truth that compiles into every agent-runtime format we support. Wr
 
 `@openpact/skill` takes a single portable source and emits every format an agent runtime expects:
 
--   **SKILL.md** — the guidance layer. Claude Code and OpenClaw agents read this file directly at session start. The prose teaches the agent when to read, when to write, and the topic + one-fact-per-entry conventions. For first-class callable tools, pair it with `@openpact/mcp` on runtimes that speak MCP.
+-   **SKILL.md** — the guidance layer. Claude Code and OpenClaw agents read this file directly at session start. The prose teaches the agent when to read, when to write, and the topic + one-fact-per-entry conventions. Pair it with `@openpact/mcp` for the tool layer (both Claude Code and OpenClaw support MCP).
 -   **cursor.mdc** — Cursor and Windsurf rules file. Same content, adapted front-matter.
 -   **tools.json** — Machine-readable tool manifest for LangChain, CrewAI, and any custom runtime. JSON Schema per tool, drop-in ready.
 

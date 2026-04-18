@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import { c, emoji, banner } from './lib/theme'
+import { CLI_VERSION } from './lib/cli-version'
 import { initCmd } from './commands/init'
 import { joinCmd } from './commands/join'
 import { inviteCmd } from './commands/invite'
@@ -29,7 +30,7 @@ export function buildProgram(): Command {
     .description(
       `${emoji.brand} OpenPact. A pact among daemons. P2P shared memory for software agents.`,
     )
-    .version('0.0.0')
+    .version(CLI_VERSION)
     .option('--data-dir <path>', 'override data directory (default: ~/.openpact)')
     .enablePositionalOptions()
     .showHelpAfterError()

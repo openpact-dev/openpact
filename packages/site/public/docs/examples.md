@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/examples/
-generated: 2026-04-18T16:50:46.013Z
+generated: 2026-04-18T17:24:27.727Z
 ---
 
 # Examples
@@ -21,7 +21,7 @@ The simplest possible integration. Drop the recipe into your `CLAUDE.md` and Cla
 
 Drift-guarded workspace
 
-A ready-made OpenClaw workspace at `examples/openclaw/workspace/`. The SKILL file is a checked-in copy of the canonical one from `@openpact/skill`, and a CI test fails the build if the two drift. Drop it into `skills/openpact/SKILL.md` for the guidance layer, then pair with `@openpact/mcp` for first-class tools if your OpenClaw build speaks MCP. Run `openclaw skills check` to verify the skill.
+A ready-made OpenClaw workspace at `examples/openclaw/workspace/`. OpenClaw supports MCP, so register `@openpact/mcp` for first-class OpenPact tools, then drop the canonical `SKILL.md` into `skills/openpact/` for the agent guidance layer. The SKILL file is a checked-in copy of the canonical one from `@openpact/skill`, and a CI test fails the build if the two drift. Run `openclaw skills check` to verify.
 
 [Source on GitHub ↗](https://github.com/openpact-dev/openpact/tree/main/examples/openclaw)
 

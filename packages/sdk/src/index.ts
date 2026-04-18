@@ -75,6 +75,16 @@ export class OpenPact {
   get pactId(): string | null {
     return this.client.pactId
   }
+
+  /**
+   * Retarget this client at a different pact. Resource helpers
+   * (`knowledge`, `tasks`, ...) read the current pactId on every call,
+   * so a switch takes effect immediately without re-instantiating.
+   * Pass null to clear the scope and only use host-level endpoints.
+   */
+  setPactId(pactId: string | null): void {
+    this.client.pactId = pactId
+  }
 }
 
 export type { ClientOpts } from './client'

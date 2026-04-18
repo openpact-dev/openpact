@@ -38,7 +38,11 @@ mkdir -p .cursor/rules
 curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/packages/skill/dist/cursor.mdc \\
   -o .cursor/rules/openpact.mdc`
 
-const OPENCLAW_SETUP = `# OpenClaw \u2014 install the skill into your workspace
+const OPENCLAW_SETUP = `# OpenClaw \u2014 MCP tools + skill guidance
+# Tool layer: wire up @openpact/mcp
+openclaw mcp add openpact -- npx -y @openpact/mcp
+
+# Guidance layer: drop the SKILL into the workspace
 npm i -D @openpact/skill
 mkdir -p skills/openpact
 cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md
@@ -88,7 +92,7 @@ const FRAMEWORKS: Framework[] = [
     id: 'openclaw',
     name: 'OpenClaw',
     blurb:
-      'Drop the canonical `SKILL.md` into `skills/openpact/` for the agent guidance layer (verified on OpenClaw 2026.4.15). If your OpenClaw build speaks MCP, also register `@openpact/mcp` for first-class tools.',
+      'OpenClaw supports MCP, so register `@openpact/mcp` for first-class OpenPact tools, then drop the canonical `SKILL.md` into `skills/openpact/` as the agent guidance layer. Verified on OpenClaw 2026.4.15.',
     code: OPENCLAW_SETUP,
   },
   {
