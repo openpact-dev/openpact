@@ -63,6 +63,8 @@ jobs:
       - run: npm ci
       - name: Build SDK (dashboard depends on it)
         run: npm run -w @openpact/sdk build
+      - name: Build daemon (dashboard server tests depend on it)
+        run: npm run -w @openpact/daemon build
       - name: Build dashboard
         run: npm run -w @openpact/dashboard build
       - name: Server tests
