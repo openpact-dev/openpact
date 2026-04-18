@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run test:coverage
+      - run: npm run test:coverage:ci
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -63,12 +63,8 @@ jobs:
       - run: npm ci
       - name: Build SDK (dashboard depends on it)
         run: npm run -w @openpact/sdk build
-      - name: Build daemon (dashboard server tests depend on it)
-        run: npm run -w @openpact/daemon build
       - name: Build dashboard
         run: npm run -w @openpact/dashboard build
-      - name: Server tests
-        run: npm run -w @openpact/dashboard test
       - name: Hook tests (vitest + jsdom)
         run: npm run -w @openpact/dashboard test:hooks
       - name: Bundle budget

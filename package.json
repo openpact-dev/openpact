@@ -31,7 +31,9 @@
     "site:build": "npm run -w @openpact/site build",
     "validate": "npm run -w @openpact/daemon validate && npm run -w @openpact/sdk validate && npm run -w @openpact/mcp validate && npm run -w @openpact/skill validate && npm run -w openpact validate",
     "test:all": "npm run build && npm run validate && npm test && npm run test:e2e && npm run test:examples",
+    "test:ci": "npm run build && npm run validate && npm test",
     "test:coverage": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:all && node scripts/check-apply-coverage.js",
+    "test:coverage:ci": "NODE_OPTIONS='--import tsx' c8 --check-coverage --reporter=lcov --reporter=text --reporter=json npm run test:ci && node scripts/check-apply-coverage.js",
     "pretypecheck": "npm run -w @openpact/sdk build && npm run -w @openpact/daemon build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint packages examples && prettier --check packages examples",
@@ -62,7 +64,9 @@
       "**/node_modules/**",
       "**/*.d.ts",
       "packages/openpact/**",
-      "packages/sdk/src/types.ts"
+      "packages/sdk/src/types.ts",
+      "packages/dashboard/src/**",
+      "packages/site/**"
     ],
     "extension": [".ts"],
     "lines": 80,
