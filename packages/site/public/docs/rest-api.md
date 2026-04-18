@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/rest-api/
-generated: 2026-04-18T12:28:23.156Z
+generated: 2026-04-18T12:32:22.471Z
 ---
 
 # REST API

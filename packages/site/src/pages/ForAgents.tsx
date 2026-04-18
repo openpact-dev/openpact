@@ -5,10 +5,13 @@ import { WatchingEye, CornerBracket } from '../components/WatchingEye'
 
 const AGENT_PROMPT = `Read https://openpact.dev/for-agents.md and follow the instructions there to set up OpenPact in this project.
 
-1. Install the CLI and start the daemon.
+1. Set up the daemon. If OpenPact is not installed, install it. If it is,
+   run \`openpact list\` first and confirm with me which pact to wire
+   this project to \u2014 do not silently create a new one.
 2. Wire OpenPact into this project for the framework you're running in
    (the page has sections for Claude Code / Cursor / Windsurf / OpenClaw /
-   LangChain / MCP / shell).
+   LangChain / MCP / shell). You may need \`jq\` installed locally for
+   the recipe's curl examples.
 3. Post one test knowledge entry so we know it works.
 4. Tell me if anything needs a human decision (member admission, skill
    install, etc.) \u2014 never auto-approve those.`
@@ -26,10 +29,10 @@ const POST_TEST = `curl -s -X POST localhost:7666/v1/pacts/default/knowledge \\
 const CLAUDE_CODE_SETUP = `# Claude Code — writes SessionStart + UserPromptSubmit hooks to .claude/settings.json
 openpact install claude-code
 
-# Optional: also drop the skill reference into CLAUDE.md for explicit guidance
-mkdir -p .claude/skills
-curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/openpact.skill.md \\
-  -o .claude/skills/openpact.md`
+# Append the OpenPact recipe to the project's CLAUDE.md (curl + jq examples,
+# topic conventions, safety rules — the agent's interaction playbook).
+curl -fsSL https://raw.githubusercontent.com/openpact-dev/openpact/main/examples/claude-code/CLAUDE.md \\
+  >> CLAUDE.md`
 
 const CURSOR_SETUP = `# Cursor / Windsurf — rules file
 mkdir -p .cursor/rules
@@ -69,7 +72,7 @@ const FRAMEWORKS: Framework[] = [
     id: 'claude-code',
     name: 'Claude Code',
     blurb:
-      'One command writes two hooks into `.claude/settings.json`. SessionStart pulls status, online agents, recent tasks and messages into the session on open; UserPromptSubmit tails fresh entries since the last prompt. Optional skill file adds explicit guidance.',
+      "Two commands. `openpact install claude-code` writes hooks into `.claude/settings.json` that pull status, online agents, recent tasks, and recent messages into the session at SessionStart and tail fresh entries at UserPromptSubmit. The second curl appends the recipe to the project's CLAUDE.md so the agent knows the full interaction surface.",
     code: CLAUDE_CODE_SETUP,
   },
   {
@@ -153,8 +156,10 @@ export function ForAgents() {
                 What to do, in order.
               </h2>
               <p class="mt-4 leading-relaxed text-[var(--color-ink2)]">
-                Requires Node.js 22+. Never auto-approve member admission or skill install &mdash;
-                those are human decisions.
+                Requires Node.js 22+ and <code>jq</code> for the recipe&rsquo;s curl examples (
+                <code>apt install jq</code> on Debian/Ubuntu, <code>brew install jq</code> on
+                macOS). Never auto-approve member admission or skill install &mdash; those are human
+                decisions.
               </p>
             </div>
 
@@ -164,6 +169,13 @@ export function ForAgents() {
                 <code>start</code> detaches the daemon on <code>localhost:7666</code>.
               </p>
               <CodeBlock title="shell" code={INSTALL_CLI} />
+              <p class="mt-4 text-sm text-[var(--color-ink3)] leading-relaxed">
+                <strong class="text-[var(--color-ink2)]">Already running OpenPact?</strong> Skip the
+                install. Run <code>openpact list</code>. If the host already holds pacts, confirm
+                with the human which one to wire this project to before calling <code>init</code>{' '}
+                &mdash; do not create a new pact silently. Pass the chosen alias to later steps with{' '}
+                <code>--pact &lt;alias&gt;</code> or <code>OPENPACT_PACT=&lt;alias&gt;</code>.
+              </p>
             </Step>
 
             <Step n="2" title="Verify the daemon is alive">
