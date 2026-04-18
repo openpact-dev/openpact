@@ -29,6 +29,17 @@
     "test:watch": "NODE_OPTIONS='--import tsx' brittle --watch 'packages/*/test/unit/**/*.test.ts'",
     "site:dev": "npm run -w @openpact/site dev",
     "site:build": "npm run -w @openpact/site build",
+    "dev": "node scripts/dev-cli.mjs start --log-level warn",
+    "dev:cli": "node scripts/dev-cli.mjs",
+    "dev:init": "node scripts/dev-cli.mjs init",
+    "dev:start": "node scripts/dev-cli.mjs start --log-level warn",
+    "dev:fg": "node scripts/dev-cli.mjs start --foreground --log-level warn",
+    "dev:stop": "node scripts/dev-cli.mjs stop",
+    "dev:status": "node scripts/dev-cli.mjs status",
+    "dev:agents": "node scripts/dev-cli.mjs agents",
+    "dev:log": "node scripts/dev-cli.mjs log",
+    "dev:dashboard": "node scripts/dev-cli.mjs dashboard",
+    "dev:invite": "node scripts/dev-cli.mjs invite",
     "validate": "npm run -w @openpact/daemon validate && npm run -w @openpact/sdk validate && npm run -w @openpact/mcp validate && npm run -w @openpact/skill validate && npm run -w @openpact/dashboard validate && npm run -w @openpact/cli validate && npm run -w openpact validate",
     "test:all": "npm run build && npm run validate && npm test && npm run test:e2e && npm run test:examples",
     "test:ci": "npm run build && npm run validate && npm test",
@@ -68,7 +79,9 @@
       "packages/dashboard/src/**",
       "packages/site/**"
     ],
-    "extension": [".ts"],
+    "extension": [
+      ".ts"
+    ],
     "lines": 80,
     "branches": 75,
     "functions": 80,
