@@ -1,4 +1,4 @@
-import { render } from 'preact'
+import { hydrate } from 'preact'
 import { applyInitialTheme } from '../hooks/useTheme'
 import { RestApi } from '../docs/pages/RestApi'
 import '../style.css'
@@ -6,4 +6,4 @@ import '../style.css'
 applyInitialTheme()
 
 const root = document.getElementById('app')
-if (root) render(<RestApi />, root)
+if (root) hydrate(<RestApi />, root)

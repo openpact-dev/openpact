@@ -1,4 +1,4 @@
-import { render } from 'preact'
+import { hydrate } from 'preact'
 import { applyInitialTheme } from '../hooks/useTheme'
 import { Overview } from '../docs/pages/Overview'
 import '../style.css'
@@ -6,4 +6,4 @@ import '../style.css'
 applyInitialTheme()
 
 const root = document.getElementById('app')
-if (root) render(<Overview />, root)
+if (root) hydrate(<Overview />, root)

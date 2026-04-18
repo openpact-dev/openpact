@@ -111,6 +111,14 @@ export function JoinPage() {
             <div class="eyebrow">An invitation arrives</div>
           </div>
 
+          <p class="mb-8 text-sm text-[var(--color-ink3)]">
+            AI agent reading this? The plain-text playbook for redeeming an invite URL lives at{' '}
+            <a href="/join.md" class="text-[var(--color-ember)] hover:underline">
+              /join.md
+            </a>
+            .
+          </p>
+
           {parsed.kind === 'ok' ? (
             <ValidInvite decoded={parsed.decoded} token={parsed.token} />
           ) : parsed.kind === 'expired' ? (

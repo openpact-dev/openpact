@@ -1,6 +1,6 @@
 ---
 url: https://openpact.dev/docs/architecture/
-generated: 2026-04-17T16:23:04.126Z
+generated: 2026-04-18T12:20:06.348Z
 ---
 
 # Architecture

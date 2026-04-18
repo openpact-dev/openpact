@@ -13,6 +13,8 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { ROUTES as ALL_ROUTES, type Route as ManifestRoute } from './route-manifest.mts'
+
 const here = dirname(fileURLToPath(import.meta.url))
 const siteRoot = resolve(here, '..')
 const publicDir = resolve(siteRoot, 'public')
@@ -24,73 +26,18 @@ interface Route {
   export: string
 }
 
-// Keep in sync with vite.config.ts rollup inputs + vercel.json rewrites.
+// Routes that have a markdown counterpart. Pulled from the shared
+// manifest so the list cannot drift from the prerender set.
 // Landing (/) already has a hand-authored llms.txt overview; join/ is
 // interactive and offers no useful markdown payload.
-const ROUTES: Route[] = [
-  { url: '/docs/', mdPath: 'docs.md', module: 'src/docs/pages/Overview.tsx', export: 'Overview' },
-  {
-    url: '/docs/getting-started/',
-    mdPath: 'docs/getting-started.md',
-    module: 'src/docs/pages/GettingStarted.tsx',
-    export: 'GettingStarted',
-  },
-  {
-    url: '/docs/architecture/',
-    mdPath: 'docs/architecture.md',
-    module: 'src/docs/pages/Architecture.tsx',
-    export: 'Architecture',
-  },
-  { url: '/docs/cli/', mdPath: 'docs/cli.md', module: 'src/docs/pages/Cli.tsx', export: 'Cli' },
-  {
-    url: '/docs/dashboard/',
-    mdPath: 'docs/dashboard.md',
-    module: 'src/docs/pages/Dashboard.tsx',
-    export: 'Dashboard',
-  },
-  {
-    url: '/docs/rest-api/',
-    mdPath: 'docs/rest-api.md',
-    module: 'src/docs/pages/RestApi.tsx',
-    export: 'RestApi',
-  },
-  {
-    url: '/docs/packages/',
-    mdPath: 'docs/packages.md',
-    module: 'src/docs/pages/Packages.tsx',
-    export: 'Packages',
-  },
-  {
-    url: '/docs/skill/',
-    mdPath: 'docs/skill.md',
-    module: 'src/docs/pages/Skill.tsx',
-    export: 'Skill',
-  },
-  {
-    url: '/docs/examples/',
-    mdPath: 'docs/examples.md',
-    module: 'src/docs/pages/Examples.tsx',
-    export: 'Examples',
-  },
-  {
-    url: '/docs/releases/',
-    mdPath: 'docs/releases.md',
-    module: 'src/docs/pages/Releases.tsx',
-    export: 'Releases',
-  },
-  {
-    url: '/docs/roadmap/',
-    mdPath: 'docs/roadmap.md',
-    module: 'src/docs/pages/Roadmap.tsx',
-    export: 'Roadmap',
-  },
-  {
-    url: '/for-agents/',
-    mdPath: 'for-agents.md',
-    module: 'src/pages/ForAgents.tsx',
-    export: 'ForAgents',
-  },
-]
+const ROUTES: Route[] = ALL_ROUTES.filter(
+  (r: ManifestRoute): r is ManifestRoute & { markdown: { path: string } } => r.markdown != null,
+).map((r) => ({
+  url: r.url,
+  mdPath: r.markdown.path,
+  module: r.module,
+  export: r.export,
+}))
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
