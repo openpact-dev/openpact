@@ -88,20 +88,19 @@ function bumpPackageVersion(content, newVersion) {
   return content.replace(re, `$1${newVersion}$2`)
 }
 
-// Pure: rewrites "@openpact/*": "*" inside the dependencies block to "^<version>".
+// Pure: rewrites "@openpact/*": "*" anywhere in the file to "^<version>".
+// In this repo "*" is only ever used for workspace deps, so a global replace
+// is safe and catches deps, devDeps, and (should they appear) peerDeps alike.
 function updateWorkspaceDependencies(content, version) {
-  const depsBlock = /("dependencies"\s*:\s*\{)([\s\S]*?)(\n\s*\})/
-  const match = content.match(depsBlock)
-  if (!match) return content
-  const [, open, body, close] = match
-  const rewritten = body.replace(/("@openpact\/[^"]+"\s*:\s*)"\*"/g, `$1"^${version}"`)
-  if (rewritten === body) return content
-  return content.replace(depsBlock, `${open}${rewritten}${close}`)
+  return content.replace(/("@openpact\/[^"]+"\s*:\s*)"\*"/g, `$1"^${version}"`)
 }
 
 // Pure: promotes [Unreleased] to [X.Y.Z] - <date>, inserts a fresh [Unreleased] above.
+// Allowing only [ \t] at the end of the heading line avoids greedily consuming
+// the following newline in multiline mode, which would flatten the blank line
+// between the version heading and the first section.
 function promoteChangelog(content, version, date) {
-  const re = /^## \[Unreleased\]\s*$/m
+  const re = /^## \[Unreleased\][ \t]*$/m
   if (!re.test(content)) throw new Error('no [Unreleased] section found in CHANGELOG.md')
   return content.replace(re, `## [Unreleased]\n\n## [${version}] - ${date}`)
 }
