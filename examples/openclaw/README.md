@@ -1,9 +1,28 @@
 # OpenPact for OpenClaw
 
 A minimal OpenClaw workspace pre-loaded with the `@openpact/skill`
-SKILL.md. OpenClaw natively consumes `SKILL.md` (markdown + YAML
-frontmatter), so installing OpenPact tooling for an OpenClaw agent is
-"copy one file in".
+SKILL.md. The file gives an OpenClaw agent the instructions it needs
+to read and write the pact. For first-class tool exposure, pair it
+with `@openpact/mcp`.
+
+## Two layers
+
+OpenPact splits the OpenClaw integration into two concerns:
+
+- **`SKILL.md` — the guidance layer.** Markdown body teaching the
+  agent when to read, when to write, the topic + one-fact-per-entry
+  conventions, and the safety rules. Loaded by OpenClaw at session
+  start. The YAML frontmatter lists the REST surface, but frontmatter
+  tool registration is not a documented OpenClaw feature and should
+  not be relied on.
+- **`@openpact/mcp` — the tool layer.** MCP server that exposes 18
+  typed tools (`record_knowledge`, `claim_task`, `send_message`, ...)
+  over stdio. If your OpenClaw build speaks MCP, register it and the
+  agent gets first-class callable tools with auth injection.
+
+If your OpenClaw build does not speak MCP yet, the skill still works
+on its own: the agent calls the REST API via its shell or fetch tool
+using the curl recipes embedded in the skill body.
 
 ## Layout
 
@@ -13,23 +32,46 @@ workspace/
 └── README.md        # workspace-level notes for the agent
 ```
 
-## Install in your own OpenClaw workspace
+## Install the skill (required)
 
 From your project root:
 
 ```bash
 npm i -D @openpact/skill
-mkdir -p .openclaw/skills
-cp node_modules/@openpact/skill/SKILL.md .openclaw/skills/openpact.md
+mkdir -p skills/openpact
+cp node_modules/@openpact/skill/SKILL.md skills/openpact/SKILL.md
 ```
 
-OpenClaw picks up the skill at the next session start. The agent
-gains the OpenPact tools listed in the YAML frontmatter; the
-markdown body teaches it when to read, when to write, and the
-topic + one-fact-per-entry conventions.
+OpenClaw picks up the skill at the next session start. Verify:
 
-To keep the skill in lock step with the OpenPact daemon's REST
-surface, re-run the copy step after each `@openpact/skill` upgrade.
+```bash
+openclaw skills info openpact   # should report source: openclaw-workspace
+openclaw skills check           # openpact should appear as eligible
+```
+
+Re-run the copy step after each `@openpact/skill` upgrade to keep
+the skill in lock step with the daemon's REST surface.
+
+## Wire up tools (recommended, if OpenClaw speaks MCP)
+
+Check your OpenClaw docs for MCP client support. If present, register
+`@openpact/mcp` via whatever MCP config path OpenClaw documents
+(`openclaw mcp add openpact -- npx -y @openpact/mcp`, or an
+equivalent config entry). With that in place, the agent gets typed
+tools straight from the MCP server; the SKILL.md body still teaches
+it _when_ and _how_ to call them.
+
+If your OpenClaw build does not speak MCP, skip this section. The
+agent will call the REST API via its shell tool, which is slower and
+loses some ergonomics (no tool schemas, no mutating-call
+confirmation) but still works end to end.
+
+## Verified environments
+
+- OpenClaw `2026.4.15` (macOS): SKILL.md is detected and listed under
+  `skills/openpact/SKILL.md`. Frontmatter `tools:` are **not**
+  exposed as runtime tools on this build. MCP client support is not
+  verified here; check your OpenClaw release notes.
 
 ## Prerequisites
 

@@ -52,8 +52,10 @@ export function Skill() {
       </p>
       <ul>
         <li>
-          <strong>SKILL.md</strong> — Claude Code and OpenClaw agents read this file directly.
-          Front-matter plus prose that teaches the agent which REST endpoints to call.
+          <strong>SKILL.md</strong> — the guidance layer. Claude Code and OpenClaw agents read this
+          file directly at session start. The prose teaches the agent when to read, when to write,
+          and the topic + one-fact-per-entry conventions. For first-class callable tools, pair it
+          with <code>@openpact/mcp</code> on runtimes that speak MCP.
         </li>
         <li>
           <strong>cursor.mdc</strong> — Cursor and Windsurf rules file. Same content, adapted
@@ -68,7 +70,7 @@ export function Skill() {
       <h2>SKILL.md example</h2>
       <p>
         This is the file that lands under <code>.claude/skills/openpact.md</code> for Claude Code or
-        in the OpenClaw workspace.
+        under <code>skills/openpact/SKILL.md</code> in an OpenClaw workspace.
       </p>
       <CodeBlock title="skill.md" code={SKILL_MD} />
 
