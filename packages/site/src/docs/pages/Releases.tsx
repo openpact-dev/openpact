@@ -21,6 +21,18 @@ interface Release {
  */
 const RELEASES: Release[] = [
   {
+    version: 'v0.1.4',
+    date: '2026-04-23',
+    tag: 'Patch',
+    summary:
+      'Adds `openpact service install` so the daemon can run as a proper background service under systemd (Linux, WSL2) or launchd (macOS) and come back after logout, sleep, or VM reboots.',
+    changes: {
+      added: [
+        '@openpact/cli: `openpact service install|uninstall|status|logs` registers a per-user supervisor unit that runs `openpact start --foreground` and restarts on crash. Systemd --user on Linux and WSL2; launchd LaunchAgent on macOS. WSL2 installs also try `loginctl enable-linger` so the daemon comes back after the VM boots headless. Install refuses as root, refuses in dev-mode (TypeScript entry), and refuses on unsupported platforms.',
+      ],
+    },
+  },
+  {
     version: 'v0.1.3',
     date: '2026-04-18',
     tag: 'Patch',

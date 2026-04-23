@@ -1,6 +1,6 @@
 {
   "name": "@openpact/skill",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Portable agent skill for the OpenPact daemon (SKILL.md + machine-readable tools.json)",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://openpact.dev",
