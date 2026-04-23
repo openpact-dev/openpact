@@ -15,7 +15,9 @@ import {
 type RunCall = { bin: string; args: string[] }
 
 function fakeRunner(
-  impls: Partial<Record<string, (args: string[]) => { stdout?: string; stderr?: string; code?: number }>>,
+  impls: Partial<
+    Record<string, (args: string[]) => { stdout?: string; stderr?: string; code?: number }>
+  >,
 ): { run: Runner; calls: RunCall[] } {
   const calls: RunCall[] = []
   const run: Runner = async (bin, args) => {
