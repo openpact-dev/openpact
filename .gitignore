@@ -31,3 +31,6 @@ packages/*/dist/
 **/.pytest_cache/
 **/__pycache__/
 .playwright-mcp/
+
+# Private marketing notes (post drafts, outreach copy)
+docs/marketing/
