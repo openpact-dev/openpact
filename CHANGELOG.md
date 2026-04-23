@@ -6,6 +6,12 @@ Versioning is lockstep across every public package: one tag, one version across 
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-04-23
+
+### Added
+
+- `@openpact/cli`: `openpact service install|uninstall|status|logs` registers a per-user supervisor unit so the daemon survives logout, sleep, and VM reboots. Systemd `--user` on Linux and WSL2; launchd `LaunchAgent` on macOS. WSL2 installs also try `loginctl enable-linger` so the daemon comes back after the VM boots headless. Install refuses as root, refuses in dev-mode (TypeScript entry), and refuses on unsupported platforms (#26).
+
 ## [0.1.3] - 2026-04-18
 
 ### Changed
