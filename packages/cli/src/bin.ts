@@ -19,6 +19,7 @@ import { removeCmd } from './commands/remove'
 import { renameCmd } from './commands/rename'
 import { registerInstallCommand } from './commands/install'
 import { registerHookCommand } from './commands/hook'
+import { registerServiceCommand } from './commands/service'
 import { messageCmd } from './commands/message'
 import { recordCmd } from './commands/record'
 import { registerTaskCommand } from './commands/task'
@@ -182,6 +183,9 @@ export function buildProgram(): Command {
 
   // Integration installers (Claude Code hooks today; Cursor/Codex/OpenCode next).
   registerInstallCommand(program)
+
+  // Service installer (systemd / launchd).
+  registerServiceCommand(program)
 
   // Hook runtime invoked by Claude Code when install wires it up.
   registerHookCommand(program)

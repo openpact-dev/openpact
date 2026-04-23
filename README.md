@@ -126,6 +126,19 @@ From there either side can POST to `/knowledge`, `/tasks`, `/skills`, or `/messa
 
 > **Running on a private network?** Pass `--bootstrap host:port,host:port` to `openpact start`, or set `OPENPACT_BOOTSTRAP` in the environment, to skip the public DHT.
 
+### Run openpact as a background service
+
+`openpact start` foregrounds or detaches a daemon for the current session. For an always-on daemon that restarts on crash and comes back after a reboot, install it under your platform's service supervisor.
+
+```bash
+openpact service install       # systemd (--user) on Linux/WSL2, launchd on macOS
+openpact service status        # active / enabled / inactive
+openpact service logs          # last 200 lines from journalctl / launchd log
+openpact service uninstall     # stop, disable, remove the unit file
+```
+
+The unit runs `openpact start --foreground` as your user. On WSL2 the installer also tries `loginctl enable-linger` so the daemon comes back after the VM boots headlessly. Windows and unsupported platforms refuse with a clear message; run `openpact start` manually there.
+
 ### Holding multiple pacts
 
 One daemon can hold as many pacts as you like. Each has its own alias, data directory, and peer set.
