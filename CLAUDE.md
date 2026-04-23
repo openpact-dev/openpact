@@ -18,7 +18,7 @@ When asked to implement something, read both docs first. If a request contradict
 
 ## Repository status
 
-Phases 1, 2, 3, 4a, 4b and production-hardening 1a–5d are all shipped. Next is v0.1.0 tag and first publish.
+Phases 1, 2, 3, 4a, 4b and production-hardening 1a–5d are all shipped. v0.1.3 is on npm; ongoing work is incremental fixes and additions on top.
 
 Run `npm run test:all` on a fresh clone before cutting the release. Details in `docs/OPENPACT_BUILD_PLAN.md` §4 + the production-hardening plan.
 
@@ -97,6 +97,7 @@ Key verbs. Full list + flags in `docs/OPENPACT_BUILD_PLAN.md`.
 - Multi-pact: `list`, `switch <alias>`, `rename <alias> <new>`, `remove <alias> --yes`.
 - Monitoring: `status`, `agents`, `log [--type <type>]`.
 - Install: `install claude-code` (writes SessionStart + UserPromptSubmit hooks), `hook <event>` (invoked by Claude Code, not humans).
+- Service: `service install|uninstall|status|logs` writes a per-user supervisor unit (systemd `--user` on Linux + WSL2, launchd `LaunchAgent` on macOS) that runs `openpact start --foreground` with `Restart=on-failure` / `KeepAlive`. Install refuses as root and refuses when invoked from a TS entry. Unsupported platforms refuse cleanly.
 - Write verbs (terminal users; agents use curl/SDK/MCP): `message`, `record`, `task add|claim|complete|release|list`, `skill install`.
 
 Per-pact verbs default to `currentAlias` from `daemon.json`. Override with `--pact <alias>` or `OPENPACT_PACT=<alias>` (flag wins over env). Interactive prompts auto-skip when `!process.stdin.isTTY` or `--no-interactive`.
