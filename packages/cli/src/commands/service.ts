@@ -9,7 +9,7 @@ import {
 } from '../lib/service'
 import { c, emoji } from '../lib/theme'
 
-interface InstallOpts {
+export interface InstallOpts {
   bin?: string
   port?: string | number
   dashboardPort?: string | number
@@ -17,8 +17,43 @@ interface InstallOpts {
   logLevel?: string
 }
 
-interface LogsOpts {
+export interface LogsOpts {
   lines?: string | number
+}
+
+/**
+ * Build the `start --foreground` extra args from install-time CLI flags.
+ * Defaults (port 7666, dashboard-port 7667, dashboard on) stay implicit so
+ * the unit file matches a bare `openpact start --foreground` invocation.
+ */
+export function buildExtraArgs(opts: InstallOpts): string[] {
+  const extraArgs: string[] = []
+  if (opts.port && String(opts.port) !== '7666') extraArgs.push('--port', String(opts.port))
+  if (opts.noDashboard) extraArgs.push('--no-dashboard')
+  if (opts.dashboardPort && String(opts.dashboardPort) !== '7667') {
+    extraArgs.push('--dashboard-port', String(opts.dashboardPort))
+  }
+  if (opts.logLevel) extraArgs.push('--log-level', opts.logLevel)
+  return extraArgs
+}
+
+/**
+ * Resolve the absolute path of the `openpact` binary to bake into a service
+ * unit. Prefers `--bin <path>` when given. Falls back to `argv[1]` — which is
+ * the installed shim for `npm install -g` users and a TS entry in dev (the
+ * install layer rejects the TS entry case with a clearer error).
+ */
+export function resolveBin(override: string | undefined, entry = process.argv[1]): string {
+  if (override) {
+    if (!path.isAbsolute(override)) {
+      throw new Error(`--bin must be an absolute path (got ${override})`)
+    }
+    return override
+  }
+  if (!entry) {
+    throw new Error('cannot detect openpact binary path; pass --bin <absolute path>')
+  }
+  return path.resolve(entry)
 }
 
 /**
@@ -69,14 +104,7 @@ async function installCmd(
 ): Promise<void> {
   const dataDir = resolveDataDir(cmd.optsWithGlobals())
   const binPath = resolveBin(opts.bin)
-
-  const extraArgs: string[] = []
-  if (opts.port && String(opts.port) !== '7666') extraArgs.push('--port', String(opts.port))
-  if (opts.noDashboard) extraArgs.push('--no-dashboard')
-  if (opts.dashboardPort && String(opts.dashboardPort) !== '7667') {
-    extraArgs.push('--dashboard-port', String(opts.dashboardPort))
-  }
-  if (opts.logLevel) extraArgs.push('--log-level', opts.logLevel)
+  const extraArgs = buildExtraArgs(opts)
 
   const result = await serviceInstall({ binPath, dataDir, extraArgs })
 
@@ -138,22 +166,4 @@ async function logsCmd(opts: LogsOpts): Promise<void> {
   }
   const out = await serviceLogs(n)
   process.stdout.write(out.endsWith('\n') ? out : `${out}\n`)
-}
-
-function resolveBin(override: string | undefined): string {
-  if (override) {
-    if (!path.isAbsolute(override)) {
-      throw new Error(`--bin must be an absolute path (got ${override})`)
-    }
-    return override
-  }
-  // argv[1] is the script node was asked to run. For `npm install -g @openpact/cli`
-  // this is the resolved bin shim (e.g. /usr/local/bin/openpact), which is what
-  // we want to bake into the unit file. In dev (tsx) it's a .ts path — the
-  // install layer rejects that with a clearer error than a systemd boot failure.
-  const entry = process.argv[1]
-  if (!entry) {
-    throw new Error('cannot detect openpact binary path; pass --bin <absolute path>')
-  }
-  return path.resolve(entry)
 }

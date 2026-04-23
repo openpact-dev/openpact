@@ -3,10 +3,21 @@ import path from 'path'
 import { detectPlatform, homeDir, runningAsRoot, type Platform } from './platform'
 import { renderUnit, systemdPaths } from './systemd'
 import { renderPlist, launchdPaths } from './launchd'
-import { run, type ExecResult } from './exec'
+import { run as realRun, type ExecResult } from './exec'
 
 export { detectPlatform, runningAsRoot } from './platform'
 export type { Platform } from './platform'
+
+export type Runner = (bin: string, args: string[]) => Promise<ExecResult>
+
+export interface ServiceDeps {
+  /** Process runner. Tests pass a fake; production uses real child_process. */
+  run?: Runner
+  /** Home directory override. Tests pass a tmpdir; production uses os.homedir(). */
+  home?: string
+  /** Platform override. Tests force systemd/launchd codepaths without caring about host OS. */
+  platform?: Platform
+}
 
 export interface ServiceConfig {
   /** Absolute path to the `openpact` binary to bake into the unit. */
@@ -41,62 +52,51 @@ export interface StatusResult {
  * if running as root on a system with per-user supervisors, or if the bin
  * path looks like a dev-mode TS entry.
  */
-export async function install(cfg: ServiceConfig): Promise<InstallResult> {
-  const platform = requirePlatform()
+export async function install(cfg: ServiceConfig, deps: ServiceDeps = {}): Promise<InstallResult> {
+  const platform = deps.platform ?? requirePlatform()
   requireNotRoot()
   assertBinUsable(cfg.binPath)
+  const { run, home } = resolveDeps(deps)
 
   if (platform.supervisor === 'systemd') {
-    return installSystemd(cfg, platform)
+    return installSystemd(cfg, platform, run, home)
   }
-  return installLaunchd(cfg, platform)
+  return installLaunchd(cfg, platform, run, home)
 }
 
 /**
  * Stop, disable, and remove the unit file. Idempotent: missing units are a
  * success, not an error.
  */
-export async function uninstall(): Promise<{
-  removed: boolean
-  unitPath: string
-  platform: Platform
-}> {
-  const platform = requirePlatform()
+export async function uninstall(
+  deps: ServiceDeps = {},
+): Promise<{ removed: boolean; unitPath: string; platform: Platform }> {
+  const platform = deps.platform ?? requirePlatform()
   requireNotRoot()
+  const { run, home } = resolveDeps(deps)
 
   if (platform.supervisor === 'systemd') {
-    const { unitPath, unitName } = systemdPaths(homeDir())
+    const { unitPath, unitName } = systemdPaths(home)
     await run('systemctl', ['--user', 'stop', unitName])
     await run('systemctl', ['--user', 'disable', unitName])
-    let removed = false
-    try {
-      await fs.unlink(unitPath)
-      removed = true
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
-    }
+    const removed = await unlinkIfExists(unitPath)
     await run('systemctl', ['--user', 'daemon-reload'])
     return { removed, unitPath, platform }
   }
 
-  const { plistPath, label } = launchdPaths(homeDir())
+  const { plistPath, label } = launchdPaths(home)
   await run('launchctl', ['unload', plistPath]).catch(() => undefined)
   await run('launchctl', ['remove', label]).catch(() => undefined)
-  let removed = false
-  try {
-    await fs.unlink(plistPath)
-    removed = true
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
-  }
+  const removed = await unlinkIfExists(plistPath)
   return { removed, unitPath: plistPath, platform }
 }
 
-export async function status(): Promise<StatusResult> {
-  const platform = requirePlatform()
+export async function status(deps: ServiceDeps = {}): Promise<StatusResult> {
+  const platform = deps.platform ?? requirePlatform()
+  const { run, home } = resolveDeps(deps)
 
   if (platform.supervisor === 'systemd') {
-    const { unitPath, unitName } = systemdPaths(homeDir())
+    const { unitPath, unitName } = systemdPaths(home)
     const installed = await exists(unitPath)
     const active = (await run('systemctl', ['--user', 'is-active', unitName])).code === 0
     const enabledRes = await run('systemctl', ['--user', 'is-enabled', unitName])
@@ -105,7 +105,7 @@ export async function status(): Promise<StatusResult> {
     return { platform, installed, active, enabled, detail }
   }
 
-  const { plistPath, label } = launchdPaths(homeDir())
+  const { plistPath, label } = launchdPaths(home)
   const installed = await exists(plistPath)
   const listed = await run('launchctl', ['list', label])
   const active = listed.code === 0 && /PID/i.test(listed.stdout)
@@ -118,10 +118,12 @@ export async function status(): Promise<StatusResult> {
   }
 }
 
-export async function logs(lines: number): Promise<string> {
-  const platform = requirePlatform()
+export async function logs(lines: number, deps: ServiceDeps = {}): Promise<string> {
+  const platform = deps.platform ?? requirePlatform()
+  const { run, home } = resolveDeps(deps)
+
   if (platform.supervisor === 'systemd') {
-    const { unitName } = systemdPaths(homeDir())
+    const { unitName } = systemdPaths(home)
     const res = await run('journalctl', [
       '--user',
       '-u',
@@ -135,8 +137,8 @@ export async function logs(lines: number): Promise<string> {
     }
     return res.stdout
   }
-  const { logPath } = launchdPaths(homeDir())
-  const file = logPath(dataDirFromEnv())
+  const { logPath } = launchdPaths(home)
+  const file = logPath(dataDirFromEnv(home))
   try {
     const buf = await fs.readFile(file, 'utf8')
     const all = buf.split('\n')
@@ -149,8 +151,13 @@ export async function logs(lines: number): Promise<string> {
   }
 }
 
-async function installSystemd(cfg: ServiceConfig, platform: Platform): Promise<InstallResult> {
-  const { unitDir, unitPath, unitName } = systemdPaths(homeDir())
+async function installSystemd(
+  cfg: ServiceConfig,
+  platform: Platform,
+  run: Runner,
+  home: string,
+): Promise<InstallResult> {
+  const { unitDir, unitPath, unitName } = systemdPaths(home)
   const unit = renderUnit({ binPath: cfg.binPath, dataDir: cfg.dataDir, extraArgs: cfg.extraArgs })
   await fs.mkdir(unitDir, { recursive: true })
   await fs.writeFile(unitPath, unit, { mode: 0o644 })
@@ -177,8 +184,13 @@ async function installSystemd(cfg: ServiceConfig, platform: Platform): Promise<I
   return { unitPath, platform, linger, started, startError }
 }
 
-async function installLaunchd(cfg: ServiceConfig, platform: Platform): Promise<InstallResult> {
-  const { agentDir, plistPath, logPath } = launchdPaths(homeDir())
+async function installLaunchd(
+  cfg: ServiceConfig,
+  platform: Platform,
+  run: Runner,
+  home: string,
+): Promise<InstallResult> {
+  const { agentDir, plistPath, logPath } = launchdPaths(home)
   const plist = renderPlist({
     binPath: cfg.binPath,
     dataDir: cfg.dataDir,
@@ -191,7 +203,7 @@ async function installLaunchd(cfg: ServiceConfig, platform: Platform): Promise<I
 
   // Unload first in case a stale plist with the same label is loaded.
   await run('launchctl', ['unload', plistPath]).catch(() => undefined)
-  const load: ExecResult = await run('launchctl', ['load', '-w', plistPath])
+  const load = await run('launchctl', ['load', '-w', plistPath])
   const started = load.code === 0
   const startError = started ? undefined : load.stderr.trim() || `exit ${load.code}`
   return { unitPath: plistPath, platform, started, startError }
@@ -218,7 +230,7 @@ function requireNotRoot(): void {
   )
 }
 
-function assertBinUsable(binPath: string): void {
+export function assertBinUsable(binPath: string): void {
   if (!path.isAbsolute(binPath)) {
     throw new Error(`--bin must be an absolute path (got ${binPath})`)
   }
@@ -227,6 +239,13 @@ function assertBinUsable(binPath: string): void {
       `--bin '${binPath}' is a TypeScript entry; the service needs an installed binary. ` +
         `Install with 'npm install -g @openpact/cli' and re-run, or pass --bin /abs/path/to/openpact.`,
     )
+  }
+}
+
+function resolveDeps(deps: ServiceDeps): { run: Runner; home: string } {
+  return {
+    run: deps.run ?? realRun,
+    home: deps.home ?? homeDir(),
   }
 }
 
@@ -239,10 +258,20 @@ async function exists(p: string): Promise<boolean> {
   }
 }
 
+async function unlinkIfExists(p: string): Promise<boolean> {
+  try {
+    await fs.unlink(p)
+    return true
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false
+    throw err
+  }
+}
+
 function currentUser(): string {
   return process.env.USER ?? process.env.LOGNAME ?? ''
 }
 
-function dataDirFromEnv(): string {
-  return process.env.OPENPACT_DATA_DIR ?? path.join(homeDir(), '.openpact')
+function dataDirFromEnv(home: string): string {
+  return process.env.OPENPACT_DATA_DIR ?? path.join(home, '.openpact')
 }
